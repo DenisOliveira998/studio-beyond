@@ -197,3 +197,51 @@ export const money = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
 export const compact = (n: number) => n.toLocaleString("en-US");
+
+/* ---------- Accounts & platform administration (mock) ---------- */
+
+export type AccountType = "free" | "vip" | "author" | "admin";
+
+export const ACCOUNT_LABEL: Record<AccountType, string> = {
+  free: "Gratuito",
+  vip: "VIP",
+  author: "Autor",
+  admin: "Admin",
+};
+
+export type Account = {
+  id: string;
+  name: string;
+  email: string;
+  type: AccountType;
+  joined: string;
+  donated: number;
+  suspended?: boolean;
+};
+
+export const accounts: Account[] = [
+  { id: "u1", name: "Inés Halvorsen", email: "ines@thebeyond.art", type: "author", joined: "Jan 2026", donated: 0 },
+  { id: "u2", name: "Mira Okonkwo", email: "mira@thebeyond.art", type: "author", joined: "Feb 2026", donated: 15 },
+  { id: "u3", name: "Tomás Reyes", email: "tomas@thebeyond.art", type: "author", joined: "Feb 2026", donated: 0 },
+  { id: "u4", name: "Kaveh Noor", email: "kaveh@thebeyond.art", type: "author", joined: "Mar 2026", donated: 40 },
+  { id: "u5", name: "A. Ferreira", email: "a.ferreira@mail.com", type: "vip", joined: "Mar 2026", donated: 240 },
+  { id: "u6", name: "R. Silva", email: "r.silva@mail.com", type: "vip", joined: "Apr 2026", donated: 410 },
+  { id: "u7", name: "M. Lindqvist", email: "m.lind@mail.com", type: "free", joined: "Apr 2026", donated: 25 },
+  { id: "u8", name: "J. Okafor", email: "j.okafor@mail.com", type: "free", joined: "May 2026", donated: 5 },
+  { id: "u9", name: "L. Beaumont", email: "l.beaumont@mail.com", type: "free", joined: "Jun 2026", donated: 0, suspended: true },
+  { id: "u10", name: "Denis Oliveira", email: "denis@thebeyond.art", type: "admin", joined: "Jan 2026", donated: 0 },
+];
+
+/** Total donations received per work slug (mock). */
+export const donationsByWork: Record<string, number> = {
+  "gilded-silence": 310,
+  "before-the-city-wakes": 145,
+  "a-quiet-taxonomy": 620,
+  "tape-loop-no-4": 95,
+  "on-looking-longer": 480,
+  "field-notes-on-yellow": 130,
+};
+
+export function workDonations(slug: string) {
+  return donationsByWork[slug] ?? 0;
+}
