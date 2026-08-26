@@ -21,7 +21,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Role = "artist" | "supporter";
+type Role = "artist" | "supporter" | "vip";
 type Mode = "signup" | "login";
 
 const copy: Record<Role, { title: string; blurb: string; extra?: string }> = {
@@ -33,7 +33,13 @@ const copy: Record<Role, { title: string; blurb: string; extra?: string }> = {
   },
   supporter: {
     title: "Follow the work you love",
-    blurb: "Save artists, get their new work in a quiet feed, and send support whenever you want.",
+    blurb:
+      "Free reader account: save artists, get their new work in a quiet feed, like and donate whenever you want.",
+  },
+  vip: {
+    title: "Read as a VIP",
+    blurb:
+      "Everything in the free account plus early access to new work, VIP-only notes from artists and a lower platform cut on your gifts.",
   },
 };
 
@@ -59,8 +65,8 @@ function AuthPage() {
       </div>
 
       <div className="border border-border bg-surface p-7 sm:p-9">
-        <div className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border">
-          {(["artist", "supporter"] as Role[]).map((r) => (
+        <div className="grid grid-cols-3 gap-px overflow-hidden border border-border bg-border">
+          {(["supporter", "vip", "artist"] as Role[]).map((r) => (
             <button
               key={r}
               onClick={() => setRole(r)}
@@ -68,7 +74,7 @@ function AuthPage() {
                 role === r ? "text-gilt" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {r === "artist" ? "Artist" : "Supporter"}
+              {r === "artist" ? "Autor" : r === "vip" ? "VIP" : "Gratuito"}
             </button>
           ))}
         </div>
@@ -79,7 +85,7 @@ function AuthPage() {
             e.preventDefault();
             toast.success(
               mode === "signup"
-                ? `${role === "artist" ? "Artist" : "Supporter"} account created (demo).`
+                ? `${role === "artist" ? "Autor" : role === "vip" ? "VIP" : "Gratuito"} account created (demo).`
                 : "Signed in (demo).",
             );
           }}
@@ -98,7 +104,9 @@ function AuthPage() {
             {mode === "signup"
               ? role === "artist"
                 ? "Create artist account"
-                : "Create supporter account"
+                : role === "vip"
+                  ? "Create VIP account"
+                  : "Create free account"
               : "Sign in"}
           </button>
         </form>
