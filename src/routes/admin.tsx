@@ -67,7 +67,8 @@ function AdminPage() {
     setAccounts((prev) =>
       prev.map((a) => {
         if (a.id !== id) return a;
-        const next = LADDER[Math.min(LADDER.length - 1, Math.max(0, LADDER.indexOf(a.type) + direction))];
+        const idx = Math.min(LADDER.length - 1, Math.max(0, LADDER.indexOf(a.type) + direction));
+        const next = LADDER[idx] as AccountType;
         if (next !== a.type) {
           toast.success(`${a.name} agora é ${ACCOUNT_LABEL[next]}.`);
         }
