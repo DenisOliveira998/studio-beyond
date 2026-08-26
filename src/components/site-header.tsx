@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const nav = [
   { to: "/", label: "Feed" },
   { to: "/artists", label: "Artists" },
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/admin", label: "Admin" },
 ];
 
 export function SiteHeader() {
@@ -33,6 +35,7 @@ export function SiteHeader() {
           >
             Join
           </Link>
+          <ThemeToggle />
         </nav>
       </div>
     </header>
