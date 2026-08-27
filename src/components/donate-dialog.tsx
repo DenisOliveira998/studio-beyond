@@ -31,12 +31,12 @@ export function DonateDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="border-border bg-surface sm:max-w-md">
         <DialogHeader className="text-left">
-          <p className="eyebrow">Direct support</p>
+          <p className="eyebrow">Apoio direto</p>
           <DialogTitle className="font-display text-3xl font-normal tracking-tight">
-            Support {artistName}
+            Apoiar {artistName}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            One gift, straight to the studio. No subscription, no strings.
+            Uma doação, direto para o ateliê. Sem assinatura, sem amarras.
           </DialogDescription>
         </DialogHeader>
 
@@ -54,34 +54,34 @@ export function DonateDialog({
                   : "border-border text-muted-foreground hover:border-gilt-soft hover:text-foreground"
               }`}
             >
-              ${p}
+              {money(p)}
             </button>
           ))}
         </div>
 
         <label className="block">
-          <span className="eyebrow">Custom amount</span>
+          <span className="eyebrow">Valor personalizado</span>
           <input
             type="number"
             min={1}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder="Enter an amount"
+            placeholder="Digite um valor"
             className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
           />
         </label>
 
         <dl className="space-y-1.5 border-y border-border/70 py-4 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Your gift</dt>
+            <dt className="text-muted-foreground">Sua doação</dt>
             <dd>{money(value)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Platform fee (12%)</dt>
+            <dt className="text-muted-foreground">Taxa da plataforma (12%)</dt>
             <dd className="text-muted-foreground">−{money(value * PLATFORM_FEE)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt>{artistName} receives</dt>
+            <dt>{artistName} recebe</dt>
             <dd className="text-gilt">{money(toArtist)}</dd>
           </div>
         </dl>
@@ -89,16 +89,16 @@ export function DonateDialog({
         <button
           onClick={() => {
             setOpen(false);
-            toast.success(`Thank you — ${money(value)} sent to ${artistName}.`, {
-              description: "Demo checkout: payments are not live yet.",
+            toast.success(`Obrigado — ${money(value)} enviados para ${artistName}.`, {
+              description: "Checkout de demonstração: os pagamentos ainda não estão ativos.",
             });
           }}
           className="w-full bg-primary py-3 text-sm uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Send {money(value)}
+          Enviar {money(value)}
         </button>
         <p className="text-center text-xs text-muted-foreground">
-          Card checkout is Stripe-ready. Nothing is charged in this preview.
+          O pagamento por cartão está pronto para o Stripe. Nada é cobrado nesta prévia.
         </p>
       </DialogContent>
     </Dialog>

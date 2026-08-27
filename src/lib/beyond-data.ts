@@ -28,51 +28,51 @@ export type Artist = {
 };
 
 export const MEDIUM_LABEL: Record<Medium, string> = {
-  visual: "Visual art",
-  writing: "Writing",
-  music: "Music",
-  illustration: "Illustration",
+  visual: "Arte visual",
+  writing: "Escrita",
+  music: "Música",
+  illustration: "Ilustração",
 };
 
 export const artists: Artist[] = [
   {
     slug: "mira-okonkwo",
     name: "Mira Okonkwo",
-    discipline: "Painter",
-    location: "Lisbon",
+    discipline: "Pintora",
+    location: "Lisboa",
     initials: "MO",
     supporters: 412,
-    bio: "Paints slow, weathered fields of ochre and ink. Works from a former tile factory in Alcântara, one canvas at a time.",
+    bio: "Pinta campos lentos e desgastados de ocre e tinta. Trabalha numa antiga fábrica de azulejos em Alcântara, uma tela por vez.",
     works: ["gilded-silence", "field-notes-on-yellow"],
   },
   {
     slug: "tomas-reyes",
     name: "Tomás Reyes",
-    discipline: "Photographer",
-    location: "Mexico City",
+    discipline: "Fotógrafo",
+    location: "Cidade do México",
     initials: "TR",
     supporters: 288,
-    bio: "Photographs cities in the twenty minutes before they wake up. Shoots film only, develops at home.",
+    bio: "Fotografa cidades nos vinte minutos antes de elas acordarem. Só fotografa em filme e revela em casa.",
     works: ["before-the-city-wakes"],
   },
   {
     slug: "ines-halvorsen",
     name: "Inés Halvorsen",
-    discipline: "Illustrator & essayist",
+    discipline: "Ilustradora e ensaísta",
     location: "Oslo",
     initials: "IH",
     supporters: 526,
-    bio: "Draws botanical forms in ink and writes short essays about attention. Believes a page can be a quiet room.",
+    bio: "Desenha formas botânicas a nanquim e escreve ensaios curtos sobre atenção. Acredita que uma página pode ser um quarto silencioso.",
     works: ["a-quiet-taxonomy", "on-looking-longer"],
   },
   {
     slug: "kaveh-noor",
     name: "Kaveh Noor",
-    discipline: "Composer",
-    location: "Berlin",
+    discipline: "Compositor",
+    location: "Berlim",
     initials: "KN",
     supporters: 197,
-    bio: "Builds tape loops and modular drones. Releases one piece a month, unmastered and unhurried.",
+    bio: "Constrói loops de fita e drones modulares. Lança uma peça por mês, sem masterização e sem pressa.",
     works: ["tape-loop-no-4"],
   },
 ];
@@ -81,100 +81,105 @@ export const works: Work[] = [
   {
     id: "1",
     slug: "gilded-silence",
-    title: "Gilded Silence",
+    title: "Silêncio Dourado",
     medium: "visual",
     artistSlug: "mira-okonkwo",
     cover: "/images/work-1.jpg",
-    excerpt: "Oil and pigment on raw linen, 140 × 95 cm. The fourth study in an ongoing series about erosion.",
+    excerpt:
+      "Óleo e pigmento sobre linho cru, 140 × 95 cm. O quarto estudo de uma série contínua sobre erosão.",
     body: [
-      "This one began as a mistake — a spill of ink across a ground I had spent three weeks warming into that particular yellow.",
-      "I let it stay. Everything after was a negotiation with the accident: where to withhold, where to let the dark keep its territory.",
+      "Esta obra começou como um erro — um borrão de nanquim sobre um fundo que passei três semanas aquecendo até aquele amarelo específico.",
+      "Deixei que ficasse. Tudo depois disso foi uma negociação com o acidente: onde conter, onde deixar o escuro manter o seu território.",
     ],
     clicks: 18420,
     likes: 1284,
-    published: "Aug 2, 2026",
+    published: "2 de agosto de 2026",
   },
   {
     id: "2",
     slug: "before-the-city-wakes",
-    title: "Before the City Wakes",
+    title: "Antes de a Cidade Acordar",
     medium: "visual",
     artistSlug: "tomas-reyes",
     cover: "/images/work-2.jpg",
-    excerpt: "35mm, pushed two stops. Avenida Reforma at 5:40am, when the light belongs to no one.",
+    excerpt:
+      "35 mm, forçado dois pontos. Avenida Reforma às 5h40, quando a luz não pertence a ninguém.",
     body: [
-      "There is a window of about twenty minutes when a city is still an object rather than a crowd.",
-      "I have been photographing that window for six years. It is never the same street twice.",
+      "Existe uma janela de cerca de vinte minutos em que uma cidade ainda é um objeto, e não uma multidão.",
+      "Fotografo essa janela há seis anos. Nunca é a mesma rua duas vezes.",
     ],
     clicks: 9310,
     likes: 742,
-    published: "Jul 28, 2026",
+    published: "28 de julho de 2026",
   },
   {
     id: "3",
     slug: "a-quiet-taxonomy",
-    title: "A Quiet Taxonomy",
+    title: "Uma Taxonomia Silenciosa",
     medium: "illustration",
     artistSlug: "ines-halvorsen",
     cover: "/images/work-3.jpg",
-    excerpt: "Ink on cotton paper. Nine stems, drawn from the same roadside over one summer.",
+    excerpt:
+      "Nanquim sobre papel de algodão. Nove hastes, desenhadas da mesma beira de estrada ao longo de um verão.",
     body: [
-      "Drawing a weed nine times teaches you that it was never one thing.",
-      "The line has to slow down to notice. That slowing is the whole point of the exercise.",
+      "Desenhar uma erva nove vezes ensina que ela nunca foi uma só coisa.",
+      "A linha precisa desacelerar para perceber. Essa desaceleração é todo o sentido do exercício.",
     ],
     clicks: 22105,
     likes: 1902,
-    published: "Jul 19, 2026",
+    published: "19 de julho de 2026",
   },
   {
     id: "4",
     slug: "tape-loop-no-4",
-    title: "Tape Loop no. 4",
+    title: "Loop de Fita nº 4",
     medium: "music",
     artistSlug: "kaveh-noor",
     cover: "/images/work-4.jpg",
     audio: true,
-    excerpt: "Eleven minutes of decaying tape, one chord, no edits. Recorded in a single pass.",
+    excerpt:
+      "Onze minutos de fita em decomposição, um acorde, nenhum corte. Gravado em uma única passagem.",
     body: [
-      "The loop is 4.2 seconds long. Each pass across the head removes a little more of the high end.",
-      "By minute nine there is almost nothing left but hiss and memory, which is more or less the subject.",
+      "O loop tem 4,2 segundos. Cada passagem pela cabeça de leitura remove um pouco mais dos agudos.",
+      "No nono minuto quase não resta nada além de ruído e memória, que é mais ou menos o assunto.",
     ],
     clicks: 6740,
     likes: 512,
-    published: "Jul 11, 2026",
+    published: "11 de julho de 2026",
   },
   {
     id: "5",
     slug: "on-looking-longer",
-    title: "On Looking Longer",
+    title: "Sobre Olhar Por Mais Tempo",
     medium: "writing",
     artistSlug: "ines-halvorsen",
-    excerpt: "An essay on attention as a craft, and why the internet made it a discipline rather than a habit.",
+    excerpt:
+      "Um ensaio sobre a atenção como ofício, e por que a internet a transformou em disciplina em vez de hábito.",
     body: [
-      "Attention used to be the default state of a person with nothing else to do. Now it is a skill you have to train, like a language you learned late.",
-      "I keep a rule for myself in galleries: four minutes per work, timed. The first minute is recognition. The second is boredom. The third is where something actually begins.",
-      "Most of what we call taste is simply the willingness to stay past the second minute.",
+      "A atenção costumava ser o estado padrão de quem não tinha mais nada a fazer. Hoje é uma habilidade que precisa de treino, como um idioma aprendido tarde.",
+      "Mantenho uma regra em galerias: quatro minutos por obra, cronometrados. O primeiro minuto é reconhecimento. O segundo é tédio. O terceiro é onde algo realmente começa.",
+      "A maior parte do que chamamos de gosto é apenas a disposição de permanecer depois do segundo minuto.",
     ],
-    readTime: "6 min read",
+    readTime: "6 min de leitura",
     clicks: 31480,
     likes: 2410,
-    published: "Jul 4, 2026",
+    published: "4 de julho de 2026",
   },
   {
     id: "6",
     slug: "field-notes-on-yellow",
-    title: "Field Notes on Yellow",
+    title: "Notas de Campo sobre o Amarelo",
     medium: "writing",
     artistSlug: "mira-okonkwo",
-    excerpt: "Notes from a studio journal: mixing a colour that refuses to sit still.",
+    excerpt: "Notas de um diário de ateliê: misturar uma cor que se recusa a ficar quieta.",
     body: [
-      "Yellow is the only pigment I own that changes its mind depending on what is next to it.",
-      "Set it against black and it becomes light. Set it against white and it becomes dirt. The painting is just an argument about which of those it is going to be.",
+      "O amarelo é o único pigmento que tenho que muda de opinião conforme o que está ao lado dele.",
+      "Contra o preto, torna-se luz. Contra o branco, torna-se terra. A pintura é apenas uma discussão sobre qual dos dois ele vai ser.",
     ],
-    readTime: "3 min read",
+    readTime: "3 min de leitura",
     clicks: 12060,
     likes: 866,
-    published: "Jun 27, 2026",
+    published: "27 de junho de 2026",
   },
 ];
 
@@ -194,11 +199,11 @@ export function worksByArtist(slug: string) {
 }
 
 export const money = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
 
-export const compact = (n: number) => n.toLocaleString("en-US");
+export const compact = (n: number) => n.toLocaleString("pt-BR");
 
-/* ---------- Accounts & platform administration (mock) ---------- */
+/* ---------- Contas e administração da plataforma (dados mockados) ---------- */
 
 export type AccountType = "free" | "vip" | "author" | "admin";
 
@@ -206,7 +211,7 @@ export const ACCOUNT_LABEL: Record<AccountType, string> = {
   free: "Gratuito",
   vip: "VIP",
   author: "Autor",
-  admin: "Admin",
+  admin: "Administrador",
 };
 
 export type Account = {
@@ -220,19 +225,19 @@ export type Account = {
 };
 
 export const accounts: Account[] = [
-  { id: "u1", name: "Inés Halvorsen", email: "ines@thebeyond.art", type: "author", joined: "Jan 2026", donated: 0 },
-  { id: "u2", name: "Mira Okonkwo", email: "mira@thebeyond.art", type: "author", joined: "Feb 2026", donated: 15 },
-  { id: "u3", name: "Tomás Reyes", email: "tomas@thebeyond.art", type: "author", joined: "Feb 2026", donated: 0 },
-  { id: "u4", name: "Kaveh Noor", email: "kaveh@thebeyond.art", type: "author", joined: "Mar 2026", donated: 40 },
-  { id: "u5", name: "A. Ferreira", email: "a.ferreira@mail.com", type: "vip", joined: "Mar 2026", donated: 240 },
-  { id: "u6", name: "R. Silva", email: "r.silva@mail.com", type: "vip", joined: "Apr 2026", donated: 410 },
-  { id: "u7", name: "M. Lindqvist", email: "m.lind@mail.com", type: "free", joined: "Apr 2026", donated: 25 },
-  { id: "u8", name: "J. Okafor", email: "j.okafor@mail.com", type: "free", joined: "May 2026", donated: 5 },
-  { id: "u9", name: "L. Beaumont", email: "l.beaumont@mail.com", type: "free", joined: "Jun 2026", donated: 0, suspended: true },
-  { id: "u10", name: "Denis Oliveira", email: "denis@thebeyond.art", type: "admin", joined: "Jan 2026", donated: 0 },
+  { id: "u1", name: "Inés Halvorsen", email: "ines@thebeyond.art", type: "author", joined: "jan 2026", donated: 0 },
+  { id: "u2", name: "Mira Okonkwo", email: "mira@thebeyond.art", type: "author", joined: "fev 2026", donated: 15 },
+  { id: "u3", name: "Tomás Reyes", email: "tomas@thebeyond.art", type: "author", joined: "fev 2026", donated: 0 },
+  { id: "u4", name: "Kaveh Noor", email: "kaveh@thebeyond.art", type: "author", joined: "mar 2026", donated: 40 },
+  { id: "u5", name: "A. Ferreira", email: "a.ferreira@mail.com", type: "vip", joined: "mar 2026", donated: 240 },
+  { id: "u6", name: "R. Silva", email: "r.silva@mail.com", type: "vip", joined: "abr 2026", donated: 410 },
+  { id: "u7", name: "M. Lindqvist", email: "m.lind@mail.com", type: "free", joined: "abr 2026", donated: 25 },
+  { id: "u8", name: "J. Okafor", email: "j.okafor@mail.com", type: "free", joined: "mai 2026", donated: 5 },
+  { id: "u9", name: "L. Beaumont", email: "l.beaumont@mail.com", type: "free", joined: "jun 2026", donated: 0, suspended: true },
+  { id: "u10", name: "Denis Oliveira", email: "denis@thebeyond.art", type: "admin", joined: "jan 2026", donated: 0 },
 ];
 
-/** Total donations received per work slug (mock). */
+/** Total de doações recebidas por obra (mockado). */
 export const donationsByWork: Record<string, number> = {
   "gilded-silence": 310,
   "before-the-city-wakes": 145,
