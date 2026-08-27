@@ -48,9 +48,9 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
             </Link>
           )}
           <span aria-hidden>·</span>
-          <span>{compact(work.clicks)} views</span>
+          <span>{compact(work.clicks)} visualizações</span>
           <span aria-hidden>·</span>
-          <span>{compact(work.likes)} likes</span>
+          <span>{compact(work.likes)} curtidas</span>
         </div>
       </div>
     </article>
