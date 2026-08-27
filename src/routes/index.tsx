@@ -6,16 +6,19 @@ import { MEDIUM_LABEL, artists, works, type Medium } from "@/lib/beyond-data";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Beyond — An ad-free gallery for artists" },
+      { title: "The Beyond — Uma galeria sem anúncios para artistas" },
       {
         name: "description",
         content:
-          "A distraction-free space where writers, painters, photographers and composers publish their work, earn per view, and receive direct support.",
+          "Um espaço sem distrações onde escritores, pintores, fotógrafos e compositores publicam suas obras, ganham por visualização e recebem apoio direto.",
       },
-      { property: "og:title", content: "The Beyond — An ad-free gallery for artists" },
+      {
+        property: "og:title",
+        content: "The Beyond — Uma galeria sem anúncios para artistas",
+      },
       {
         property: "og:description",
-        content: "Publish, be seen, be paid. No ads, no banners, no interruptions.",
+        content: "Publique, seja visto, seja pago. Sem anúncios, sem banners, sem interrupções.",
       },
     ],
   }),
@@ -32,26 +35,26 @@ function Home() {
     <div>
       <section className="border-b border-border/70">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-          <p className="eyebrow">No ads · No banners · No interruptions</p>
+          <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
           <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] tracking-tight sm:text-7xl">
-            A quiet room for work that deserves to be looked at longer.
+            Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
-            The Beyond pays artists for every view their work earns, and lets anyone send support
-            directly to the studio. We keep 12%. The rest belongs to the maker.
+            O The Beyond paga os artistas por cada visualização que a obra conquista e permite que
+            qualquer pessoa envie apoio direto ao ateliê. Ficamos com 12%. O resto é de quem cria.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Link
               to="/auth"
               className="bg-primary px-6 py-3 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90"
             >
-              Publish your work
+              Publique sua obra
             </Link>
             <Link
               to="/artists"
               className="rule-hover text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Browse artists
+              Explorar artistas
             </Link>
           </div>
         </div>
@@ -59,7 +62,7 @@ function Home() {
 
       <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
         <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-border/70 pb-4">
-          <h2 className="font-display text-3xl tracking-tight">The Feed</h2>
+          <h2 className="font-display text-3xl tracking-tight">O Feed</h2>
           <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]">
             {filters.map((f) => (
               <button
@@ -69,7 +72,7 @@ function Home() {
                   filter === f ? "text-gilt" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {f === "all" ? "Everything" : MEDIUM_LABEL[f]}
+                {f === "all" ? "Tudo" : MEDIUM_LABEL[f]}
               </button>
             ))}
           </div>
@@ -83,7 +86,7 @@ function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-14 sm:px-8">
-        <h2 className="font-display text-3xl tracking-tight">Artists in residence</h2>
+        <h2 className="font-display text-3xl tracking-tight">Artistas residentes</h2>
         <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           {artists.map((a) => (
             <Link
@@ -97,7 +100,7 @@ function Home() {
                 {a.name}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                {a.location} · {a.supporters} supporters
+                {a.location} · {a.supporters} apoiadores
               </p>
             </Link>
           ))}
