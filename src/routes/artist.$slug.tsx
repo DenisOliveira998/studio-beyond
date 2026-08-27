@@ -11,10 +11,15 @@ export const Route = createFileRoute("/artist/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Artist not found — The Beyond" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Artista não encontrado — The Beyond" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     }
     const { artist } = loaderData;
-    const description = `${artist.discipline} in ${artist.location}. ${artist.bio}`;
+    const description = `${artist.discipline} em ${artist.location}. ${artist.bio}`;
     return {
       meta: [
         { title: `${artist.name} — The Beyond` },
@@ -47,11 +52,11 @@ function ArtistPage() {
         <div className="lg:text-right">
           <dl className="flex gap-10 lg:justify-end">
             <div>
-              <dt className="eyebrow">Supporters</dt>
+              <dt className="eyebrow">Apoiadores</dt>
               <dd className="mt-1 font-display text-3xl">{artist.supporters}</dd>
             </div>
             <div>
-              <dt className="eyebrow">Total views</dt>
+              <dt className="eyebrow">Visualizações totais</dt>
               <dd className="mt-1 font-display text-3xl">{compact(totalViews)}</dd>
             </div>
           </dl>
@@ -60,7 +65,7 @@ function ArtistPage() {
               artistName={artist.name}
               trigger={
                 <button className="bg-primary px-6 py-3 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-                  Support this artist
+                  Apoiar este artista
                 </button>
               }
             />
@@ -69,7 +74,7 @@ function ArtistPage() {
       </header>
 
       <section className="pt-14">
-        <h2 className="font-display text-3xl tracking-tight">Selected works</h2>
+        <h2 className="font-display text-3xl tracking-tight">Obras selecionadas</h2>
         <div className="mt-10 grid gap-14 sm:grid-cols-2">
           {works.map((w) => (
             <WorkCard key={w.id} work={w} />
