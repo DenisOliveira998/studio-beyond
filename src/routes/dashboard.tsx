@@ -10,16 +10,16 @@ import {
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Artist dashboard — The Beyond" },
+      { title: "Painel do autor — The Beyond" },
       {
         name: "description",
         content:
-          "Track click revenue, donations received and platform fees across your published work.",
+          "Acompanhe a receita por cliques, as doações recebidas e a taxa da plataforma nas suas obras publicadas.",
       },
-      { property: "og:title", content: "Artist dashboard — The Beyond" },
+      { property: "og:title", content: "Painel do autor — The Beyond" },
       {
         property: "og:description",
-        content: "A plain view of what your work earned this month.",
+        content: "Uma visão direta do que sua obra rendeu neste mês.",
       },
     ],
   }),
@@ -27,10 +27,10 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const DONATIONS = [
-  { from: "A. Ferreira", amount: 40, work: "A Quiet Taxonomy", when: "2 days ago" },
-  { from: "Anonymous", amount: 15, work: "On Looking Longer", when: "4 days ago" },
-  { from: "R. Silva", amount: 100, work: "A Quiet Taxonomy", when: "1 week ago" },
-  { from: "M. Lindqvist", amount: 5, work: "On Looking Longer", when: "1 week ago" },
+  { from: "A. Ferreira", amount: 40, work: "Uma Taxonomia Silenciosa", when: "há 2 dias" },
+  { from: "Anônimo", amount: 15, work: "Sobre Olhar Por Mais Tempo", when: "há 4 dias" },
+  { from: "R. Silva", amount: 100, work: "Uma Taxonomia Silenciosa", when: "há 1 semana" },
+  { from: "M. Lindqvist", amount: 5, work: "Sobre Olhar Por Mais Tempo", when: "há 1 semana" },
 ];
 
 function Dashboard() {
@@ -44,19 +44,27 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-      <p className="eyebrow">Artist dashboard · August 2026</p>
+      <p className="eyebrow">Painel do autor · agosto de 2026</p>
       <h1 className="mt-5 font-display text-5xl leading-tight tracking-tight">Inés Halvorsen</h1>
 
       <div className="mt-12 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Click revenue" value={money(clickGross)} note={`${compact(clicks)} counted views`} />
-        <Stat label="Donations" value={money(donationGross)} note={`${DONATIONS.length} gifts`} />
-        <Stat label="Platform fee (12%)" value={`−${money(fee)}`} note="Keeps the lights on" />
-        <Stat label="Your payout" value={money(net)} note="Paid out Friday" accent />
+        <Stat
+          label="Receita por cliques"
+          value={money(clickGross)}
+          note={`${compact(clicks)} visualizações contabilizadas`}
+        />
+        <Stat label="Doações" value={money(donationGross)} note={`${DONATIONS.length} doações`} />
+        <Stat
+          label="Taxa da plataforma (12%)"
+          value={`−${money(fee)}`}
+          note="Mantém a plataforma no ar"
+        />
+        <Stat label="Seu repasse" value={money(net)} note="Pago na sexta-feira" accent />
       </div>
 
       <div className="mt-16 grid gap-16 lg:grid-cols-[1.3fr_1fr]">
         <section>
-          <h2 className="font-display text-3xl tracking-tight">Performance by work</h2>
+          <h2 className="font-display text-3xl tracking-tight">Desempenho por obra</h2>
           <div className="mt-8 divide-y divide-border border-y border-border">
             {works.map((w) => {
               const earned = w.clicks * RATE_PER_CLICK * (1 - PLATFORM_FEE);
@@ -71,7 +79,7 @@ function Dashboard() {
                       {w.title}
                     </Link>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {compact(w.clicks)} views · {compact(w.likes)} likes
+                      {compact(w.clicks)} visualizações · {compact(w.likes)} curtidas
                     </p>
                   </div>
                   <p className="shrink-0 text-sm text-gilt">{money(earned)}</p>
@@ -80,12 +88,13 @@ function Dashboard() {
             })}
           </div>
           <p className="mt-5 text-xs text-muted-foreground">
-            Mock counter: views are valued at {money(RATE_PER_CLICK)} each before the platform fee.
+            Contador simulado: cada visualização vale {money(RATE_PER_CLICK)} antes da taxa da
+            plataforma.
           </p>
         </section>
 
         <section>
-          <h2 className="font-display text-3xl tracking-tight">Recent support</h2>
+          <h2 className="font-display text-3xl tracking-tight">Apoios recentes</h2>
           <div className="mt-8 divide-y divide-border border-y border-border">
             {DONATIONS.map((d, i) => (
               <div key={i} className="flex items-baseline justify-between gap-6 py-5">
