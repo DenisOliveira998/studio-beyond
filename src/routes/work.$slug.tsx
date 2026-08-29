@@ -14,14 +14,19 @@ export const Route = createFileRoute("/work/$slug")({
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Work not found — The Beyond" }, { name: "robots", content: "noindex" }] };
+      return {
+        meta: [
+          { title: "Obra não encontrada — The Beyond" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     }
     const { work, artist } = loaderData;
     return {
       meta: [
-        { title: `${work.title} by ${artist.name} — The Beyond` },
+        { title: `${work.title}, de ${artist.name} — The Beyond` },
         { name: "description", content: work.excerpt },
-        { property: "og:title", content: `${work.title} by ${artist.name}` },
+        { property: "og:title", content: `${work.title}, de ${artist.name}` },
         { property: "og:description", content: work.excerpt },
         { property: "og:type", content: "article" },
       ],
@@ -52,7 +57,7 @@ function WorkPage() {
           {artist.name}
         </Link>
         <span aria-hidden>·</span>
-        <span>{compact(views)} views counted</span>
+        <span>{compact(views)} visualizações contabilizadas</span>
         {work.readTime && (
           <>
             <span aria-hidden>·</span>
@@ -74,8 +79,8 @@ function WorkPage() {
       {work.audio && (
         <div className="mt-6 flex items-center gap-4 border border-border bg-surface px-5 py-4">
           <button
-            onClick={() => toast("Playback is mocked in this preview.")}
-            aria-label="Play"
+            onClick={() => toast("A reprodução é simulada nesta prévia.")}
+            aria-label="Reproduzir"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
           >
             <Play className="h-4 w-4" />
@@ -100,6 +105,7 @@ function WorkPage() {
       <div className="mt-14 flex flex-wrap items-center gap-3 border-t border-border pt-8">
         <button
           onClick={() => setLiked((v) => !v)}
+          aria-label={liked ? "Remover curtida" : "Curtir"}
           className={`flex items-center gap-2 border px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-colors ${
             liked ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
           }`}
@@ -112,18 +118,18 @@ function WorkPage() {
             if (typeof window !== "undefined") {
               void navigator.clipboard?.writeText(window.location.href);
             }
-            toast.success("Link copied");
+            toast.success("Link copiado");
           }}
           className="flex items-center gap-2 border border-border px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
         >
           <Link2 className="h-3.5 w-3.5" />
-          Share
+          Compartilhar
         </button>
         <DonateDialog
           artistName={artist.name}
           trigger={
             <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-              Donate to {artist.name.split(" ")[0]}
+              Doar para {artist.name.split(" ")[0]}
             </button>
           }
         />
