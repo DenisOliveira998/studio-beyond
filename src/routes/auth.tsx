@@ -5,16 +5,16 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Join The Beyond — Artists & Supporters" },
+      { title: "Entrar no The Beyond — Autores e Apoiadores" },
       {
         name: "description",
         content:
-          "Create an artist account to publish and earn, or join as a supporter to follow and fund the work you love.",
+          "Crie uma conta de autor para publicar e receber, ou entre como leitor para acompanhar e apoiar as obras que você ama.",
       },
-      { property: "og:title", content: "Join The Beyond" },
+      { property: "og:title", content: "Entrar no The Beyond" },
       {
         property: "og:description",
-        content: "Separate sign-up for artists and supporters. No ads, ever.",
+        content: "Cadastro separado para autores e leitores. Sem anúncios, nunca.",
       },
     ],
   }),
@@ -24,23 +24,28 @@ export const Route = createFileRoute("/auth")({
 type Role = "artist" | "supporter" | "vip";
 type Mode = "signup" | "login";
 
-const copy: Record<Role, { title: string; blurb: string; extra?: string }> = {
+const copy: Record<Role, { title: string; blurb: string }> = {
   artist: {
-    title: "Publish and get paid",
+    title: "Publique e receba",
     blurb:
-      "Upload writing, images, audio or illustration. Earn on every counted view, plus direct gifts from supporters.",
-    extra: "Discipline",
+      "Envie textos, imagens, áudio ou ilustrações. Ganhe por cada visualização contabilizada, além das doações diretas dos apoiadores.",
   },
   supporter: {
-    title: "Follow the work you love",
+    title: "Acompanhe as obras que você ama",
     blurb:
-      "Free reader account: save artists, get their new work in a quiet feed, like and donate whenever you want.",
+      "Conta gratuita de leitor: salve artistas, receba as novidades num feed silencioso, curta e doe quando quiser.",
   },
   vip: {
-    title: "Read as a VIP",
+    title: "Leia como VIP",
     blurb:
-      "Everything in the free account plus early access to new work, VIP-only notes from artists and a lower platform cut on your gifts.",
+      "Tudo da conta gratuita, mais acesso antecipado às novas obras, notas exclusivas dos artistas e uma taxa menor da plataforma nas suas doações.",
   },
+};
+
+const ROLE_LABEL: Record<Role, string> = {
+  artist: "Autor",
+  vip: "VIP",
+  supporter: "Gratuito",
 };
 
 function AuthPage() {
@@ -50,7 +55,9 @@ function AuthPage() {
   return (
     <div className="mx-auto grid max-w-6xl gap-16 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-2">
       <div>
-        <p className="eyebrow">{mode === "signup" ? "Create an account" : "Welcome back"}</p>
+        <p className="eyebrow">
+          {mode === "signup" ? "Criar uma conta" : "Bem-vindo de volta"}
+        </p>
         <h1 className="mt-5 font-display text-5xl leading-tight tracking-tight sm:text-6xl">
           {copy[role].title}
         </h1>
@@ -58,9 +65,9 @@ function AuthPage() {
           {copy[role].blurb}
         </p>
         <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
-          <li>No advertising, ever — the feed is only work.</li>
-          <li>88% of click revenue and donations goes to the artist.</li>
-          <li>Payouts weekly, no minimum threshold.</li>
+          <li>Nenhuma publicidade, nunca — o feed é só obra.</li>
+          <li>88% da receita de cliques e das doações vai para o artista.</li>
+          <li>Pagamentos semanais, sem valor mínimo.</li>
         </ul>
       </div>
 
@@ -74,7 +81,7 @@ function AuthPage() {
                 role === r ? "text-gilt" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {r === "artist" ? "Autor" : r === "vip" ? "VIP" : "Gratuito"}
+              {ROLE_LABEL[r]}
             </button>
           ))}
         </div>
@@ -85,17 +92,19 @@ function AuthPage() {
             e.preventDefault();
             toast.success(
               mode === "signup"
-                ? `${role === "artist" ? "Autor" : role === "vip" ? "VIP" : "Gratuito"} account created (demo).`
-                : "Signed in (demo).",
+                ? `Conta ${ROLE_LABEL[role]} criada (demonstração).`
+                : "Sessão iniciada (demonstração).",
             );
           }}
         >
-          {mode === "signup" && <Field label="Full name" type="text" placeholder="Your name" />}
-          {mode === "signup" && role === "artist" && (
-            <Field label="Discipline" type="text" placeholder="Painter, essayist, composer…" />
+          {mode === "signup" && (
+            <Field label="Nome completo" type="text" placeholder="Seu nome" />
           )}
-          <Field label="Email" type="email" placeholder="you@studio.com" />
-          <Field label="Password" type="password" placeholder="••••••••" />
+          {mode === "signup" && role === "artist" && (
+            <Field label="Área de atuação" type="text" placeholder="Pintor, ensaísta, compositor…" />
+          )}
+          <Field label="E-mail" type="email" placeholder="voce@ateliê.com" />
+          <Field label="Senha" type="password" placeholder="••••••••" />
 
           <button
             type="submit"
@@ -103,11 +112,11 @@ function AuthPage() {
           >
             {mode === "signup"
               ? role === "artist"
-                ? "Create artist account"
+                ? "Criar conta de autor"
                 : role === "vip"
-                  ? "Create VIP account"
-                  : "Create free account"
-              : "Sign in"}
+                  ? "Criar conta VIP"
+                  : "Criar conta gratuita"
+              : "Entrar"}
           </button>
         </form>
 
@@ -116,8 +125,8 @@ function AuthPage() {
           className="mt-6 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {mode === "signup"
-            ? "Already have an account? Sign in"
-            : "New to The Beyond? Create an account"}
+            ? "Já tem uma conta? Entre aqui"
+            : "Novo no The Beyond? Crie uma conta"}
         </button>
       </div>
     </div>
