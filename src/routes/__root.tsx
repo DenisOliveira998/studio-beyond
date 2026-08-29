@@ -80,16 +80,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Beyond — An ad-free gallery for artists" },
+      { title: "The Beyond — Uma galeria sem anúncios para artistas" },
       {
         name: "description",
         content:
-          "A distraction-free space where artists publish their work, earn per view, and receive direct support.",
+          "Um espaço sem distrações onde artistas publicam suas obras, ganham por visualização e recebem apoio direto.",
       },
       { property: "og:title", content: "The Beyond" },
       {
         property: "og:description",
-        content: "Publish, be seen, be paid. No ads, no banners, no interruptions.",
+        content: "Publique, seja visto, seja pago. Sem anúncios, sem banners, sem interrupções.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
