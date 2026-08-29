@@ -41,7 +41,7 @@ const FILTERS: Array<{ value: AccountType | "all"; label: string }> = [
   { value: "free", label: "Gratuito" },
   { value: "vip", label: "VIP" },
   { value: "author", label: "Autor" },
-  { value: "admin", label: "Admin" },
+  { value: "admin", label: "Administrador" },
 ];
 
 const LADDER: AccountType[] = ["free", "vip", "author", "admin"];
