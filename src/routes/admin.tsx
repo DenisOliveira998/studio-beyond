@@ -5,7 +5,6 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
-  BarChart3,
   CircleDollarSign,
   LayoutDashboard,
   Trophy,
@@ -499,5 +498,3 @@ function Stat({
   );
 }
 
-// Referência para o gráfico de barras simples (não utilizado externamente)
-export { BarChart3 as AdminChartIcon };
