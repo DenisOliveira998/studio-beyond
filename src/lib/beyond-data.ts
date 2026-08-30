@@ -198,10 +198,9 @@ export function worksByArtist(slug: string) {
   return works.filter((w) => w.artistSlug === slug);
 }
 
-export const money = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
+export const money = (n: number) => formatMoney(n);
 
-export const compact = (n: number) => n.toLocaleString("pt-BR");
+export const compact = (n: number) => formatNumber(n);
 
 /* ---------- Contas e administração da plataforma (dados mockados) ---------- */
 
