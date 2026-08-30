@@ -36,6 +36,7 @@ export function SiteHeader() {
           >
             Entrar
           </Link>
+          <LanguageSelector />
           <ThemeToggle />
         </nav>
       </div>

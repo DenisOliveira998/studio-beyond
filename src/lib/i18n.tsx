@@ -30,8 +30,16 @@ export function getActiveLanguage(): LanguageCode {
   return activeLanguage;
 }
 
-function optionFor(code: LanguageCode) {
-  return LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
+const FALLBACK: LanguageOption = {
+  code: "pt-BR",
+  label: "Português (Brasil)",
+  short: "PT",
+  currency: "BRL",
+  available: true,
+};
+
+function optionFor(code: LanguageCode): LanguageOption {
+  return LANGUAGES.find((l) => l.code === code) ?? FALLBACK;
 }
 
 export function formatMoney(value: number, code: LanguageCode = activeLanguage) {
