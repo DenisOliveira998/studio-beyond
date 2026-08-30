@@ -1,3 +1,5 @@
+import { formatMoney, formatNumber } from "@/lib/i18n";
+
 export type Medium = "visual" | "writing" | "music" | "illustration";
 
 export type Work = {
