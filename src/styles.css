@@ -53,34 +53,36 @@
 
 :root {
   --radius: 0.25rem;
-  /* Light mode — light gray canvas (#F2F2F2) with gold accent (#C9A84C) */
-  --background: oklch(0.952 0 0);
-  --foreground: oklch(0.25 0 0);
-  --surface: oklch(0.985 0 0);
-  --card: oklch(0.985 0 0);
-  --card-foreground: oklch(0.25 0 0);
-  --popover: oklch(0.985 0 0);
-  --popover-foreground: oklch(0.25 0 0);
-  --primary: oklch(0.66 0.1 88);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.9 0 0);
-  --secondary-foreground: oklch(0.25 0 0);
-  --muted: oklch(0.91 0 0);
-  --muted-foreground: oklch(0.48 0.005 80);
-  --accent: oklch(0.9 0.02 88);
-  --accent-foreground: oklch(0.25 0 0);
+  /* Noite Real — Modo claro
+   * Fundo #F5EDE0 (Café com Leite claro), cards #FFFFFF, ação #C9A84C (Dourado),
+   * hover #B8923A, texto #0B0F1A (Abismo), secundário #1B2F6E (Céu Noturno) */
+  --background: #f5ede0;
+  --foreground: #0b0f1a;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #0b0f1a;
+  --popover: #ffffff;
+  --popover-foreground: #0b0f1a;
+  --primary: #c9a84c;
+  --primary-foreground: #0b0f1a;
+  --secondary: color-mix(in oklab, #d0b79b 20%, transparent);
+  --secondary-foreground: #0b0f1a;
+  --muted: color-mix(in oklab, #d0b79b 20%, transparent);
+  --muted-foreground: #1b2f6e;
+  --accent: color-mix(in oklab, #d0b79b 20%, transparent);
+  --accent-foreground: #0b0f1a;
   --destructive: oklch(0.55 0.19 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.84 0.004 80);
-  --input: oklch(0.84 0.004 80);
-  --ring: oklch(0.66 0.1 88);
-  --gilt: oklch(0.64 0.1 88);
-  --gilt-soft: oklch(0.72 0.08 88);
-  --chart-1: oklch(0.66 0.1 88);
-  --chart-2: oklch(0.6 0.08 200);
-  --chart-3: oklch(0.6 0.1 150);
-  --chart-4: oklch(0.6 0.13 30);
-  --chart-5: oklch(0.55 0.09 300);
+  --destructive-foreground: #f0ece4;
+  --border: color-mix(in oklab, #0d1b3e 15%, transparent);
+  --input: color-mix(in oklab, #0d1b3e 15%, transparent);
+  --ring: #b8923a;
+  --gilt: #c9a84c;
+  --gilt-soft: #b8923a;
+  --chart-1: #c9a84c;
+  --chart-2: #1b2f6e;
+  --chart-3: #d0b79b;
+  --chart-4: #b8923a;
+  --chart-5: #0d1b3e;
   --gradient-veil: linear-gradient(
     180deg,
     color-mix(in oklab, var(--background) 0%, transparent),
@@ -90,34 +92,38 @@
 }
 
 .dark {
-  /* Dark mode — dark gray canvas (#1E1E1E) with warm gilt */
-  --background: oklch(0.21 0 0);
-  --foreground: oklch(0.95 0.004 80);
-  --surface: oklch(0.25 0 0);
-  --card: oklch(0.25 0 0);
-  --card-foreground: oklch(0.95 0.004 80);
-  --popover: oklch(0.24 0 0);
-  --popover-foreground: oklch(0.95 0.004 80);
-  --primary: oklch(0.82 0.11 86);
-  --primary-foreground: oklch(0.2 0.01 70);
-  --secondary: oklch(0.3 0 0);
-  --secondary-foreground: oklch(0.93 0.004 80);
-  --muted: oklch(0.28 0 0);
-  --muted-foreground: oklch(0.7 0.008 80);
-  --accent: oklch(0.32 0.015 86);
-  --accent-foreground: oklch(0.95 0.004 80);
+  /* Noite Real — Modo escuro
+   * Fundo #0B0F1A (Abismo), cards #0D1B3E (Marinho Profundo),
+   * hover/bordas ativas #1B2F6E (Céu Noturno), ação #C9A84C (Dourado),
+   * hover #E8C96A (Ouro Claro), secundário #D0B79B (Café com Leite),
+   * texto #F0ECE4 (off-white quente) */
+  --background: #0b0f1a;
+  --foreground: #f0ece4;
+  --surface: #0d1b3e;
+  --card: #0d1b3e;
+  --card-foreground: #f0ece4;
+  --popover: #0d1b3e;
+  --popover-foreground: #f0ece4;
+  --primary: #c9a84c;
+  --primary-foreground: #0b0f1a;
+  --secondary: #1b2f6e;
+  --secondary-foreground: #f0ece4;
+  --muted: #1b2f6e;
+  --muted-foreground: #d0b79b;
+  --accent: #1b2f6e;
+  --accent-foreground: #f0ece4;
   --destructive: oklch(0.6 0.19 25);
-  --destructive-foreground: oklch(0.97 0.004 80);
-  --border: oklch(0.34 0.004 80);
-  --input: oklch(0.34 0.004 80);
-  --ring: oklch(0.82 0.11 86);
-  --gilt: oklch(0.82 0.11 86);
-  --gilt-soft: oklch(0.72 0.07 84);
-  --chart-1: oklch(0.82 0.11 86);
-  --chart-2: oklch(0.7 0.08 200);
-  --chart-3: oklch(0.72 0.1 150);
-  --chart-4: oklch(0.68 0.13 30);
-  --chart-5: oklch(0.62 0.09 300);
+  --destructive-foreground: #f0ece4;
+  --border: color-mix(in oklab, #1b2f6e 65%, transparent);
+  --input: color-mix(in oklab, #1b2f6e 65%, transparent);
+  --ring: #e8c96a;
+  --gilt: #c9a84c;
+  --gilt-soft: #e8c96a;
+  --chart-1: #c9a84c;
+  --chart-2: #e8c96a;
+  --chart-3: #d0b79b;
+  --chart-4: #1b2f6e;
+  --chart-5: #b8923a;
   --shadow-gallery: 0 24px 60px -30px oklch(0 0 0 / 0.8);
 }
 
