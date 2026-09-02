@@ -138,8 +138,40 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 0.9rem;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+
+  h1 {
+    font-weight: 300;
+    line-height: 1.08;
+  }
+
+  h2 {
+    font-weight: 400;
+  }
+
+  h3 {
+    font-weight: 400;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font-family: var(--font-ui);
   }
 
   ::selection {
@@ -148,10 +180,43 @@
 }
 
 @utility eyebrow {
+  font-family: var(--font-body);
+  font-weight: 400;
   font-size: 0.6875rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--muted-foreground);
+}
+
+/* Hero — Cormorant Garamond 300 */
+@utility hero-type {
+  font-family: var(--font-display);
+  font-weight: 300;
+  line-height: 1.05;
+}
+
+/* H3 editorial — Cormorant Garamond 400 italic */
+@utility title-italic {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Legendas e metadados — Spectral 400 */
+@utility caption {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+/* Botões — Spectral 500, caixa alta, letter-spacing .08em */
+@utility btn-type {
+  font-family: var(--font-body);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 @utility rule-hover {
