@@ -251,3 +251,165 @@ export const donationsByWork: Record<string, number> = {
 export function workDonations(slug: string) {
   return donationsByWork[slug] ?? 0;
 }
+
+/* ---------- Curadoria: candidaturas de autor e obras em revisão (mockado) ---------- */
+
+export type ReviewStatus = "pending" | "approved" | "rejected" | "changes";
+
+export const REVIEW_LABEL: Record<ReviewStatus, string> = {
+  pending: "Em análise",
+  approved: "Aprovada",
+  rejected: "Recusada",
+  changes: "Ajustes solicitados",
+};
+
+export type AuthorApplication = {
+  id: string;
+  artistName: string;
+  email: string;
+  field: string;
+  bio: string;
+  portfolio: string;
+  samples: number;
+  message?: string;
+  submitted: string;
+  status: ReviewStatus;
+};
+
+export const authorApplications: AuthorApplication[] = [
+  {
+    id: "c1",
+    artistName: "Helena Vaz",
+    email: "helena@vaz.art",
+    field: "Arte Visual",
+    bio: "Pinturas em têmpera sobre madeira recuperada. Trabalho em série, sempre em pares.",
+    portfolio: "https://helenavaz.art",
+    samples: 3,
+    message: "Tenho uma série de nove peças pronta para publicar mensalmente.",
+    submitted: "24 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "c2",
+    artistName: "Nuno Aragão",
+    email: "nuno@ateliearagao.pt",
+    field: "Ilustração",
+    bio: "Nanquim e guache. Ilustro arquiteturas imaginadas de cidades que não existem.",
+    portfolio: "https://aragao.ink",
+    samples: 2,
+    submitted: "26 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "c3",
+    artistName: "Clara Bittencourt",
+    email: "clara.b@mail.com",
+    field: "Escrita",
+    bio: "Ensaios curtos sobre memória e cidade. Publico há seis anos em revistas independentes.",
+    portfolio: "https://clarabittencourt.substack.com",
+    samples: 1,
+    message: "Posso enviar um ensaio inédito para leitura da curadoria.",
+    submitted: "29 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "c4",
+    artistName: "Sofia Meireles",
+    email: "sofia@meireles.fm",
+    field: "Música",
+    bio: "Peças para piano preparado e campo gravado. Uma faixa por estação do ano.",
+    portfolio: "https://meireles.fm",
+    samples: 3,
+    submitted: "30 de agosto de 2026",
+    status: "pending",
+  },
+];
+
+export type WorkSubmission = {
+  id: string;
+  title: string;
+  artistSlug: string;
+  medium: Medium;
+  submitted: string;
+  status: ReviewStatus;
+  note?: string;
+};
+
+export const workSubmissions: WorkSubmission[] = [
+  {
+    id: "s1",
+    title: "Estudo de Erosão nº 7",
+    artistSlug: "mira-okonkwo",
+    medium: "visual",
+    submitted: "27 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "s2",
+    title: "Cadernos de Inverno",
+    artistSlug: "ines-halvorsen",
+    medium: "writing",
+    submitted: "28 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "s3",
+    title: "Drone para Sala Vazia",
+    artistSlug: "kaveh-noor",
+    medium: "music",
+    submitted: "30 de agosto de 2026",
+    status: "pending",
+  },
+  {
+    id: "s4",
+    title: "Reforma, 5h12",
+    artistSlug: "tomas-reyes",
+    medium: "visual",
+    submitted: "31 de agosto de 2026",
+    status: "changes",
+    note: "Enviar versão sem recorte na margem esquerda.",
+  },
+];
+
+export type SearchHit =
+  | { kind: "work"; slug: string; title: string; category: string; cover?: string }
+  | { kind: "artist"; slug: string; title: string; category: string; initials: string };
+
+export function searchAll(query: string): { works: SearchHit[]; artists: SearchHit[] } {
+  const q = query.trim().toLowerCase();
+  if (!q) return { works: [], artists: [] };
+
+  const w = works
+    .filter((work) =>
+      [work.title, MEDIUM_LABEL[work.medium], getArtist(work.artistSlug)?.name ?? "", work.excerpt]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    )
+    .slice(0, 5)
+    .map<SearchHit>((work) => ({
+      kind: "work",
+      slug: work.slug,
+      title: work.title,
+      category: MEDIUM_LABEL[work.medium],
+      cover: work.cover,
+    }));
+
+  const a = artists
+    .filter((artist) =>
+      [artist.name, artist.discipline, artist.location, artist.bio]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    )
+    .slice(0, 4)
+    .map<SearchHit>((artist) => ({
+      kind: "artist",
+      slug: artist.slug,
+      title: artist.name,
+      category: artist.discipline,
+      initials: artist.initials,
+    }));
+
+  return { works: w, artists: a };
+}
