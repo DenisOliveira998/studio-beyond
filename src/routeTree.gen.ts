@@ -15,6 +15,7 @@ import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ExplorarRouteImport } from './routes/explorar'
+import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as WorkSlugRouteImport } from './routes/work.$slug'
 
@@ -48,6 +49,11 @@ const ExplorarRoute = ExplorarRouteImport.update({
   path: '/explorar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SobreRoute = SobreRouteImport.update({
+  id: '/sobre',
+  path: '/sobre',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArtistSlugRoute = ArtistSlugRouteImport.update({
   id: '/artist/$slug',
   path: '/artist/$slug',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
+  '/sobre': typeof SobreRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
+  '/sobre': typeof SobreRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
+  '/sobre': typeof SobreRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/explorar'
+    | '/sobre'
     | '/artist/$slug'
     | '/work/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/explorar'
+    | '/sobre'
     | '/artist/$slug'
     | '/work/$slug'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/explorar'
+    | '/sobre'
     | '/artist/$slug'
     | '/work/$slug'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   ExplorarRoute: typeof ExplorarRoute
+  SobreRoute: typeof SobreRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
   WorkSlugRoute: typeof WorkSlugRoute
 }
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sobre': {
+      id: '/sobre'
+      path: '/sobre'
+      fullPath: '/sobre'
+      preLoaderRoute: typeof SobreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/artist/$slug': {
       id: '/artist/$slug'
       path: '/artist/$slug'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   ExplorarRoute: ExplorarRoute,
+  SobreRoute: SobreRoute,
   ArtistSlugRoute: ArtistSlugRoute,
   WorkSlugRoute: WorkSlugRoute,
 }
