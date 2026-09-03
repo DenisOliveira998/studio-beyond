@@ -346,7 +346,7 @@ function Dashboard() {
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 bg-gilt px-8 py-3.5 text-xs font-medium uppercase tracking-[0.2em] text-primary-foreground transition-opacity hover:opacity-90"
               >
-                <Send className="size-4" /> Publicar obra
+                <Send className="size-4" /> Enviar para revisão
               </button>
               <button
                 type="button"

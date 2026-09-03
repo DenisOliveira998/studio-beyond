@@ -372,7 +372,7 @@ export const workSubmissions: WorkSubmission[] = [
 ];
 
 export type SearchHit =
-  | { kind: "work"; slug: string; title: string; category: string; cover?: string }
+  | { kind: "work"; slug: string; title: string; category: string; cover?: string | undefined }
   | { kind: "artist"; slug: string; title: string; category: string; initials: string };
 
 export function searchAll(query: string): { works: SearchHit[]; artists: SearchHit[] } {
