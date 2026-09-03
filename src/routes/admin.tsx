@@ -6,6 +6,9 @@ import {
   ArrowUp,
   Ban,
   CircleDollarSign,
+  ClipboardList,
+  Eye,
+  FileClock,
   LayoutDashboard,
   Trophy,
   Users,
@@ -20,8 +23,15 @@ import {
   money,
   works,
   workDonations,
+  MEDIUM_LABEL,
+  REVIEW_LABEL,
+  authorApplications as seedApplications,
+  workSubmissions as seedSubmissions,
   type Account,
   type AccountType,
+  type AuthorApplication,
+  type ReviewStatus,
+  type WorkSubmission,
 } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/admin")({
@@ -58,6 +68,8 @@ const LADDER: AccountType[] = ["free", "vip", "author", "admin"];
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
   { id: "rankings", label: "Rankings", icon: Trophy },
+  { id: "candidaturas", label: "Candidaturas", icon: ClipboardList },
+  { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
 ];
@@ -72,6 +84,41 @@ const TYPE_BADGE: Record<AccountType, string> = {
 function AdminPage() {
   const [accounts, setAccounts] = useState<Account[]>(seedAccounts);
   const [filter, setFilter] = useState<AccountType | "all">("all");
+  const [applications, setApplications] = useState<AuthorApplication[]>(seedApplications);
+  const [submissions, setSubmissions] = useState<WorkSubmission[]>(seedSubmissions);
+
+  function decideApplication(id: string, status: ReviewStatus) {
+    setApplications((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        toast.success(
+          status === "approved"
+            ? `${a.artistName} aprovado — e-mail de acesso ao Painel do Autor enviado.`
+            : `${a.artistName} recusado — mensagem da curadoria enviada.`,
+        );
+        return { ...a, status };
+      }),
+    );
+  }
+
+  function decideSubmission(id: string, status: ReviewStatus) {
+    setSubmissions((prev) =>
+      prev.map((w) => {
+        if (w.id !== id) return w;
+        toast.success(
+          status === "approved"
+            ? `“${w.title}” aprovada e publicada no feed.`
+            : status === "changes"
+              ? `Ajustes solicitados ao autor de “${w.title}”.`
+              : `“${w.title}” recusada com comentário do curador.`,
+        );
+        return { ...w, status };
+      }),
+    );
+  }
+
+  const pendingApplications = applications.filter((a) => a.status === "pending").length;
+  const pendingSubmissions = submissions.filter((w) => w.status === "pending").length;
 
   const byClicks = useMemo(
     () => [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 5),
@@ -202,6 +249,118 @@ function AdminPage() {
                 metric: money(workDonations(w.slug)),
               }))}
             />
+          </div>
+        </section>
+
+        {/* Candidaturas */}
+        <section id="candidaturas" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={ClipboardList}>Candidaturas</SectionTitle>
+          <p className="caption mt-4">
+            {pendingApplications} candidatura(s) pendente(s) · fila por data de envio
+          </p>
+
+          <div className="mt-6 space-y-4">
+            {[...applications]
+              .sort((a, b) => (a.status === "pending" ? -1 : 1) - (b.status === "pending" ? -1 : 1))
+              .map((a) => (
+                <article key={a.id} className="border border-border bg-surface p-6 sm:p-7">
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <div>
+                      <p className="eyebrow">
+                        {a.field} · enviada em {a.submitted}
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl tracking-tight">{a.artistName}</h3>
+                      <p className="caption mt-1">{a.email}</p>
+                    </div>
+                    <ReviewBadge status={a.status} />
+                  </div>
+
+                  <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    {a.bio}
+                  </p>
+                  {a.message && (
+                    <p className="title-italic mt-3 max-w-2xl text-base text-muted-foreground">
+                      “{a.message}”
+                    </p>
+                  )}
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <a
+                      href={a.portfolio}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-type inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                    >
+                      <Eye className="size-3.5" strokeWidth={1.5} /> Ver portfólio
+                    </a>
+                    <span className="caption">{a.samples} obra(s) enviada(s)</span>
+                    {a.status === "pending" && (
+                      <div className="ml-auto flex flex-wrap gap-2">
+                        <ActionButton onClick={() => decideApplication(a.id, "approved")}>
+                          Aprovar
+                        </ActionButton>
+                        <ActionButton danger onClick={() => decideApplication(a.id, "rejected")}>
+                          Recusar com mensagem
+                        </ActionButton>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+          </div>
+        </section>
+
+        {/* Obras em revisão */}
+        <section id="obras-revisao" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={FileClock}>Obras em revisão</SectionTitle>
+          <p className="caption mt-4">
+            {pendingSubmissions} obra(s) aguardando revisão · a obra só aparece no Feed após
+            aprovação
+          </p>
+
+          <div className="mt-6 overflow-x-auto border border-border">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface">
+                  <Th>Obra</Th>
+                  <Th>Autor</Th>
+                  <Th>Enviada em</Th>
+                  <Th>Status</Th>
+                  <Th className="text-right">Ações</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {submissions.map((w) => (
+                  <tr key={w.id} className="transition-colors hover:bg-surface/60">
+                    <Td>
+                      <p className="font-display text-lg leading-tight">{w.title}</p>
+                      <p className="caption mt-0.5">{MEDIUM_LABEL[w.medium]}</p>
+                      {w.note && <p className="caption mt-1">Nota: {w.note}</p>}
+                    </Td>
+                    <Td className="text-muted-foreground">
+                      {getArtist(w.artistSlug)?.name ?? "—"}
+                    </Td>
+                    <Td className="text-muted-foreground">{w.submitted}</Td>
+                    <Td>
+                      <ReviewBadge status={w.status} />
+                    </Td>
+                    <Td className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <ActionButton onClick={() => decideSubmission(w.id, "approved")}>
+                          Aprovar
+                        </ActionButton>
+                        <ActionButton onClick={() => decideSubmission(w.id, "changes")}>
+                          Solicitar ajuste
+                        </ActionButton>
+                        <ActionButton danger onClick={() => decideSubmission(w.id, "rejected")}>
+                          Recusar
+                        </ActionButton>
+                      </div>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -336,6 +495,23 @@ function AdminPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+const REVIEW_BADGE: Record<ReviewStatus, string> = {
+  pending: "border-gilt/50 bg-gilt/10 text-gilt",
+  approved: "border-[color:var(--chart-2)]/50 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]",
+  changes: "border-border bg-muted text-muted-foreground",
+  rejected: "border-destructive/50 bg-destructive/10 text-destructive",
+};
+
+function ReviewBadge({ status }: { status: ReviewStatus }) {
+  return (
+    <span
+      className={`btn-type inline-block border px-2 py-1 text-[0.6rem] ${REVIEW_BADGE[status]}`}
+    >
+      {REVIEW_LABEL[status]}
+    </span>
   );
 }
 

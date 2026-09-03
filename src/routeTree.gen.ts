@@ -17,7 +17,9 @@ import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ExplorarRouteImport } from './routes/explorar'
 import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SobreRouteImport } from './routes/sobre'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as WorkSlugRouteImport } from './routes/work.$slug'
 
@@ -61,9 +63,19 @@ const PlanosRoute = PlanosRouteImport.update({
   path: '/planos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
   path: '/sobre',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistSlugRoute = ArtistSlugRouteImport.update({
@@ -86,7 +98,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
+  '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -99,7 +113,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
+  '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -113,7 +129,9 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
+  '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
@@ -128,7 +146,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorar'
     | '/planos'
+    | '/privacidade'
     | '/sobre'
+    | '/termos'
     | '/artist/$slug'
     | '/work/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -141,7 +161,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorar'
     | '/planos'
+    | '/privacidade'
     | '/sobre'
+    | '/termos'
     | '/artist/$slug'
     | '/work/$slug'
   id:
@@ -154,7 +176,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explorar'
     | '/planos'
+    | '/privacidade'
     | '/sobre'
+    | '/termos'
     | '/artist/$slug'
     | '/work/$slug'
   fileRoutesById: FileRoutesById
@@ -168,7 +192,9 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ExplorarRoute: typeof ExplorarRoute
   PlanosRoute: typeof PlanosRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   SobreRoute: typeof SobreRoute
+  TermosRoute: typeof TermosRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
   WorkSlugRoute: typeof WorkSlugRoute
 }
@@ -231,11 +257,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sobre': {
       id: '/sobre'
       path: '/sobre'
       fullPath: '/sobre'
       preLoaderRoute: typeof SobreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artist/$slug': {
@@ -264,7 +304,9 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ExplorarRoute: ExplorarRoute,
   PlanosRoute: PlanosRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   SobreRoute: SobreRoute,
+  TermosRoute: TermosRoute,
   ArtistSlugRoute: ArtistSlugRoute,
   WorkSlugRoute: WorkSlugRoute,
 }
