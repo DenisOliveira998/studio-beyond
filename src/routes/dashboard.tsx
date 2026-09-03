@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  FileClock,
   CircleDollarSign,
   Eye,
   EyeOff,
@@ -49,6 +50,7 @@ const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
   { id: "minhas-obras", label: "Minhas Obras", icon: Library },
   { id: "publicar", label: "Publicar Obra", icon: Send },
+  { id: "em-revisao", label: "Em revisão", icon: FileClock },
   { id: "ganhos", label: "Ganhos", icon: CircleDollarSign },
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ];
@@ -88,6 +90,23 @@ function Dashboard() {
   const [tags, setTags] = useState("");
   const [coverName, setCoverName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [queue, setQueue] = useState<
+    Array<{ id: string; title: string; type: string; submitted: string; note?: string }>
+  >([
+    {
+      id: "q0",
+      title: "Cadernos de Inverno",
+      type: "Texto",
+      submitted: "28 ago 2026",
+    },
+    {
+      id: "qn",
+      title: "Nove Hastes, Segunda Leitura",
+      type: "Imagem",
+      submitted: "22 ago 2026",
+      note: "Curadoria pediu ajuste: enviar imagem sem moldura branca.",
+    },
+  ]);
 
   function togglePublish(id: string, workTitle: string) {
     setPublished((prev) => {
@@ -102,9 +121,15 @@ function Dashboard() {
       toast.error("Informe o título da obra antes de continuar.");
       return;
     }
+    if (kind === "publish") {
+      setQueue((prev) => [
+        { id: `q${prev.length + 1}`, title: title.trim(), type: workType ?? "Texto", submitted: "hoje" },
+        ...prev,
+      ]);
+    }
     toast.success(
       kind === "publish"
-        ? `“${title}” publicada com sucesso.`
+        ? `“${title}” enviada para revisão da curadoria.`
         : `Rascunho de “${title}” salvo.`,
     );
     setTitle("");
@@ -332,6 +357,58 @@ function Dashboard() {
               </button>
             </div>
           </form>
+        </section>
+
+        {/* Em revisão */}
+        <section id="em-revisao" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={FileClock}>Em revisão</SectionTitle>
+          <p className="caption mt-4">
+            Toda obra enviada entra como “Em revisão”. Ela aparece no Feed apenas depois da
+            aprovação da curadoria.
+          </p>
+          <div className="mt-6 overflow-x-auto border border-border">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface">
+                  <Th>Obra</Th>
+                  <Th>Tipo</Th>
+                  <Th>Enviada em</Th>
+                  <Th className="text-right">Status</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {queue.length === 0 && (
+                  <tr>
+                    <Td className="text-muted-foreground">Nenhuma obra na fila da curadoria.</Td>
+                    <Td>—</Td>
+                    <Td>—</Td>
+                    <Td className="text-right">—</Td>
+                  </tr>
+                )}
+                {queue.map((q) => (
+                  <tr key={q.id} className="transition-colors hover:bg-surface/60">
+                    <Td>
+                      <p className="font-display text-lg leading-tight">{q.title}</p>
+                      {q.note && <p className="caption mt-1">{q.note}</p>}
+                    </Td>
+                    <Td className="text-muted-foreground">{q.type}</Td>
+                    <Td className="text-muted-foreground">{q.submitted}</Td>
+                    <Td className="text-right">
+                      <span
+                        className={`btn-type inline-block border px-2 py-1 text-[0.6rem] ${
+                          q.note
+                            ? "border-border bg-muted text-muted-foreground"
+                            : "border-gilt/50 bg-gilt/10 text-gilt"
+                        }`}
+                      >
+                        {q.note ? "Ajustes solicitados" : "Em revisão"}
+                      </span>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* Ganhos */}
