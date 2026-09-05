@@ -5,10 +5,10 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
   const artist = getArtist(work.artistSlug);
 
   return (
-    <article className="group">
+    <article className="card-lift group border border-border bg-card p-3">
       <Link to="/work/$slug" params={{ slug: work.slug }} className="block">
         {work.cover ? (
-          <div className="overflow-hidden bg-muted">
+          <div className="overflow-hidden rounded-[3px] bg-ink">
             <img
               src={work.cover}
               alt={work.title}
@@ -19,19 +19,19 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
             />
           </div>
         ) : (
-          <div className="flex aspect-[3/2] items-center justify-center border border-border bg-surface px-8">
-            <p className="font-display text-2xl leading-snug text-muted-foreground transition-colors group-hover:text-foreground">
+          <div className="flex aspect-[3/2] items-center justify-center rounded-[3px] bg-ink px-8">
+            <p className="hero-type text-xl leading-snug text-gilt">
               “{work.excerpt.split(".")[0]}.”
             </p>
           </div>
         )}
       </Link>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-2 px-1 pb-2">
         <p className="eyebrow">
           {MEDIUM_LABEL[work.medium]} · {work.readTime ?? work.published}
         </p>
-        <h3 className="font-display text-2xl leading-tight tracking-tight">
+        <h3 className="font-display text-lg font-bold leading-tight">
           <Link to="/work/$slug" params={{ slug: work.slug }} className="rule-hover">
             {work.title}
           </Link>
