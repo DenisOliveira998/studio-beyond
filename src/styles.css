@@ -145,9 +145,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
-    font-weight: 300;
+    font-weight: 400;
     font-size: 0.9rem;
-    line-height: 1.7;
+    line-height: 1.75;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -158,19 +158,12 @@
   h5,
   h6 {
     font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   h1 {
-    font-weight: 300;
-    line-height: 1.08;
-  }
-
-  h2 {
-    font-weight: 400;
-  }
-
-  h3 {
-    font-weight: 400;
+    line-height: 1.1;
   }
 
   input,
@@ -181,48 +174,65 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--gilt) 30%, transparent);
+    background: color-mix(in oklab, var(--gilt) 40%, transparent);
   }
 }
 
+/* Labels / eyebrows — Tahoma uppercase, letter-spacing .2em, gold-dark */
 @utility eyebrow {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 0.6875rem;
-  letter-spacing: 0.28em;
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--gold-dark);
 }
 
-/* Hero — Cormorant Garamond 300 */
+/* Hero / logotipo — Verdana Bold Italic */
 @utility hero-type {
   font-family: var(--font-display);
-  font-weight: 300;
-  line-height: 1.05;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
 }
 
-/* H3 editorial — Cormorant Garamond 400 italic */
+/* Subtítulos de destaque — Verdana Bold Italic */
 @utility title-italic {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
   font-style: italic;
 }
 
-/* Legendas e metadados — Spectral 400 */
+/* Legendas e metadados — Tahoma 0.65rem */
 @utility caption {
-  font-family: var(--font-body);
+  font-family: var(--font-label);
   font-weight: 400;
   font-size: 0.65rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: var(--muted-foreground);
 }
 
-/* Botões — Spectral 500, caixa alta, letter-spacing .08em */
+/* Botões — Verdana Bold, caixa alta, letter-spacing .1em */
 @utility btn-type {
-  font-family: var(--font-body);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  border-radius: 2px;
+}
+
+/* Cards — elevação angular no hover */
+@utility card-lift {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-gallery);
+    border-color: color-mix(in oklab, var(--gilt) 55%, transparent);
+  }
 }
 
 @utility rule-hover {
