@@ -45,7 +45,7 @@ function WorkPage() {
       <p className="eyebrow">
         {MEDIUM_LABEL[work.medium]} · {work.published}
       </p>
-      <h1 className="mt-5 font-display text-4xl leading-[1.1] tracking-tight sm:text-6xl">
+      <h1 className="hero-type mt-5 text-3xl sm:text-5xl">
         {work.title}
       </h1>
       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -81,7 +81,7 @@ function WorkPage() {
           <button
             onClick={() => toast("A reprodução é simulada nesta prévia.")}
             aria-label="Reproduzir"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-[2px] bg-primary text-primary-foreground"
           >
             <Play className="h-4 w-4" />
           </button>

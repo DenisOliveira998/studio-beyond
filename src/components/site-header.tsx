@@ -66,9 +66,9 @@ const accountLinks = [
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
-      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-20 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="font-display text-2xl tracking-tight text-foreground">The Beyond</p>
+          <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
             Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
           </p>
