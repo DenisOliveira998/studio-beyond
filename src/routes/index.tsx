@@ -34,9 +34,9 @@ function Home() {
   return (
     <div>
       <section className="border-b border-border/70">
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
           <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
-          <h1 className="mt-6 max-w-3xl font-display text-5xl leading-[1.05] tracking-tight sm:text-7xl">
+          <h1 className="hero-type mt-6 max-w-3xl text-4xl sm:text-6xl">
             Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
@@ -46,7 +46,7 @@ function Home() {
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Link
               to="/auth"
-              className="bg-primary px-6 py-3 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90"
+              className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
             >
               Publique sua obra
             </Link>
@@ -60,9 +60,9 @@ function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
+      <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-border/70 pb-4">
-          <h2 className="font-display text-3xl tracking-tight">O Feed</h2>
+          <h2 className="font-display text-2xl font-bold">O Feed</h2>
           <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]">
             {filters.map((f) => (
               <button
@@ -85,8 +85,8 @@ function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-14 sm:px-8">
-        <h2 className="font-display text-3xl tracking-tight">Artistas residentes</h2>
+      <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-16 sm:px-8">
+        <h2 className="font-display text-2xl font-bold">Artistas residentes</h2>
         <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           {artists.map((a) => (
             <Link
@@ -96,7 +96,7 @@ function Home() {
               className="group bg-background p-6 transition-colors hover:bg-surface"
             >
               <p className="eyebrow">{a.discipline}</p>
-              <p className="mt-3 font-display text-2xl tracking-tight group-hover:text-gilt">
+              <p className="mt-3 font-display text-lg font-bold group-hover:text-gilt">
                 {a.name}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">

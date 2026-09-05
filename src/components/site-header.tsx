@@ -13,20 +13,22 @@ const nav = [
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-5 sm:px-8">
         <Link to="/" className="flex items-baseline gap-2">
-          <span className="font-display text-2xl leading-none tracking-tight">The Beyond</span>
+          <span className="hero-type text-2xl leading-none text-white">
+            The <span className="text-gilt">Beyond</span>
+          </span>
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
 
-        <nav className="flex items-center gap-5 text-sm text-muted-foreground sm:gap-7">
+        <nav className="flex items-center gap-5 text-sm text-white/85 sm:gap-7">
           {nav.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="rule-hover hidden transition-colors hover:text-foreground lg:inline"
-              activeProps={{ className: "text-foreground" }}
+              className="rule-hover hidden transition-colors hover:text-gilt lg:inline"
+              activeProps={{ className: "text-gilt" }}
               activeOptions={{ exact: item.to === "/" }}
             >
               {item.label}
@@ -35,7 +37,7 @@ export function SiteHeader() {
           <SiteSearch />
           <Link
             to="/auth"
-            className="btn-type border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:border-gilt hover:text-gilt"
+            className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
           >
             Entrar
           </Link>
@@ -64,9 +66,9 @@ const accountLinks = [
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
-      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-20 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="font-display text-2xl tracking-tight text-foreground">The Beyond</p>
+          <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
             Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
           </p>

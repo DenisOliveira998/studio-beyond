@@ -11,13 +11,13 @@
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 4px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -46,87 +46,94 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
-  --font-sans: "Spectral", ui-serif, Georgia, serif;
-  --font-body: "Spectral", ui-serif, Georgia, serif;
-  --font-ui: "Spectral", ui-serif, Georgia, serif;
-  --tracking-widest: 0.28em;
+  --font-display: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-sans: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-body: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-ui: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-label: Tahoma, Verdana, Geneva, sans-serif;
+  --tracking-widest: 0.2em;
+  --color-gold: var(--gilt);
+  --color-gold-dark: var(--gold-dark);
+  --color-ink: #121519;
+  --color-ink-soft: #212529;
+  --color-stone: #4b4f58;
+  --color-chalk: #f6f6f6;
 }
 
 :root {
-  --radius: 0.25rem;
-  /* Noite Real — Modo claro
-   * Fundo #F5EDE0 (Café com Leite claro), cards #FFFFFF, ação #C9A84C (Dourado),
-   * hover #B8923A, texto #0B0F1A (Abismo), secundário #1B2F6E (Céu Noturno) */
-  --background: #f5ede0;
-  --foreground: #0b0f1a;
+  --radius: 2px;
+  /* Identidade angular — Modo claro
+   * Fundo #F6F6F6 (chalk), superfícies #FFFFFF, ação #FDC600 (gold),
+   * labels #A08D24 (gold-dark), texto #121519 (ink), auxiliar #4B4F58 (stone) */
+  --background: #f6f6f6;
+  --foreground: #121519;
   --surface: #ffffff;
   --card: #ffffff;
-  --card-foreground: #0b0f1a;
+  --card-foreground: #121519;
   --popover: #ffffff;
-  --popover-foreground: #0b0f1a;
-  --primary: #c9a84c;
-  --primary-foreground: #0b0f1a;
-  --secondary: color-mix(in oklab, #d0b79b 20%, transparent);
-  --secondary-foreground: #0b0f1a;
-  --muted: color-mix(in oklab, #d0b79b 20%, transparent);
-  --muted-foreground: #1b2f6e;
-  --accent: color-mix(in oklab, #d0b79b 20%, transparent);
-  --accent-foreground: #0b0f1a;
+  --popover-foreground: #121519;
+  --primary: #fdc600;
+  --primary-foreground: #121519;
+  --secondary: #121519;
+  --secondary-foreground: #ffffff;
+  --muted: color-mix(in oklab, #4b4f58 10%, transparent);
+  --muted-foreground: #4b4f58;
+  --accent: color-mix(in oklab, #fdc600 16%, transparent);
+  --accent-foreground: #121519;
   --destructive: oklch(0.55 0.19 25);
-  --destructive-foreground: #f0ece4;
-  --border: color-mix(in oklab, #0d1b3e 15%, transparent);
-  --input: color-mix(in oklab, #0d1b3e 15%, transparent);
-  --ring: #b8923a;
-  --gilt: #c9a84c;
-  --gilt-soft: #b8923a;
-  --chart-1: #c9a84c;
-  --chart-2: #1b2f6e;
-  --chart-3: #d0b79b;
-  --chart-4: #b8923a;
-  --chart-5: #0d1b3e;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in oklab, #4b4f58 28%, transparent);
+  --input: color-mix(in oklab, #4b4f58 28%, transparent);
+  --ring: #a08d24;
+  --gilt: #fdc600;
+  --gilt-soft: #a08d24;
+  --gold-dark: #a08d24;
+  --chart-1: #fdc600;
+  --chart-2: #a08d24;
+  --chart-3: #4b4f58;
+  --chart-4: #121519;
+  --chart-5: #212529;
   --gradient-veil: linear-gradient(
     180deg,
     color-mix(in oklab, var(--background) 0%, transparent),
     color-mix(in oklab, var(--background) 92%, transparent)
   );
-  --shadow-gallery: 0 24px 60px -30px oklch(0 0 0 / 0.18);
+  --shadow-gallery: 0 10px 24px -14px oklch(0 0 0 / 0.25);
 }
 
 .dark {
-  /* Noite Real — Modo escuro
-   * Fundo #0B0F1A (Abismo), cards #0D1B3E (Marinho Profundo),
-   * hover/bordas ativas #1B2F6E (Céu Noturno), ação #C9A84C (Dourado),
-   * hover #E8C96A (Ouro Claro), secundário #D0B79B (Café com Leite),
-   * texto #F0ECE4 (off-white quente) */
-  --background: #0b0f1a;
-  --foreground: #f0ece4;
-  --surface: #0d1b3e;
-  --card: #0d1b3e;
-  --card-foreground: #f0ece4;
-  --popover: #0d1b3e;
-  --popover-foreground: #f0ece4;
-  --primary: #c9a84c;
-  --primary-foreground: #0b0f1a;
-  --secondary: #1b2f6e;
-  --secondary-foreground: #f0ece4;
-  --muted: #1b2f6e;
-  --muted-foreground: #d0b79b;
-  --accent: #1b2f6e;
-  --accent-foreground: #f0ece4;
+  /* Identidade angular — Modo escuro
+   * Fundo #121519 (ink), superfícies #212529 (ink-soft), ação #FDC600 (gold),
+   * labels #A08D24 (gold-dark), texto #F6F6F6 (chalk), auxiliar #4B4F58 (stone) */
+  --background: #121519;
+  --foreground: #f6f6f6;
+  --surface: #212529;
+  --card: #212529;
+  --card-foreground: #f6f6f6;
+  --popover: #212529;
+  --popover-foreground: #f6f6f6;
+  --primary: #fdc600;
+  --primary-foreground: #121519;
+  --secondary: #212529;
+  --secondary-foreground: #f6f6f6;
+  --muted: #212529;
+  --muted-foreground: #9ba1ab;
+  --accent: #212529;
+  --accent-foreground: #fdc600;
   --destructive: oklch(0.6 0.19 25);
-  --destructive-foreground: #f0ece4;
-  --border: color-mix(in oklab, #1b2f6e 65%, transparent);
-  --input: color-mix(in oklab, #1b2f6e 65%, transparent);
-  --ring: #e8c96a;
-  --gilt: #c9a84c;
-  --gilt-soft: #e8c96a;
-  --chart-1: #c9a84c;
-  --chart-2: #e8c96a;
-  --chart-3: #d0b79b;
-  --chart-4: #1b2f6e;
-  --chart-5: #b8923a;
-  --shadow-gallery: 0 24px 60px -30px oklch(0 0 0 / 0.8);
+  --destructive-foreground: #f6f6f6;
+  --border: color-mix(in oklab, #4b4f58 60%, transparent);
+  --input: color-mix(in oklab, #4b4f58 60%, transparent);
+  --ring: #fdc600;
+  --gilt: #fdc600;
+  --gilt-soft: #a08d24;
+  --gold-dark: #a08d24;
+  --chart-1: #fdc600;
+  --chart-2: #a08d24;
+  --chart-3: #9ba1ab;
+  --chart-4: #4b4f58;
+  --chart-5: #f6f6f6;
+  --shadow-gallery: 0 12px 28px -16px oklch(0 0 0 / 0.7);
 }
 
 
@@ -139,9 +146,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
-    font-weight: 300;
+    font-weight: 400;
     font-size: 0.9rem;
-    line-height: 1.7;
+    line-height: 1.75;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -152,19 +159,12 @@
   h5,
   h6 {
     font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   h1 {
-    font-weight: 300;
-    line-height: 1.08;
-  }
-
-  h2 {
-    font-weight: 400;
-  }
-
-  h3 {
-    font-weight: 400;
+    line-height: 1.1;
   }
 
   input,
@@ -175,48 +175,65 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--gilt) 30%, transparent);
+    background: color-mix(in oklab, var(--gilt) 40%, transparent);
   }
 }
 
+/* Labels / eyebrows — Tahoma uppercase, letter-spacing .2em, gold-dark */
 @utility eyebrow {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 0.6875rem;
-  letter-spacing: 0.28em;
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--gold-dark);
 }
 
-/* Hero — Cormorant Garamond 300 */
+/* Hero / logotipo — Verdana Bold Italic */
 @utility hero-type {
   font-family: var(--font-display);
-  font-weight: 300;
-  line-height: 1.05;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
 }
 
-/* H3 editorial — Cormorant Garamond 400 italic */
+/* Subtítulos de destaque — Verdana Bold Italic */
 @utility title-italic {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
   font-style: italic;
 }
 
-/* Legendas e metadados — Spectral 400 */
+/* Legendas e metadados — Tahoma 0.65rem */
 @utility caption {
-  font-family: var(--font-body);
+  font-family: var(--font-label);
   font-weight: 400;
   font-size: 0.65rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: var(--muted-foreground);
 }
 
-/* Botões — Spectral 500, caixa alta, letter-spacing .08em */
+/* Botões — Verdana Bold, caixa alta, letter-spacing .1em */
 @utility btn-type {
-  font-family: var(--font-body);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  border-radius: 2px;
+}
+
+/* Cards — elevação angular no hover */
+@utility card-lift {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-gallery);
+    border-color: color-mix(in oklab, var(--gilt) 55%, transparent);
+  }
 }
 
 @utility rule-hover {
