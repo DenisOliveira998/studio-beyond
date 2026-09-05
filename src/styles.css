@@ -46,11 +46,17 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
-  --font-sans: "Spectral", ui-serif, Georgia, serif;
-  --font-body: "Spectral", ui-serif, Georgia, serif;
-  --font-ui: "Spectral", ui-serif, Georgia, serif;
-  --tracking-widest: 0.28em;
+  --font-display: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-sans: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-body: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-ui: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --font-label: Tahoma, Verdana, Geneva, sans-serif;
+  --tracking-widest: 0.2em;
+  --color-gold: var(--gilt);
+  --color-gold-dark: var(--gold-dark);
+  --color-ink: #121519;
+  --color-ink-soft: #212529;
+  --color-stone: #4b4f58;
 }
 
 :root {
