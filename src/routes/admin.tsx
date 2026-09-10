@@ -314,7 +314,7 @@ function AdminPage() {
         <section id="obras-revisao" className="mt-16 scroll-mt-24">
           <SectionTitle icon={FileClock}>Obras em revisão</SectionTitle>
           <p className="caption mt-4">
-            {pendingSubmissions} obra(s) aguardando revisão · a obra só aparece no Feed após
+            {pendingSubmissions} obra(s) aguardando revisão · a obra só aparece nas Obras após
             aprovação
           </p>
 

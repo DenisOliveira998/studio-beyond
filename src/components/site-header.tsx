@@ -5,10 +5,10 @@ import { LanguageSelector } from "@/components/language-selector";
 import { SiteSearch } from "@/components/site-search";
 
 const nav = [
-  { to: "/", label: "Feed" },
+  { to: "/", label: "Obras" },
   { to: "/artists", label: "Artistas" },
-  { to: "/dashboard", label: "Painel do autor" },
-  { to: "/admin", label: "Administração" },
+  { to: "/explorar", label: "Explorar" },
+  { to: "/sobre", label: "Quem somos" },
 ];
 
 export function SiteHeader() {
@@ -50,27 +50,35 @@ export function SiteHeader() {
 }
 
 const navLinks = [
-  { to: "/", label: "Feed" },
+  { to: "/", label: "Obras" },
   { to: "/artists", label: "Artistas" },
   { to: "/explorar", label: "Explorar categorias" },
-  { to: "/sobre", label: "Sobre o projeto" },
+  { to: "/sobre", label: "Quem somos" },
+  { to: "/contato", label: "Contato" },
 ] as const;
 
 const accountLinks = [
-  { to: "/auth", label: "Criar conta como Leitor" },
+  { to: "/auth", label: "Criar conta" },
   { to: "/planos", label: "Planos de assinatura" },
   { to: "/candidatura-autor", label: "Candidatura de Autor" },
   { to: "/auth", label: "Entrar" },
+] as const;
+
+const legalLinks = [
+  { to: "/sobre", label: "Quem somos" },
+  { to: "/termos", label: "Termos de uso" },
+  { to: "/privacidade", label: "Privacidade" },
 ] as const;
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-20 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
+        {/* Identidade */}
         <div>
           <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
-            Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
+            Um espaço para obras que merecem ser lidas com calma.
           </p>
           <div className="mt-6 flex items-center gap-4">
             <a
@@ -90,6 +98,7 @@ export function SiteFooter() {
           </div>
         </div>
 
+        {/* Navegação */}
         <FooterColumn title="Navegação">
           {navLinks.map((l) => (
             <li key={l.label}>
@@ -100,7 +109,8 @@ export function SiteFooter() {
           ))}
         </FooterColumn>
 
-        <FooterColumn title="Contas">
+        {/* Conta */}
+        <FooterColumn title="Conta">
           {accountLinks.map((l) => (
             <li key={l.label}>
               <Link to={l.to} className="rule-hover transition-colors hover:text-foreground">
@@ -110,14 +120,16 @@ export function SiteFooter() {
           ))}
         </FooterColumn>
 
-        <FooterColumn title="Contato">
-          <li>Rua das Artes, 142 — Lisboa, Portugal</li>
-          <li>
-            <a href="tel:+351910000000" className="transition-colors hover:text-foreground">
-              +351 910 000 000
-            </a>
-          </li>
-          <li>
+        {/* Planos e legal */}
+        <FooterColumn title="Informações">
+          {legalLinks.map((l) => (
+            <li key={l.label}>
+              <Link to={l.to} className="rule-hover transition-colors hover:text-foreground">
+                {l.label}
+              </Link>
+            </li>
+          ))}
+          <li className="pt-2 text-xs">
             <a
               href="mailto:contato@thebeyond.art"
               className="transition-colors hover:text-foreground"

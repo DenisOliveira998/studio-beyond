@@ -363,7 +363,7 @@ function Dashboard() {
         <section id="em-revisao" className="mt-16 scroll-mt-24">
           <SectionTitle icon={FileClock}>Em revisão</SectionTitle>
           <p className="caption mt-4">
-            Toda obra enviada entra como “Em revisão”. Ela aparece no Feed apenas depois da
+            Toda obra enviada entra como “Em revisão”. Ela aparece nas Obras apenas depois da
             aprovação da curadoria.
           </p>
           <div className="mt-6 overflow-x-auto border border-border">

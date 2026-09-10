@@ -62,7 +62,7 @@ function Home() {
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-border/70 pb-4">
-          <h2 className="font-display text-2xl font-bold">O Feed</h2>
+          <h2 className="font-display text-2xl font-bold">Obras</h2>
           <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]">
             {filters.map((f) => (
               <button
