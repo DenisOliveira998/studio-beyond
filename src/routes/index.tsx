@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Um espaço sem distrações onde escritores, pintores, fotógrafos e compositores publicam suas obras, ganham por visualização e recebem apoio direto.",
+          "Um espaço sem distrações onde autores de livros, mangás, HQs e contos publicam suas obras, ganham por visualização e recebem apoio direto.",
       },
       {
         property: "og:title",
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const filters: ("all" | Medium)[] = ["all", "visual", "writing", "illustration", "music"];
+const filters: ("all" | Medium)[] = ["all", "livro", "manga", "hq", "conto"];
 
 function Home() {
   const [filter, setFilter] = useState<"all" | Medium>("all");
@@ -37,7 +37,7 @@ function Home() {
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
           <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
           <h1 className="hero-type mt-6 max-w-3xl text-4xl sm:text-6xl">
-            Um espaço silencioso para obras que merecem ser olhadas por mais tempo.
+            Um espaço silencioso para livros, mangás, HQs e contos que merecem ser lidos por mais tempo.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
             O The Beyond paga os artistas por cada visualização que a obra conquista e permite que

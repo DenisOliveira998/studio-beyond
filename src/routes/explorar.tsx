@@ -8,12 +8,12 @@ export const Route = createFileRoute("/explorar")({
       {
         name: "description",
         content:
-          "Percorra as categorias do The Beyond: arte visual, ilustração, escrita e música, sem anúncios e sem pressa.",
+          "Percorra as categorias do The Beyond: livros, mangás, HQs e contos autorais, sem anúncios e sem pressa.",
       },
       { property: "og:title", content: "Explorar categorias — The Beyond" },
       {
         property: "og:description",
-        content: "Arte visual, ilustração, escrita e música — uma categoria por vez.",
+        content: "Livros, mangás, HQs e contos autorais — uma categoria por vez.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -22,13 +22,13 @@ export const Route = createFileRoute("/explorar")({
   component: ExplorePage,
 });
 
-const MEDIA: Medium[] = ["visual", "illustration", "writing", "music"];
+const MEDIA: Medium[] = ["livro", "manga", "hq", "conto"];
 
 const NOTE: Record<Medium, string> = {
-  visual: "Pintura, fotografia e imagem única, em escala grande e sem cortes.",
-  illustration: "Nanquim, guache e desenho de observação lenta.",
-  writing: "Ensaios curtos, notas de ateliê e leitura de fôlego.",
-  music: "Loops de fita, drones e peças gravadas em uma única passagem.",
+  livro: "Romances, novelas e ficção literária publicados capítulo a capítulo ou completos.",
+  manga: "Mangás autorais com roteiro e traço originais — nenhuma adaptação.",
+  hq: "Histórias em quadrinhos brasileiras, do noir ao documental, do autobiográfico ao fantástico.",
+  conto: "Contos curtos e longas histórias breves — leitura de uma sentada.",
 };
 
 function ExplorePage() {
@@ -37,7 +37,7 @@ function ExplorePage() {
       <p className="eyebrow">Categorias</p>
       <h1 className="hero-type mt-5 max-w-2xl text-5xl tracking-tight">Explorar por categoria</h1>
       <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">
-        Quatro caminhos, nenhuma recomendação automática. Escolha por onde entrar.
+        Livros, mangás, HQs e contos autorais — nenhuma recomendação automática. Escolha por onde entrar.
       </p>
 
       <div className="mt-14 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">

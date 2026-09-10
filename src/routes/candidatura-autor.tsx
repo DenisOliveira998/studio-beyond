@@ -23,12 +23,12 @@ export const Route = createFileRoute("/candidatura-autor")({
   component: ApplicationPage,
 });
 
-const FIELDS = ["Arte Visual", "Ilustração", "Escrita", "Música", "Outro"];
+const FIELDS = ["Livro", "Mangá", "HQ", "Conto", "Outro"];
 
 function ApplicationPage() {
   const [sent, setSent] = useState(false);
   const [artistName, setArtistName] = useState("");
-  const [field, setField] = useState<string>(FIELDS[0] ?? "Arte Visual");
+  const [field, setField] = useState<string>(FIELDS[0] ?? "Livro");
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [message, setMessage] = useState("");

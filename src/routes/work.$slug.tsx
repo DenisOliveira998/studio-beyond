@@ -4,6 +4,7 @@ import { Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { DonateDialog } from "@/components/donate-dialog";
 import { MEDIUM_LABEL, compact, getArtist, getWork } from "@/lib/beyond-data";
+import { stripHtml, isHtml } from "@/lib/utils";
 
 export const Route = createFileRoute("/work/$slug")({
   loader: ({ params }) => {
@@ -22,18 +23,39 @@ export const Route = createFileRoute("/work/$slug")({
       };
     }
     const { work, artist } = loaderData;
+    // Lição Galinha GSB: sempre stripHtml em meta tags — rich text vaza <p>Título</p>
+    const cleanTitle = stripHtml(work.title);
+    const cleanExcerpt = stripHtml(work.excerpt);
     return {
       meta: [
-        { title: `${work.title}, de ${artist.name} — The Beyond` },
-        { name: "description", content: work.excerpt },
-        { property: "og:title", content: `${work.title}, de ${artist.name}` },
-        { property: "og:description", content: work.excerpt },
+        { title: `${cleanTitle}, de ${artist.name} — The Beyond` },
+        { name: "description", content: cleanExcerpt },
+        { property: "og:title", content: `${cleanTitle}, de ${artist.name}` },
+        { property: "og:description", content: cleanExcerpt },
         { property: "og:type", content: "article" },
       ],
     };
   },
   component: WorkPage,
 });
+
+/**
+ * Renderiza um parágrafo do corpo da obra.
+ * Lição Galinha GSB: quando o corpo vier de um editor rich text (TipTap etc.),
+ * conterá HTML — usar dangerouslySetInnerHTML nesse caso.
+ * isHtml() detecta automaticamente para suportar ambos os formatos.
+ */
+function WorkParagraph({ content, className }: { content: string; className?: string }) {
+  if (isHtml(content)) {
+    return (
+      <p
+        className={className}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
+  }
+  return <p className={className}>{content}</p>;
+}
 
 function WorkPage() {
   const { work, artist } = Route.useLoaderData();
@@ -42,12 +64,17 @@ function WorkPage() {
 
   return (
     <article className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
+      {/* Eyebrow: categoria + gênero + data */}
       <p className="eyebrow">
-        {MEDIUM_LABEL[work.medium]} · {work.published}
+        {MEDIUM_LABEL[work.medium]}
+        {work.genre && <> · {work.genre}</>}
+        {" · "}{work.published}
       </p>
+
       <h1 className="hero-type mt-5 text-3xl sm:text-5xl">
         {work.title}
       </h1>
+
       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <Link
           to="/artist/$slug"
@@ -64,12 +91,18 @@ function WorkPage() {
             <span>{work.readTime}</span>
           </>
         )}
+        {work.pages && (
+          <>
+            <span aria-hidden>·</span>
+            <span>{work.pages} páginas</span>
+          </>
+        )}
       </div>
 
       {work.cover && (
         <img
           src={work.cover}
-          alt={work.title}
+          alt={stripHtml(work.title)}
           width={1280}
           height={860}
           className="mt-10 w-full object-cover"
@@ -95,11 +128,16 @@ function WorkPage() {
         </div>
       )}
 
-      <div className="mt-10 space-y-6 text-lg leading-relaxed text-foreground/90">
-        <p className="text-muted-foreground">{work.excerpt}</p>
-        {work.body.map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
+      {/* Corpo da obra com prose (typography plugin) para experiência de leitura */}
+      <div className="prose mt-10 max-w-none">
+        <p className="lead text-muted-foreground not-prose text-lg leading-relaxed">
+          {work.excerpt}
+        </p>
+        <div className="mt-6">
+          {work.body.map((p, i) => (
+            <WorkParagraph key={i} content={p} />
+          ))}
+        </div>
       </div>
 
       <div className="mt-14 flex flex-wrap items-center gap-3 border-t border-border pt-8">

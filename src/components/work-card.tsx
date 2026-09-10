@@ -1,8 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { MEDIUM_LABEL, compact, getArtist, type Work } from "@/lib/beyond-data";
+import { stripHtml } from "@/lib/utils";
 
 export function WorkCard({ work, priority = false }: { work: Work; priority?: boolean }) {
   const artist = getArtist(work.artistSlug);
+  // Lição Galinha GSB: alt e aria nunca devem conter HTML — stripHtml por precaução
+  const cleanTitle = stripHtml(work.title);
 
   return (
     <article className="card-lift group border border-border bg-card p-3">
@@ -11,7 +14,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
           <div className="overflow-hidden rounded-[3px] bg-ink">
             <img
               src={work.cover}
-              alt={work.title}
+              alt={cleanTitle}
               width={1280}
               height={860}
               loading={priority ? "eager" : "lazy"}
@@ -21,7 +24,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
         ) : (
           <div className="flex aspect-[3/2] items-center justify-center rounded-[3px] bg-ink px-8">
             <p className="hero-type text-xl leading-snug text-gilt">
-              “{work.excerpt.split(".")[0]}.”
+              "{work.excerpt.split(".")[0]}."
             </p>
           </div>
         )}
@@ -29,7 +32,9 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
 
       <div className="mt-4 space-y-2 px-1 pb-2">
         <p className="eyebrow">
-          {MEDIUM_LABEL[work.medium]} · {work.readTime ?? work.published}
+          {MEDIUM_LABEL[work.medium]}
+          {work.genre && <span className="text-muted-foreground/70"> · {work.genre}</span>}
+          {" · "}{work.readTime ?? work.published}
         </p>
         <h3 className="font-display text-lg font-bold leading-tight">
           <Link to="/work/$slug" params={{ slug: work.slug }} className="rule-hover">

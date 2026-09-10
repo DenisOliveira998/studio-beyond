@@ -55,19 +55,19 @@ const NAV = [
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ];
 
-const WORK_TYPES = ["Texto", "Imagem", "Áudio", "Vídeo"];
+const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto"];
 
 const HISTORY = [
-  { date: "28 ago 2026", work: "Uma Taxonomia Silenciosa", type: "Doação", from: "A. Ferreira", amount: 40 },
-  { date: "26 ago 2026", work: "Sobre Olhar Por Mais Tempo", type: "Doação", from: "Anônimo", amount: 15 },
-  { date: "25 ago 2026", work: "Uma Taxonomia Silenciosa", type: "Cliques", from: "22.105 visualizações", amount: 22105 * RATE_PER_CLICK },
-  { date: "21 ago 2026", work: "Uma Taxonomia Silenciosa", type: "Doação", from: "R. Silva", amount: 100 },
-  { date: "18 ago 2026", work: "Sobre Olhar Por Mais Tempo", type: "Doação", from: "M. Lindqvist", amount: 5 },
-  { date: "12 ago 2026", work: "Sobre Olhar Por Mais Tempo", type: "Cliques", from: "31.480 visualizações", amount: 31480 * RATE_PER_CLICK },
+  { date: "28 ago 2026", work: "O Barulho das Coisas Quietas", type: "Doação", from: "A. Ferreira", amount: 40 },
+  { date: "26 ago 2026", work: "Antes que a Maré Mude", type: "Doação", from: "Anônimo", amount: 15 },
+  { date: "25 ago 2026", work: "O Barulho das Coisas Quietas", type: "Cliques", from: "67.230 visualizações", amount: 67230 * RATE_PER_CLICK },
+  { date: "21 ago 2026", work: "O Barulho das Coisas Quietas", type: "Doação", from: "R. Silva", amount: 100 },
+  { date: "18 ago 2026", work: "Antes que a Maré Mude", type: "Doação", from: "M. Lindqvist", amount: 5 },
+  { date: "12 ago 2026", work: "Antes que a Maré Mude", type: "Cliques", from: "38.900 visualizações", amount: 38900 * RATE_PER_CLICK },
 ];
 
 function Dashboard() {
-  const artist = getArtist("ines-halvorsen")!;
+  const artist = getArtist("leticia-voss")!;
   const initialWorks = worksByArtist(artist.slug);
   const [published, setPublished] = useState<Record<string, boolean>>(
     Object.fromEntries(initialWorks.map((w) => [w.id, true])),
@@ -95,16 +95,16 @@ function Dashboard() {
   >([
     {
       id: "q0",
-      title: "Cadernos de Inverno",
-      type: "Texto",
-      submitted: "28 ago 2026",
+      title: "O Barulho das Coisas Quietas — Cap. 13",
+      type: "Livro",
+      submitted: "30 ago 2026",
     },
     {
       id: "qn",
-      title: "Nove Hastes, Segunda Leitura",
-      type: "Imagem",
+      title: "O Barulho das Coisas Quietas — Cap. 12 (revisão)",
+      type: "Livro",
       submitted: "22 ago 2026",
-      note: "Curadoria pediu ajuste: enviar imagem sem moldura branca.",
+      note: "Curadoria pediu ajuste: revisar consistência de voz no segundo parágrafo.",
     },
   ]);
 
