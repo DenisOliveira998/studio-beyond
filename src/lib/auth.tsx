@@ -7,9 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Session, User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { authClient } from "@/lib/auth-client";
+import type { AuthSession } from "@/lib/auth-client";
 
 export type AppRole = "admin" | "curator" | "author" | "vip" | "reader";
 
@@ -25,15 +25,16 @@ export type Profile = {
   id: string;
   name: string;
   email: string;
+  role: AppRole;
   suspended: boolean;
 };
 
 type AuthValue = {
   loading: boolean;
-  session: Session | null;
-  user: User | null;
+  session: AuthSession | null;
+  user: AuthSession["user"] | null;
   profile: Profile | null;
-  roles: AppRole[];
+  role: AppRole;
   isAdmin: boolean;
   isCurator: boolean;
   isStaff: boolean;
@@ -47,83 +48,64 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const userId = session?.user?.id ?? null;
+  const load = useCallback(async () => {
+    try {
+      const { data } = await authClient.getSession();
+      setSession(data);
 
-  const load = useCallback(async (id: string | null) => {
-    if (!id) {
-      setProfile(null);
-      setRoles([]);
-      return;
-    }
-    // Garante perfil e papel inicial (inclusive acesso de administrador/curador).
-    await supabase.rpc("bootstrap_profile", { p_name: null });
-    const [{ data: profileRow }, { data: roleRows }] = await Promise.all([
-      supabase.from("profiles").select("id, name, email, suspended").eq("id", id).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", id),
-    ]);
-    setProfile(profileRow ?? null);
-    setRoles(((roleRows ?? []) as Array<{ role: AppRole }>).map((r) => r.role));
-  }, []);
-
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, next) => {
-      if (
-        event !== "SIGNED_IN" &&
-        event !== "SIGNED_OUT" &&
-        event !== "USER_UPDATED" &&
-        event !== "INITIAL_SESSION"
-      ) {
-        return;
+      if (data?.user?.id) {
+        // Busca perfil via API interna do Better Auth
+        const res = await fetch("/api/me");
+        if (res.ok) {
+          const p = (await res.json()) as Profile;
+          setProfile(p);
+        } else {
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
       }
-      setSession(next);
-    });
-    void supabase.auth.getSession().then(({ data: got }) => {
-      setSession(got.session);
+    } catch (err) {
+      console.error("[auth] Erro ao carregar sessão:", err);
+      setProfile(null);
+    } finally {
       setLoading(false);
-    });
-    return () => data.subscription.unsubscribe();
+    }
   }, []);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    void load(userId).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [userId, load]);
+    void load();
+  }, [load]);
 
   const value = useMemo<AuthValue>(() => {
-    const isAdmin = roles.includes("admin");
-    const isCurator = roles.includes("curator");
+    const role: AppRole = profile?.role ?? "reader";
+    const isAdmin = role === "admin";
+    const isCurator = role === "curator";
     return {
       loading,
       session,
       user: session?.user ?? null,
       profile,
-      roles,
+      role,
       isAdmin,
       isCurator,
       isStaff: isAdmin || isCurator,
-      isAuthor: roles.includes("author"),
-      isVip: roles.includes("vip"),
-      refresh: () => load(userId),
+      isAuthor: role === "author",
+      isVip: role === "vip",
+      refresh: load,
       signOut: async () => {
         await queryClient.cancelQueries();
         queryClient.clear();
-        await supabase.auth.signOut();
+        await authClient.signOut();
+        setSession(null);
         setProfile(null);
-        setRoles([]);
       },
     };
-  }, [loading, session, profile, roles, load, userId, queryClient]);
+  }, [loading, session, profile, load, queryClient]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

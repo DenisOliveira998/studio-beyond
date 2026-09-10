@@ -1,6 +1,11 @@
-import { supabase } from "@/integrations/supabase/client";
+// ---------------------------------------------------------------------------
+// beyond-db.ts — camada de acesso ao banco (Prisma + TiDB Cloud)
+// ---------------------------------------------------------------------------
+
+import { prisma } from "@/lib/prisma";
 import type { AppRole } from "@/lib/auth";
 import type { Medium, Work } from "@/lib/beyond-data";
+import { stripHtml } from "@/lib/utils";
 
 export type ReviewStatusDb = "pending" | "approved" | "rejected" | "changes" | "draft";
 
@@ -9,23 +14,24 @@ export type DbWork = {
   slug: string;
   title: string;
   medium: Medium;
-  artist_name: string;
-  artist_slug: string;
-  author_id: string | null;
+  artistName: string;
+  artistSlug: string;
+  authorId: string | null;
   excerpt: string;
   body: string;
-  cover_url: string | null;
+  coverUrl: string | null;
+  genre: string | null;
   tags: string | null;
   status: ReviewStatusDb;
-  curator_note: string | null;
-  created_at: string;
-  published_at: string | null;
+  curatorNote: string | null;
+  createdAt: string;
+  publishedAt: string | null;
 };
 
 export type DbApplication = {
   id: string;
-  user_id: string | null;
-  artist_name: string;
+  userId: string | null;
+  artistName: string;
   email: string;
   field: string;
   bio: string;
@@ -33,9 +39,9 @@ export type DbApplication = {
   samples: number;
   message: string | null;
   status: ReviewStatusDb;
-  curator_note: string | null;
-  created_at: string;
-  decided_at: string | null;
+  curatorNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
 };
 
 export type WorkStats = {
@@ -44,48 +50,32 @@ export type WorkStats = {
   supporters: Record<string, number>;
 };
 
-const WORK_COLUMNS =
-  "id, slug, title, medium, artist_name, artist_slug, author_id, excerpt, body, cover_url, tags, status, curator_note, created_at, published_at";
-
 /* ---------- obras ---------- */
 
 export async function fetchApprovedWorks(): Promise<DbWork[]> {
-  const { data, error } = await supabase
-    .from("works")
-    .select(WORK_COLUMNS)
-    .eq("status", "approved")
-    .order("published_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as DbWork[];
+  const rows = await prisma.work.findMany({
+    where: { status: "approved" },
+    orderBy: { publishedAt: "desc" },
+  });
+  return rows.map(workToDb);
 }
 
 export async function fetchWorkBySlug(slug: string): Promise<DbWork | null> {
-  const { data, error } = await supabase
-    .from("works")
-    .select(WORK_COLUMNS)
-    .eq("slug", slug)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as DbWork | null) ?? null;
+  const row = await prisma.work.findUnique({ where: { slug } });
+  return row ? workToDb(row) : null;
 }
 
 export async function fetchAllWorks(): Promise<DbWork[]> {
-  const { data, error } = await supabase
-    .from("works")
-    .select(WORK_COLUMNS)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as DbWork[];
+  const rows = await prisma.work.findMany({ orderBy: { createdAt: "asc" } });
+  return rows.map(workToDb);
 }
 
 export async function fetchMyWorks(authorId: string): Promise<DbWork[]> {
-  const { data, error } = await supabase
-    .from("works")
-    .select(WORK_COLUMNS)
-    .eq("author_id", authorId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as DbWork[];
+  const rows = await prisma.work.findMany({
+    where: { authorId },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(workToDb);
 }
 
 export async function submitWork(input: {
@@ -98,40 +88,50 @@ export async function submitWork(input: {
   tags: string;
   status: "pending" | "draft";
 }) {
-  const base = slugify(input.title) || `obra-${Date.now()}`;
-  const { error } = await supabase.from("works").insert({
-    slug: `${base}-${Math.random().toString(36).slice(2, 6)}`,
-    title: input.title,
-    medium: input.medium,
-    artist_name: input.artistName,
-    artist_slug: slugify(input.artistName),
-    author_id: input.authorId,
-    excerpt: input.excerpt.slice(0, 240),
-    body: input.body,
-    tags: input.tags,
-    status: input.status,
+  // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
+  const base = slugify(stripHtml(input.title)) || `obra-${Date.now()}`;
+  await prisma.work.create({
+    data: {
+      slug: `${base}-${Math.random().toString(36).slice(2, 6)}`,
+      title: input.title,
+      medium: input.medium,
+      artistName: input.artistName,
+      artistSlug: slugify(input.artistName),
+      authorId: input.authorId,
+      excerpt: input.excerpt.slice(0, 240),
+      body: input.body,
+      tags: input.tags,
+      status: input.status,
+    },
   });
-  if (error) throw error;
 }
 
-export async function decideWork(id: string, status: "approved" | "rejected" | "changes", note?: string) {
-  const { error } = await supabase.rpc("decide_work", {
-    p_id: id,
-    p_status: status,
-    p_note: note ?? null,
+export async function decideWork(
+  id: string,
+  status: "approved" | "rejected" | "changes",
+  note?: string,
+) {
+  await prisma.work.update({
+    where: { id },
+    data: {
+      status,
+      curatorNote: note ?? null,
+      publishedAt: status === "approved" ? new Date() : undefined,
+    },
   });
-  if (error) throw error;
+}
+
+export async function deleteWork(id: string) {
+  await prisma.work.delete({ where: { id } });
 }
 
 /* ---------- candidaturas ---------- */
 
 export async function fetchApplications(): Promise<DbApplication[]> {
-  const { data, error } = await supabase
-    .from("author_applications")
-    .select("*")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as DbApplication[];
+  const rows = await prisma.authorApplication.findMany({
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(appToDb);
 }
 
 export async function createApplication(input: {
@@ -144,17 +144,18 @@ export async function createApplication(input: {
   samples: number;
   message: string;
 }) {
-  const { error } = await supabase.from("author_applications").insert({
-    user_id: input.userId,
-    artist_name: input.artistName,
-    email: input.email,
-    field: input.field,
-    bio: input.bio,
-    portfolio: input.portfolio,
-    samples: input.samples,
-    message: input.message || null,
+  await prisma.authorApplication.create({
+    data: {
+      userId: input.userId,
+      artistName: input.artistName,
+      email: input.email,
+      field: input.field,
+      bio: input.bio,
+      portfolio: input.portfolio,
+      samples: input.samples,
+      message: input.message || null,
+    },
   });
-  if (error) throw error;
 }
 
 export async function decideApplication(
@@ -162,64 +163,98 @@ export async function decideApplication(
   status: "approved" | "rejected" | "changes",
   note?: string,
 ) {
-  const { error } = await supabase.rpc("decide_application", {
-    p_id: id,
-    p_status: status,
-    p_note: note ?? null,
+  const app = await prisma.authorApplication.update({
+    where: { id },
+    data: {
+      status,
+      curatorNote: note ?? null,
+      decidedAt: new Date(),
+    },
   });
-  if (error) throw error;
+
+  // Se aprovado e tem userId, promove para author
+  if (status === "approved" && app.userId) {
+    await prisma.profile.update({
+      where: { id: app.userId },
+      data: { role: "author" },
+    });
+  }
+}
+
+export async function deleteApplication(id: string) {
+  await prisma.authorApplication.delete({ where: { id } });
 }
 
 /* ---------- contadores reais ---------- */
 
 export async function fetchWorkStats(): Promise<WorkStats> {
-  const [viewsRes, donationsRes] = await Promise.all([
-    supabase.from("work_views").select("work_slug, views"),
-    supabase.rpc("donation_totals"),
+  const [viewRows, donationRows] = await Promise.all([
+    prisma.workView.findMany(),
+    prisma.donation.groupBy({
+      by: ["workSlug"],
+      _sum: { amount: true },
+      _count: { id: true },
+    }),
   ]);
-  if (viewsRes.error) throw viewsRes.error;
-  if (donationsRes.error) throw donationsRes.error;
 
   const views: Record<string, number> = {};
-  for (const row of (viewsRes.data ?? []) as Array<{ work_slug: string; views: number }>) {
-    views[row.work_slug] = Number(row.views);
+  for (const row of viewRows) {
+    views[row.workSlug] = Number(row.views);
   }
+
   const donations: Record<string, number> = {};
   const supporters: Record<string, number> = {};
-  for (const row of (donationsRes.data ?? []) as Array<{
-    work_slug: string;
-    total: number;
-    supporters: number;
-  }>) {
-    donations[row.work_slug] = Number(row.total);
-    supporters[row.work_slug] = Number(row.supporters);
+  for (const row of donationRows) {
+    donations[row.workSlug] = Number(row._sum.amount ?? 0);
+    supporters[row.workSlug] = row._count.id;
   }
+
   return { views, donations, supporters };
 }
 
 export async function registerWorkView(slug: string): Promise<number | null> {
-  const { data, error } = await supabase.rpc("register_work_view", { p_slug: slug });
-  if (error) return null;
-  return data === null ? null : Number(data);
+  try {
+    // Só conta se a obra existir e estiver aprovada
+    const work = await prisma.work.findFirst({
+      where: { slug, status: "approved" },
+      select: { slug: true },
+    });
+    if (!work) return null;
+
+    const row = await prisma.workView.upsert({
+      where: { workSlug: slug },
+      update: { views: { increment: 1 } },
+      create: { workSlug: slug, views: 1 },
+    });
+    return Number(row.views);
+  } catch {
+    return null;
+  }
 }
 
 export type DonationRow = {
   id: string;
-  work_slug: string;
-  artist_slug: string;
-  artist_name: string;
-  donor_name: string;
+  workSlug: string;
+  artistSlug: string;
+  artistName: string;
+  donorName: string;
   amount: number;
-  created_at: string;
+  createdAt: string;
 };
 
 export async function fetchDonations(): Promise<DonationRow[]> {
-  const { data, error } = await supabase
-    .from("donations")
-    .select("id, work_slug, artist_slug, artist_name, donor_name, amount, created_at")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return ((data ?? []) as DonationRow[]).map((d) => ({ ...d, amount: Number(d.amount) }));
+  const rows = await prisma.donation.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((d) => ({
+    id: d.id,
+    workSlug: d.workSlug,
+    artistSlug: d.artistSlug,
+    artistName: d.artistName,
+    donorName: d.donorName,
+    amount: Number(d.amount),
+    createdAt: d.createdAt.toISOString(),
+  }));
 }
 
 export async function createDonation(input: {
@@ -230,15 +265,16 @@ export async function createDonation(input: {
   donorName: string;
   amount: number;
 }) {
-  const { error } = await supabase.from("donations").insert({
-    work_slug: input.workSlug,
-    artist_slug: input.artistSlug,
-    artist_name: input.artistName,
-    donor_id: input.donorId,
-    donor_name: input.donorName || "Anônimo",
-    amount: input.amount,
+  await prisma.donation.create({
+    data: {
+      workSlug: input.workSlug,
+      artistSlug: input.artistSlug,
+      artistName: input.artistName,
+      donorId: input.donorId,
+      donorName: input.donorName || "Anônimo",
+      amount: input.amount,
+    },
   });
-  if (error) throw error;
 }
 
 /* ---------- contas ---------- */
@@ -247,41 +283,35 @@ export type AccountRow = {
   id: string;
   name: string;
   email: string;
+  role: AppRole;
   suspended: boolean;
-  created_at: string;
-  roles: AppRole[];
+  createdAt: string;
 };
 
 export async function fetchAccounts(): Promise<AccountRow[]> {
-  const [profiles, roles] = await Promise.all([
-    supabase.from("profiles").select("id, name, email, suspended, created_at").order("created_at"),
-    supabase.from("user_roles").select("user_id, role"),
-  ]);
-  if (profiles.error) throw profiles.error;
-  if (roles.error) throw roles.error;
-
-  const byUser = new Map<string, AppRole[]>();
-  for (const r of (roles.data ?? []) as Array<{ user_id: string; role: AppRole }>) {
-    byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r.role]);
-  }
-  return ((profiles.data ?? []) as Array<Omit<AccountRow, "roles">>).map((p) => ({
-    ...p,
-    roles: byUser.get(p.id) ?? [],
+  const rows = await prisma.profile.findMany({ orderBy: { createdAt: "asc" } });
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    role: p.role as AppRole,
+    suspended: p.suspended,
+    createdAt: p.createdAt.toISOString(),
   }));
 }
 
 export async function setUserRole(userId: string, role: AppRole) {
-  const { error } = await supabase.rpc("set_user_role", {
-    p_user_id: userId,
-    p_role: role,
-    p_replace: true,
+  await prisma.profile.update({
+    where: { id: userId },
+    data: { role },
   });
-  if (error) throw error;
 }
 
 export async function setSuspended(userId: string, suspended: boolean) {
-  const { error } = await supabase.from("profiles").update({ suspended }).eq("id", userId);
-  if (error) throw error;
+  await prisma.profile.update({
+    where: { id: userId },
+    data: { suspended },
+  });
 }
 
 /* ---------- utilidades ---------- */
@@ -289,7 +319,7 @@ export async function setSuspended(userId: string, suspended: boolean) {
 export function slugify(value: string) {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
@@ -301,16 +331,60 @@ export function dbWorkToWork(w: DbWork): Work {
     slug: w.slug,
     title: w.title,
     medium: w.medium,
-    artistSlug: w.artist_slug,
-    ...(w.cover_url ? { cover: w.cover_url } : {}),
+    artistSlug: w.artistSlug,
+    ...(w.coverUrl ? { cover: w.coverUrl } : {}),
+    ...(w.genre ? { genre: w.genre } : {}),
     excerpt: w.excerpt,
     body: w.body ? w.body.split("\n").filter(Boolean) : [],
     clicks: 0,
     likes: 0,
-    published: new Date(w.published_at ?? w.created_at).toLocaleDateString("pt-BR", {
+    published: new Date(w.publishedAt ?? w.createdAt).toLocaleDateString("pt-BR", {
       day: "numeric",
       month: "long",
       year: "numeric",
     }),
+  };
+}
+
+/* ---------- helpers internos ---------- */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function workToDb(w: any): DbWork {
+  return {
+    id: w.id,
+    slug: w.slug,
+    title: w.title,
+    medium: w.medium as Medium,
+    artistName: w.artistName,
+    artistSlug: w.artistSlug,
+    authorId: w.authorId,
+    excerpt: w.excerpt,
+    body: w.body,
+    coverUrl: w.coverUrl,
+    genre: w.genre,
+    tags: w.tags,
+    status: w.status as ReviewStatusDb,
+    curatorNote: w.curatorNote,
+    createdAt: (w.createdAt as Date).toISOString(),
+    publishedAt: w.publishedAt ? (w.publishedAt as Date).toISOString() : null,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function appToDb(a: any): DbApplication {
+  return {
+    id: a.id,
+    userId: a.userId,
+    artistName: a.artistName,
+    email: a.email,
+    field: a.field,
+    bio: a.bio,
+    portfolio: a.portfolio,
+    samples: a.samples,
+    message: a.message,
+    status: a.status as ReviewStatusDb,
+    curatorNote: a.curatorNote,
+    createdAt: (a.createdAt as Date).toISOString(),
+    decidedAt: a.decidedAt ? (a.decidedAt as Date).toISOString() : null,
   };
 }

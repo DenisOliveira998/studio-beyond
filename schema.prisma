@@ -1,0 +1,212 @@
+// ---------------------------------------------------------------------------
+// Schema Prisma — Studio Beyond (The Beyond)
+// Banco: TiDB Cloud Serverless (MySQL-compatible)
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma" // TiDB Serverless: FKs geridas pelo Prisma, não pelo banco
+}
+
+// --------------------------------------------------- Better Auth (sessão/OAuth)
+// Tabelas gerenciadas pelo Better Auth — não editar manualmente
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+  profile       Profile?
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String    @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+// --------------------------------------------------------------- Perfil/Papéis
+
+enum AppRole {
+  admin
+  curator
+  author
+  vip
+  reader
+}
+
+model Profile {
+  id        String   @id // mesmo id do User (Better Auth)
+  user      User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  role      AppRole  @default(reader)
+  suspended Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  works              Work[]
+  applications       AuthorApplication[]
+  donationsSent      Donation[]          @relation("DonorProfile")
+
+  @@map("profiles")
+}
+
+// ----------------------------------------------------------------- Obras
+
+enum WorkMedium {
+  livro
+  manga
+  hq
+  conto
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+  changes
+  draft
+}
+
+model Work {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  medium      WorkMedium
+  artistName  String       @default("")
+  artistSlug  String       @default("")
+  authorId    String?
+  author      Profile?     @relation(fields: [authorId], references: [id])
+  excerpt     String       @db.Text
+  body        String       @db.LongText
+  coverUrl    String?      @db.Text
+  genre       String?
+  tags        String?
+  status      ReviewStatus @default(pending)
+  curatorNote String?      @db.Text
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  views     WorkView?
+  donations Donation[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([medium])
+  @@map("works")
+}
+
+model WorkView {
+  workSlug  String   @id
+  work      Work     @relation(fields: [workSlug], references: [slug])
+  views     BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("work_views")
+}
+
+// ------------------------------------------------------------- Doações
+
+model Donation {
+  id         String   @id @default(cuid())
+  workSlug   String
+  work       Work     @relation(fields: [workSlug], references: [slug])
+  artistSlug String   @default("")
+  artistName String   @default("")
+  donorId    String?
+  donor      Profile? @relation("DonorProfile", fields: [donorId], references: [id])
+  donorName  String   @default("Anônimo")
+  amount     Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([workSlug])
+  @@index([donorId])
+  @@map("donations")
+}
+
+// -------------------------------------------------- Candidaturas de autor
+
+model AuthorApplication {
+  id          String       @id @default(cuid())
+  userId      String?
+  user        Profile?     @relation(fields: [userId], references: [id])
+  artistName  String
+  email       String
+  field       String       // "Livro", "Mangá", "HQ", "Conto", "Outro"
+  bio         String       @db.Text
+  portfolio   String       @default("")
+  samples     Int          @default(0)
+  message     String?      @db.Text
+  status      ReviewStatus @default(pending)
+  curatorNote String?      @db.Text
+  decidedAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("author_applications")
+}
+
+// ---------------------------------------------------------------- Config do site
+
+model StaffEmail {
+  email String  @id
+  role  AppRole
+
+  @@map("staff_emails")
+}

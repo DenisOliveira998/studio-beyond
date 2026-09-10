@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Variáveis de ambiente (nunca commitar — use Vercel/infra para definir)
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
