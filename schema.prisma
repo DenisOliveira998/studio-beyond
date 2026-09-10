@@ -210,3 +210,17 @@ model StaffEmail {
 
   @@map("staff_emails")
 }
+
+// Configurações editáveis pelo admin (linha única, id = "default")
+model SiteConfig {
+  id        String   @id @default("default")
+  instagram String   @default("")
+  youtube   String   @default("")
+  email     String   @default("contato@thebeyond.art")
+  phone     String   @default("")
+  address   String   @default("")
+  cnpj      String   @default("")
+  updatedAt DateTime @updatedAt
+
+  @@map("site_config")
+}

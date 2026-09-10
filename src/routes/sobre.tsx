@@ -4,16 +4,17 @@ import { PLATFORM_FEE } from "@/lib/beyond-data";
 export const Route = createFileRoute("/sobre")({
   head: () => ({
     meta: [
-      { title: "Sobre o projeto — The Beyond" },
+      { title: "Quem Somos | The Beyond — Plataforma Editorial Independente" },
       {
         name: "description",
         content:
-          "Por que o The Beyond existe: uma galeria editorial sem anúncios, com curadoria humana e remuneração direta aos artistas.",
+          "O The Beyond é uma plataforma editorial sem anúncios para autores independentes de livros, mangás, HQs e contos. 88% da receita vai para quem cria. Curadoria humana.",
       },
-      { property: "og:title", content: "Sobre o projeto — The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "Quem Somos | The Beyond" },
       {
         property: "og:description",
-        content: "Curadoria humana, zero anúncios e 88% da receita para quem cria.",
+        content: "Plataforma editorial independente: curadoria humana, zero anúncios e 88% da receita para quem cria.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

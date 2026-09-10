@@ -5,16 +5,17 @@ import { Clock, Upload } from "lucide-react";
 export const Route = createFileRoute("/candidatura-autor")({
   head: () => ({
     meta: [
-      { title: "Candidatura de Autor — The Beyond" },
+      { title: "Candidatura de Autor | The Beyond — Publique sua Obra" },
       {
         name: "description",
         content:
-          "Candidate-se para publicar no The Beyond: nome artístico, área de atuação, bio, portfólio e até três obras para avaliação da curadoria.",
+          "Quer publicar livros, mangás, HQs ou contos no The Beyond? Envie sua candidatura com portfólio e amostras. Seleção por curadoria humana independente.",
       },
-      { property: "og:title", content: "Candidatura de Autor — The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "Candidatura de Autor | The Beyond" },
       {
         property: "og:description",
-        content: "A entrada é por curadoria. Envie seu portfólio e aguarde a análise.",
+        content: "Publique livros, mangás, HQs e contos no The Beyond. Candidatura aberta com seleção por curadoria.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

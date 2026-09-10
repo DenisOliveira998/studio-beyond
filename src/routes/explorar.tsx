@@ -4,16 +4,17 @@ import { MEDIUM_LABEL, compact, works, type Medium } from "@/lib/beyond-data";
 export const Route = createFileRoute("/explorar")({
   head: () => ({
     meta: [
-      { title: "Explorar categorias — The Beyond" },
+      { title: "Explorar Categorias | The Beyond — Livros, Mangás, HQs e Contos" },
       {
         name: "description",
         content:
-          "Percorra as categorias do The Beyond: livros, mangás, HQs e contos autorais, sem anúncios e sem pressa.",
+          "Explore livros, mangás, HQs e contos autorais por categoria. Descubra obras independentes selecionadas pela curadoria do The Beyond — sem anúncios e sem pressa.",
       },
-      { property: "og:title", content: "Explorar categorias — The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "Explorar | The Beyond — Livros, Mangás, HQs e Contos" },
       {
         property: "og:description",
-        content: "Livros, mangás, HQs e contos autorais — uma categoria por vez.",
+        content: "Livros, mangás, HQs e contos autorais brasileiros — explore por categoria no The Beyond.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

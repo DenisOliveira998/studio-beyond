@@ -6,20 +6,21 @@ import { MEDIUM_LABEL, artists, works, type Medium } from "@/lib/beyond-data";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Beyond — Uma galeria sem anúncios para artistas" },
+      { title: "The Beyond — Leia Livros, Mangás, HQs e Contos Autorais" },
       {
         name: "description",
         content:
-          "Um espaço sem distrações onde autores de livros, mangás, HQs e contos publicam suas obras, ganham por visualização e recebem apoio direto.",
+          "Descubra livros, mangás, HQs e contos autorais brasileiros. O The Beyond paga autores por visualização e permite apoio direto. Sem anúncios, sem interrupções.",
       },
-      {
-        property: "og:title",
-        content: "The Beyond — Uma galeria sem anúncios para artistas",
-      },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
       {
         property: "og:description",
-        content: "Publique, seja visto, seja pago. Sem anúncios, sem banners, sem interrupções.",
+        content:
+          "Plataforma de publicação independente com curadoria humana. Livros, mangás, HQs e contos — sem anúncios, sem interrupções.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,

@@ -314,6 +314,41 @@ export async function setSuspended(userId: string, suspended: boolean) {
   });
 }
 
+/* ---------- configurações do site ---------- */
+
+export type SiteConfigData = {
+  instagram: string;
+  youtube: string;
+  email: string;
+  phone: string;
+  address: string;
+  cnpj: string;
+};
+
+export async function getSiteConfig(): Promise<SiteConfigData> {
+  const row = await prisma.siteConfig.upsert({
+    where: { id: "default" },
+    update: {},
+    create: { id: "default" },
+  });
+  return {
+    instagram: row.instagram,
+    youtube: row.youtube,
+    email: row.email,
+    phone: row.phone,
+    address: row.address,
+    cnpj: row.cnpj,
+  };
+}
+
+export async function saveSiteConfig(data: Partial<SiteConfigData>): Promise<void> {
+  await prisma.siteConfig.upsert({
+    where: { id: "default" },
+    update: data,
+    create: { id: "default", ...data },
+  });
+}
+
 /* ---------- utilidades ---------- */
 
 export function slugify(value: string) {

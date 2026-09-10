@@ -121,6 +121,33 @@ export default {
         return handleMe(request);
       }
 
+      // Configurações públicas do site (Instagram, contato, etc.)
+      if (pathname === "/api/site-config") {
+        if (request.method === "GET") {
+          const { getSiteConfig } = await import("./lib/beyond-db");
+          const cfg = await getSiteConfig();
+          return new Response(JSON.stringify(cfg), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (request.method === "POST") {
+          const { auth } = await import("./lib/auth-server");
+          const session = await auth.api.getSession({ headers: request.headers });
+          if (!session?.user) {
+            return new Response(JSON.stringify({ error: "Não autorizado" }), {
+              status: 401,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          const { saveSiteConfig } = await import("./lib/beyond-db");
+          const body = (await request.json()) as Record<string, string>;
+          await saveSiteConfig(body);
+          return new Response(JSON.stringify({ ok: true }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

@@ -1,8 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { Instagram, Youtube } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSelector } from "@/components/language-selector";
 import { SiteSearch } from "@/components/site-search";
+import type { SiteConfigData } from "@/lib/beyond-db";
+
+async function fetchSiteConfig(): Promise<SiteConfigData> {
+  const res = await fetch("/api/site-config");
+  if (!res.ok) throw new Error("Erro ao buscar configurações");
+  return res.json() as Promise<SiteConfigData>;
+}
+
+const DEFAULT_CONFIG: SiteConfigData = {
+  instagram: "https://instagram.com/thebeyond.art",
+  youtube: "https://youtube.com/@thebeyond",
+  email: "contato@thebeyond.art",
+  phone: "(11) 99999-9999",
+  address: "Rua das Artes, 142 — São Paulo, SP",
+  cnpj: "00.000.000/0001-00",
+};
 
 const nav = [
   { to: "/", label: "Obras" },
@@ -69,6 +86,16 @@ const legalLinks = [
 ] as const;
 
 export function SiteFooter() {
+  const { data: cfg = DEFAULT_CONFIG } = useQuery({
+    queryKey: ["site-config"],
+    queryFn: fetchSiteConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const igHandle = cfg.instagram
+    ? cfg.instagram.replace(/.*instagram\.com\//i, "").replace(/\/$/, "")
+    : "thebeyond.art";
+
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-20 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
@@ -79,20 +106,28 @@ export function SiteFooter() {
             Um espaço para obras que merecem ser lidas com calma.
           </p>
           <div className="mt-6 flex items-center gap-4">
-            <a
-              href="https://instagram.com"
-              aria-label="Instagram"
-              className="text-muted-foreground transition-colors hover:text-gilt"
-            >
-              <Instagram className="size-4" strokeWidth={1.5} />
-            </a>
-            <a
-              href="https://youtube.com"
-              aria-label="YouTube"
-              className="text-muted-foreground transition-colors hover:text-gilt"
-            >
-              <Youtube className="size-4" strokeWidth={1.5} />
-            </a>
+            {cfg.instagram && (
+              <a
+                href={cfg.instagram}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="text-muted-foreground transition-colors hover:text-gilt"
+              >
+                <Instagram className="size-4" strokeWidth={1.5} />
+              </a>
+            )}
+            {cfg.youtube && (
+              <a
+                href={cfg.youtube}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="YouTube"
+                className="text-muted-foreground transition-colors hover:text-gilt"
+              >
+                <Youtube className="size-4" strokeWidth={1.5} />
+              </a>
+            )}
           </div>
         </div>
 
@@ -125,30 +160,41 @@ export function SiteFooter() {
           ))}
         </FooterColumn>
 
-        {/* Contato e jurídico */}
+        {/* Contato */}
         <FooterColumn title="Contato">
-          <li>
-            <a
-              href="https://instagram.com/thebeyond.art"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-foreground"
-            >
-              @thebeyond.art
-            </a>
-          </li>
-          <li>
-            <a href="mailto:contato@thebeyond.art" className="transition-colors hover:text-foreground">
-              contato@thebeyond.art
-            </a>
-          </li>
-          <li>
-            <a href="tel:+5511999999999" className="transition-colors hover:text-foreground">
-              (11) 99999-9999
-            </a>
-          </li>
-          <li className="pt-1">Rua das Artes, 142 — São Paulo, SP</li>
-          <li className="pt-1 text-xs text-muted-foreground/60">CNPJ 00.000.000/0001-00</li>
+          {cfg.instagram && (
+            <li>
+              <a
+                href={cfg.instagram}
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors hover:text-foreground"
+              >
+                @{igHandle}
+              </a>
+            </li>
+          )}
+          {cfg.email && (
+            <li>
+              <a href={`mailto:${cfg.email}`} className="transition-colors hover:text-foreground">
+                {cfg.email}
+              </a>
+            </li>
+          )}
+          {cfg.phone && (
+            <li>
+              <a
+                href={`tel:${cfg.phone.replace(/\D/g, "")}`}
+                className="transition-colors hover:text-foreground"
+              >
+                {cfg.phone}
+              </a>
+            </li>
+          )}
+          {cfg.address && <li className="pt-1">{cfg.address}</li>}
+          {cfg.cnpj && (
+            <li className="pt-1 text-xs text-muted-foreground/60">CNPJ {cfg.cnpj}</li>
+          )}
         </FooterColumn>
       </div>
 

@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import type { SiteConfigData } from "@/lib/beyond-db";
 import {
   ArrowDown,
   ArrowUp,
@@ -10,6 +12,8 @@ import {
   Eye,
   FileClock,
   LayoutDashboard,
+  Save,
+  Settings,
   Trophy,
   Users,
 } from "lucide-react";
@@ -72,6 +76,7 @@ const NAV = [
   { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
+  { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
 const TYPE_BADGE: Record<AccountType, string> = {
@@ -81,11 +86,45 @@ const TYPE_BADGE: Record<AccountType, string> = {
   admin: "border-destructive/50 bg-destructive/10 text-destructive",
 };
 
+const EMPTY_CONFIG: SiteConfigData = {
+  instagram: "",
+  youtube: "",
+  email: "",
+  phone: "",
+  address: "",
+  cnpj: "",
+};
+
 function AdminPage() {
   const [accounts, setAccounts] = useState<Account[]>(seedAccounts);
   const [filter, setFilter] = useState<AccountType | "all">("all");
   const [applications, setApplications] = useState<AuthorApplication[]>(seedApplications);
   const [submissions, setSubmissions] = useState<WorkSubmission[]>(seedSubmissions);
+
+  // Configurações do site
+  const queryClient = useQueryClient();
+  const { data: siteConfig } = useQuery<SiteConfigData>({
+    queryKey: ["site-config"],
+    queryFn: () => fetch("/api/site-config").then((r) => r.json() as Promise<SiteConfigData>),
+    staleTime: 30_000,
+  });
+  const [cfgDraft, setCfgDraft] = useState<SiteConfigData | null>(null);
+  const cfg = cfgDraft ?? siteConfig ?? EMPTY_CONFIG;
+
+  const saveCfg = useMutation({
+    mutationFn: (data: SiteConfigData) =>
+      fetch("/api/site-config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["site-config"] });
+      setCfgDraft(null);
+      toast.success("Configurações salvas com sucesso.");
+    },
+    onError: () => toast.error("Erro ao salvar configurações."),
+  });
 
   function decideApplication(id: string, status: ReviewStatus) {
     setApplications((prev) =>
@@ -490,6 +529,59 @@ function AdminPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Configurações do Site */}
+        <section id="configuracoes" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Settings}>Configurações do Site</SectionTitle>
+          <div className="mt-8 border border-gilt/25 bg-background p-8">
+            <p className="text-sm text-muted-foreground mb-6">
+              Estas informações aparecem no rodapé do site e nos links das redes sociais.
+            </p>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {(
+                [
+                  { key: "instagram", label: "Instagram (URL completa)", placeholder: "https://instagram.com/thebeyond.art" },
+                  { key: "youtube", label: "YouTube (URL completa)", placeholder: "https://youtube.com/@thebeyond" },
+                  { key: "email", label: "E-mail de contato", placeholder: "contato@thebeyond.art" },
+                  { key: "phone", label: "Telefone", placeholder: "(11) 99999-9999" },
+                  { key: "address", label: "Endereço", placeholder: "Rua das Artes, 142 — São Paulo, SP" },
+                  { key: "cnpj", label: "CNPJ", placeholder: "00.000.000/0001-00" },
+                ] as Array<{ key: keyof SiteConfigData; label: string; placeholder: string }>
+              ).map(({ key, label, placeholder }) => (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="eyebrow text-xs">{label}</label>
+                  <input
+                    type="text"
+                    value={cfg[key]}
+                    placeholder={placeholder}
+                    onChange={(e) =>
+                      setCfgDraft((prev) => ({ ...(prev ?? cfg), [key]: e.target.value }))
+                    }
+                    className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 flex items-center gap-4">
+              <button
+                onClick={() => saveCfg.mutate(cfg)}
+                disabled={saveCfg.isPending || cfgDraft === null}
+                className="flex items-center gap-2 bg-gilt px-5 py-2.5 text-sm font-medium text-ink transition-opacity disabled:opacity-50"
+              >
+                <Save className="size-4" strokeWidth={1.5} />
+                {saveCfg.isPending ? "Salvando…" : "Salvar configurações"}
+              </button>
+              {cfgDraft !== null && (
+                <button
+                  onClick={() => setCfgDraft(null)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Descartar alterações
+                </button>
+              )}
             </div>
           </div>
         </section>

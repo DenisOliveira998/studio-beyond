@@ -7,16 +7,17 @@ import { money } from "@/lib/beyond-data";
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos do Leitor Assíduo — The Beyond" },
+      { title: "Planos de Assinatura | The Beyond — Apoie Autores Independentes" },
       {
         name: "description",
         content:
-          "Assine como Leitor Assíduo: curadoria exclusiva, acesso antecipado às obras, badge de apoiador e nenhuma interrupção.",
+          "Assine o The Beyond e apoie autores independentes de livros, mangás, HQs e contos. Acesso a curadoria exclusiva, obras em primeira mão e leitura sem interrupções.",
       },
-      { property: "og:title", content: "Planos do Leitor Assíduo — The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "Planos | The Beyond — Apoie Autores Independentes" },
       {
         property: "og:description",
-        content: "Mensal ou anual com desconto. Sem interrupções, com curadoria exclusiva.",
+        content: "Assine o The Beyond: curadoria exclusiva, acesso antecipado e zero anúncios. Planos mensais e anuais.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

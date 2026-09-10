@@ -81,25 +81,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Beyond — Uma galeria sem anúncios para artistas" },
+      { title: "The Beyond — Leia Livros, Mangás, HQs e Contos Autorais" },
       {
         name: "description",
         content:
-          "Um espaço sem distrações onde artistas publicam suas obras, ganham por visualização e recebem apoio direto.",
+          "Descubra livros, mangás, HQs e contos autorais brasileiros. O The Beyond paga autores por visualização e permite apoio direto. Sem anúncios, sem interrupções.",
       },
-      { property: "og:title", content: "The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { name: "author", content: "The Beyond" },
+      { property: "og:site_name", content: "The Beyond" },
+      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
       {
         property: "og:description",
-        content: "Publique, seja visto, seja pago. Sem anúncios, sem banners, sem interrupções.",
+        content:
+          "Plataforma de publicação independente: livros, mangás, HQs e contos autorais com curadoria humana e zero anúncios.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
+      {
+        name: "twitter:description",
+        content: "Plataforma de publicação independente sem anúncios. 88% da receita vai para quem cria.",
+      },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),

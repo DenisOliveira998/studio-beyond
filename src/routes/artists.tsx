@@ -4,18 +4,21 @@ import { artists, worksByArtist } from "@/lib/beyond-data";
 export const Route = createFileRoute("/artists")({
   head: () => ({
     meta: [
-      { title: "Artistas — The Beyond" },
+      { title: "Autores e Artistas | The Beyond — Publicação Independente" },
       {
         name: "description",
         content:
-          "Pintores, fotógrafos, ilustradores, ensaístas e compositores que publicam no The Beyond.",
+          "Conheça os escritores, mangakistas e quadrinistas que publicam no The Beyond. Obras autorais de mangá, HQ, livro e conto com curadoria independente e sem anúncios.",
       },
-      { property: "og:title", content: "Artistas — The Beyond" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "Autores e Artistas | The Beyond" },
       {
         property: "og:description",
         content:
-          "Conheça quem publica numa galeria sem anúncios e ganha por cada visualização.",
+          "Escritores, mangakistas e quadrinistas independentes. Conheça quem publica no The Beyond e ganha por cada leitura.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ArtistsPage,
