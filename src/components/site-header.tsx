@@ -58,14 +58,12 @@ const navLinks = [
 ] as const;
 
 const accountLinks = [
-  { to: "/auth", label: "Criar conta" },
+  { to: "/auth", label: "Entrar" },
   { to: "/planos", label: "Planos de assinatura" },
   { to: "/candidatura-autor", label: "Candidatura de Autor" },
-  { to: "/auth", label: "Entrar" },
 ] as const;
 
 const legalLinks = [
-  { to: "/sobre", label: "Quem somos" },
   { to: "/termos", label: "Termos de uso" },
   { to: "/privacidade", label: "Privacidade" },
 ] as const;
@@ -109,9 +107,16 @@ export function SiteFooter() {
           ))}
         </FooterColumn>
 
-        {/* Conta */}
-        <FooterColumn title="Conta">
+        {/* Acesso */}
+        <FooterColumn title="Acesso">
           {accountLinks.map((l) => (
+            <li key={l.label}>
+              <Link to={l.to} className="rule-hover transition-colors hover:text-foreground">
+                {l.label}
+              </Link>
+            </li>
+          ))}
+          {legalLinks.map((l) => (
             <li key={l.label}>
               <Link to={l.to} className="rule-hover transition-colors hover:text-foreground">
                 {l.label}
@@ -120,23 +125,30 @@ export function SiteFooter() {
           ))}
         </FooterColumn>
 
-        {/* Planos e legal */}
-        <FooterColumn title="Informações">
-          {legalLinks.map((l) => (
-            <li key={l.label}>
-              <Link to={l.to} className="rule-hover transition-colors hover:text-foreground">
-                {l.label}
-              </Link>
-            </li>
-          ))}
-          <li className="pt-2 text-xs">
+        {/* Contato e jurídico */}
+        <FooterColumn title="Contato">
+          <li>
             <a
-              href="mailto:contato@thebeyond.art"
+              href="https://instagram.com/thebeyond.art"
+              target="_blank"
+              rel="noreferrer"
               className="transition-colors hover:text-foreground"
             >
+              @thebeyond.art
+            </a>
+          </li>
+          <li>
+            <a href="mailto:contato@thebeyond.art" className="transition-colors hover:text-foreground">
               contato@thebeyond.art
             </a>
           </li>
+          <li>
+            <a href="tel:+5511999999999" className="transition-colors hover:text-foreground">
+              (11) 99999-9999
+            </a>
+          </li>
+          <li className="pt-1">Rua das Artes, 142 — São Paulo, SP</li>
+          <li className="pt-1 text-xs text-muted-foreground/60">CNPJ 00.000.000/0001-00</li>
         </FooterColumn>
       </div>
 
