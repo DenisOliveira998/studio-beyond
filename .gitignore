@@ -21,6 +21,11 @@ dist-ssr
 .env.*
 !.env.example
 
+# Build outputs (gerados automaticamente)
+.vercel/output/
+.output/
+.nitro/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
