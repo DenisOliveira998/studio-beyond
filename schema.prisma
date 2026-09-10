@@ -134,6 +134,7 @@ model Work {
   excerpt     String       @db.Text
   body        String       @db.LongText
   coverUrl    String?      @db.Text
+  pdfUrl      String?      @db.Text
   genre       String?
   tags        String?
   status      ReviewStatus @default(pending)

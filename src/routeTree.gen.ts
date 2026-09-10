@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor'
+import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ExplorarRouteImport } from './routes/explorar'
 import { Route as PlanosRouteImport } from './routes/planos'
@@ -46,6 +47,11 @@ const AuthRoute = AuthRouteImport.update({
 const CandidaturaAutorRoute = CandidaturaAutorRouteImport.update({
   id: '/candidatura-autor',
   path: '/candidatura-autor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContatoRoute = ContatoRouteImport.update({
+  id: '/contato',
+  path: '/contato',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
+  '/contato': typeof ContatoRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
+  '/contato': typeof ContatoRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
+  '/contato': typeof ContatoRoute
   '/dashboard': typeof DashboardRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/artists'
     | '/auth'
     | '/candidatura-autor'
+    | '/contato'
     | '/dashboard'
     | '/explorar'
     | '/planos'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/artists'
     | '/auth'
     | '/candidatura-autor'
+    | '/contato'
     | '/dashboard'
     | '/explorar'
     | '/planos'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/artists'
     | '/auth'
     | '/candidatura-autor'
+    | '/contato'
     | '/dashboard'
     | '/explorar'
     | '/planos'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   ArtistsRoute: typeof ArtistsRoute
   AuthRoute: typeof AuthRoute
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
+  ContatoRoute: typeof ContatoRoute
   DashboardRoute: typeof DashboardRoute
   ExplorarRoute: typeof ExplorarRoute
   PlanosRoute: typeof PlanosRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/candidatura-autor'
       fullPath: '/candidatura-autor'
       preLoaderRoute: typeof CandidaturaAutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contato': {
+      id: '/contato'
+      path: '/contato'
+      fullPath: '/contato'
+      preLoaderRoute: typeof ContatoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArtistsRoute: ArtistsRoute,
   AuthRoute: AuthRoute,
   CandidaturaAutorRoute: CandidaturaAutorRoute,
+  ContatoRoute: ContatoRoute,
   DashboardRoute: DashboardRoute,
   ExplorarRoute: ExplorarRoute,
   PlanosRoute: PlanosRoute,

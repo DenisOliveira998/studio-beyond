@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  FileUp,
   Heart,
   ImagePlus,
   LayoutDashboard,
@@ -89,7 +90,11 @@ function Dashboard() {
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [coverName, setCoverName] = useState<string | null>(null);
+  const [pdfName, setPdfName] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<
     Array<{ id: string; title: string; type: string; submitted: string; note?: string }>
   >([
@@ -111,31 +116,74 @@ function Dashboard() {
   function togglePublish(id: string, workTitle: string) {
     setPublished((prev) => {
       const next = !prev[id];
-      toast.success(next ? `“${workTitle}” republicada.` : `“${workTitle}” despublicada.`);
+      toast.success(next ? `"${workTitle}" republicada.` : `"${workTitle}" despublicada.`);
       return { ...prev, [id]: next };
     });
   }
 
-  function submit(kind: "publish" | "draft") {
+  async function submit(kind: "publish" | "draft") {
     if (!title.trim()) {
       toast.error("Informe o título da obra antes de continuar.");
       return;
     }
-    if (kind === "publish") {
-      setQueue((prev) => [
-        { id: `q${prev.length + 1}`, title: title.trim(), type: workType ?? "Texto", submitted: "hoje" },
-        ...prev,
-      ]);
+    setUploading(true);
+    let pdfUrl: string | null = null;
+    try {
+      // Se tiver PDF selecionado, faz upload primeiro
+      if (pdfFile) {
+        const fd = new FormData();
+        fd.append("file", pdfFile);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok || !data.url) {
+          toast.error(data.error ?? "Erro ao enviar o PDF.");
+          setUploading(false);
+          return;
+        }
+        pdfUrl = data.url;
+      }
+
+      const mediumMap: Record<string, string> = {
+        Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto",
+      };
+      const medium = mediumMap[workType ?? "Livro"] ?? "livro";
+      await fetch("/api/works", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          medium,
+          artistName: artist.name,
+          excerpt: body.slice(0, 240),
+          body,
+          tags,
+          pdfUrl,
+          status: kind === "publish" ? "pending" : "draft",
+        }),
+      });
+
+      if (kind === "publish") {
+        setQueue((prev) => [
+          { id: `q${prev.length + 1}`, title: title.trim(), type: workType ?? "Texto", submitted: "hoje" },
+          ...prev,
+        ]);
+      }
+      toast.success(
+        kind === "publish"
+          ? `"${title}" enviada para revisão da curadoria.`
+          : `Rascunho de "${title}" salvo.`,
+      );
+      setTitle("");
+      setBody("");
+      setTags("");
+      setCoverName(null);
+      setPdfName(null);
+      setPdfFile(null);
+    } catch {
+      toast.error("Erro ao enviar a obra. Tente novamente.");
+    } finally {
+      setUploading(false);
     }
-    toast.success(
-      kind === "publish"
-        ? `“${title}” enviada para revisão da curadoria.`
-        : `Rascunho de “${title}” salvo.`,
-    );
-    setTitle("");
-    setBody("");
-    setTags("");
-    setCoverName(null);
   }
 
   return (
@@ -246,7 +294,7 @@ function Dashboard() {
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
                           <ActionButton
-                            onClick={() => toast.success(`Edição de “${w.title}” aberta (demo).`)}
+                            onClick={() => toast.success(`Edição de "${w.title}" aberta (demo).`)}
                           >
                             <Pencil className="size-3.5" /> Editar
                           </ActionButton>
@@ -271,7 +319,7 @@ function Dashboard() {
             className="mt-8 border border-gilt/25 bg-background p-8 sm:p-10"
             onSubmit={(e) => {
               e.preventDefault();
-              submit("publish");
+              void submit("publish");
             }}
           >
             <div className="grid gap-8">
@@ -330,6 +378,32 @@ function Dashboard() {
                 </button>
               </Field>
 
+              <Field label="Arquivo PDF (opcional)" htmlFor="obra-pdf">
+                <input
+                  ref={pdfRef}
+                  id="obra-pdf"
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setPdfFile(f);
+                    setPdfName(f?.name ?? null);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => pdfRef.current?.click()}
+                  className="flex w-full items-center justify-center gap-3 border border-dashed border-border px-4 py-8 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                >
+                  <FileUp className="size-5 text-gilt" strokeWidth={1.5} />
+                  {pdfName ?? "Clique para enviar o PDF da obra"}
+                </button>
+                <p className="mt-2 text-xs text-muted-foreground/60">
+                  Opcional. Leitores verão um botão de download na página da obra.
+                </p>
+              </Field>
+
               <Field label="Tags / categorias" htmlFor="obra-tags">
                 <input
                   id="obra-tags"
@@ -344,14 +418,16 @@ function Dashboard() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 bg-gilt px-8 py-3.5 text-xs font-medium uppercase tracking-[0.2em] text-primary-foreground transition-opacity hover:opacity-90"
+                disabled={uploading}
+                className="inline-flex items-center justify-center gap-2 bg-gilt px-8 py-3.5 text-xs font-medium uppercase tracking-[0.2em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
               >
-                <Send className="size-4" /> Enviar para revisão
+                <Send className="size-4" /> {uploading ? "Enviando…" : "Enviar para revisão"}
               </button>
               <button
                 type="button"
-                onClick={() => submit("draft")}
-                className="inline-flex items-center justify-center gap-2 border border-border px-8 py-3.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                disabled={uploading}
+                onClick={() => void submit("draft")}
+                className="inline-flex items-center justify-center gap-2 border border-border px-8 py-3.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-60"
               >
                 <FileText className="size-4" /> Salvar rascunho
               </button>
@@ -363,7 +439,7 @@ function Dashboard() {
         <section id="em-revisao" className="mt-16 scroll-mt-24">
           <SectionTitle icon={FileClock}>Em revisão</SectionTitle>
           <p className="caption mt-4">
-            Toda obra enviada entra como “Em revisão”. Ela aparece nas Obras apenas depois da
+            Toda obra enviada entra como "Em revisão". Ela aparece nas Obras apenas depois da
             aprovação da curadoria.
           </p>
           <div className="mt-6 overflow-x-auto border border-border">

@@ -18,6 +18,7 @@ export type Work = {
   readTime?: string;
   genre?: string;
   pages?: number;
+  pdfUrl?: string;
 };
 
 export type Artist = {
@@ -392,6 +393,7 @@ export type WorkSubmission = {
   submitted: string;
   status: ReviewStatus;
   note?: string;
+  pdfUrl?: string;
 };
 
 export const workSubmissions: WorkSubmission[] = [

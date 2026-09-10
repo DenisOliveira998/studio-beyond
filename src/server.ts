@@ -1,4 +1,4 @@
-import "./lib/error-capture";
+﻿import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -146,6 +146,91 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
+      }
+
+      // Upload de arquivo (PDF de obra) → Vercel Blob
+      if (pathname === "/api/upload" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        try {
+          const formData = await request.formData();
+          const file = formData.get("file") as File | null;
+          if (!file) {
+            return new Response(JSON.stringify({ error: "Nenhum arquivo enviado" }), {
+              status: 400,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          const { put } = await import("@vercel/blob");
+          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+          const blob = await put(safeName, file, { access: "public" });
+          return new Response(JSON.stringify({ url: blob.url }), {
+            headers: { "content-type": "application/json" },
+          });
+        } catch (e: unknown) {
+          const err = e as { message?: string };
+          return new Response(JSON.stringify({ error: err?.message ?? "Erro no upload" }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+
+      // Submeter obra (autor autenticado)
+      if (pathname === "/api/works" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { submitWork } = await import("./lib/beyond-db");
+        const body = (await request.json()) as {
+          title: string; medium: string; artistName: string;
+          excerpt?: string; body?: string; tags?: string;
+          pdfUrl?: string | null; status?: "pending" | "draft";
+        };
+        await submitWork({
+          authorId: session.user.id,
+          title: body.title ?? "",
+          medium: (body.medium ?? "livro") as import("./lib/beyond-data").Medium,
+          artistName: body.artistName ?? session.user.name ?? "",
+          excerpt: body.excerpt ?? "",
+          body: body.body ?? "",
+          tags: body.tags ?? "",
+          pdfUrl: body.pdfUrl ?? null,
+          status: body.status ?? "pending",
+        });
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Atualizar PDF de uma obra (autor/admin)
+      if (pathname.startsWith("/api/works/") && pathname.endsWith("/pdf") && request.method === "PATCH") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const id = pathname.replace("/api/works/", "").replace("/pdf", "");
+        const { pdfUrl } = (await request.json()) as { pdfUrl: string | null };
+        const { updateWorkPdf } = await import("./lib/beyond-db");
+        await updateWorkPdf(id, pdfUrl ?? null);
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
       }
 
       const handler = await getServerEntry();

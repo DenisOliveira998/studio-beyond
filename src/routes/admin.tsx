@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   Eye,
+  FileDown,
   FileClock,
   LayoutDashboard,
   Save,
@@ -146,10 +147,10 @@ function AdminPage() {
         if (w.id !== id) return w;
         toast.success(
           status === "approved"
-            ? `“${w.title}” aprovada e publicada no feed.`
+            ? `"${w.title}" aprovada e publicada no feed.`
             : status === "changes"
-              ? `Ajustes solicitados ao autor de “${w.title}”.`
-              : `“${w.title}” recusada com comentário do curador.`,
+              ? `Ajustes solicitados ao autor de "${w.title}".`
+              : `"${w.title}" recusada com comentário do curador.`,
         );
         return { ...w, status };
       }),
@@ -319,7 +320,7 @@ function AdminPage() {
                   </p>
                   {a.message && (
                     <p className="title-italic mt-3 max-w-2xl text-base text-muted-foreground">
-                      “{a.message}”
+                      "{a.message}"
                     </p>
                   )}
 
@@ -364,6 +365,7 @@ function AdminPage() {
                   <Th>Obra</Th>
                   <Th>Autor</Th>
                   <Th>Enviada em</Th>
+                  <Th>PDF</Th>
                   <Th>Status</Th>
                   <Th className="text-right">Ações</Th>
                 </tr>
@@ -380,6 +382,20 @@ function AdminPage() {
                       {getArtist(w.artistSlug)?.name ?? "—"}
                     </Td>
                     <Td className="text-muted-foreground">{w.submitted}</Td>
+                    <Td>
+                      {w.pdfUrl ? (
+                        <a
+                          href={w.pdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-gilt transition-colors hover:text-gilt/70"
+                        >
+                          <FileDown className="size-3.5" strokeWidth={1.5} /> Ver PDF
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/50">—</span>
+                      )}
+                    </Td>
                     <Td>
                       <ReviewBadge status={w.status} />
                     </Td>

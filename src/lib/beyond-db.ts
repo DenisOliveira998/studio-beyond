@@ -1,4 +1,4 @@
-// ---------------------------------------------------------------------------
+﻿// ---------------------------------------------------------------------------
 // beyond-db.ts — camada de acesso ao banco (Prisma + TiDB Cloud)
 // ---------------------------------------------------------------------------
 
@@ -20,6 +20,7 @@ export type DbWork = {
   excerpt: string;
   body: string;
   coverUrl: string | null;
+  pdfUrl: string | null;
   genre: string | null;
   tags: string | null;
   status: ReviewStatusDb;
@@ -86,6 +87,7 @@ export async function submitWork(input: {
   excerpt: string;
   body: string;
   tags: string;
+  pdfUrl?: string | null;
   status: "pending" | "draft";
 }) {
   // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
@@ -101,6 +103,7 @@ export async function submitWork(input: {
       excerpt: input.excerpt.slice(0, 240),
       body: input.body,
       tags: input.tags,
+      pdfUrl: input.pdfUrl ?? null,
       status: input.status,
     },
   });
@@ -116,9 +119,13 @@ export async function decideWork(
     data: {
       status,
       curatorNote: note ?? null,
-      publishedAt: status === "approved" ? new Date() : undefined,
+      ...(status === "approved" ? { publishedAt: new Date() } : {}),
     },
   });
+}
+
+export async function updateWorkPdf(id: string, pdfUrl: string | null) {
+  await prisma.work.update({ where: { id }, data: { pdfUrl } });
 }
 
 export async function deleteWork(id: string) {
@@ -368,6 +375,7 @@ export function dbWorkToWork(w: DbWork): Work {
     medium: w.medium,
     artistSlug: w.artistSlug,
     ...(w.coverUrl ? { cover: w.coverUrl } : {}),
+    ...(w.pdfUrl ? { pdfUrl: w.pdfUrl } : {}),
     ...(w.genre ? { genre: w.genre } : {}),
     excerpt: w.excerpt,
     body: w.body ? w.body.split("\n").filter(Boolean) : [],
@@ -396,6 +404,7 @@ function workToDb(w: any): DbWork {
     excerpt: w.excerpt,
     body: w.body,
     coverUrl: w.coverUrl,
+    pdfUrl: w.pdfUrl,
     genre: w.genre,
     tags: w.tags,
     status: w.status as ReviewStatusDb,
