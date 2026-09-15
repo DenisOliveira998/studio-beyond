@@ -214,6 +214,99 @@ export default {
         });
       }
 
+      // Formulário de contato → Resend
+      if (pathname === "/api/contact" && request.method === "POST") {
+        const body = (await request.json()) as {
+          name: string; email: string; subject?: string; message: string;
+        };
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey) {
+          // Notifica equipe
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "The Beyond <noreply@thebeyond.art>",
+              to: "contato@thebeyond.art",
+              reply_to: body.email,
+              subject: `[Contato] ${body.subject ?? "Mensagem"} — ${body.name}`,
+              html: `<p><strong>Nome:</strong> ${body.name}</p>
+                     <p><strong>E-mail:</strong> ${body.email}</p>
+                     <p><strong>Assunto:</strong> ${body.subject ?? "—"}</p>
+                     <hr/>
+                     <p>${body.message.replace(/\n/g, "<br>")}</p>`,
+            }),
+          });
+          // Confirma para o remetente
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "The Beyond <noreply@thebeyond.art>",
+              to: body.email,
+              subject: "Mensagem recebida — The Beyond",
+              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
+                <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#f6f6f6">Mensagem recebida</h1>
+                <p style="color:#9ba1ab;font-size:15px">Ol&#225;, <strong style="color:#f6f6f6">${body.name}</strong>. Recebemos sua mensagem e responderemos em breve.</p>
+                <p style="color:#9ba1ab;font-size:14px;margin-top:16px;padding:12px 16px;border-left:3px solid #a08d24">${body.message.replace(/\n/g, "<br>")}</p>
+                <p style="color:#9ba1ab;font-size:13px;margin-top:16px">&#8212; Equipe The Beyond</p>
+              </div>`,
+            }),
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Candidatura de autor → Resend
+      if (pathname === "/api/candidatura" && request.method === "POST") {
+        const body = (await request.json()) as {
+          artistName: string; email: string; field: string;
+          bio: string; portfolio: string; message?: string;
+        };
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey) {
+          // Notifica equipe
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "The Beyond <noreply@thebeyond.art>",
+              to: "contato@thebeyond.art",
+              reply_to: body.email,
+              subject: `[Candidatura] ${body.artistName} — ${body.field}`,
+              html: `<p><strong>Nome artístico:</strong> ${body.artistName}</p>
+                     <p><strong>E-mail:</strong> ${body.email}</p>
+                     <p><strong>Área:</strong> ${body.field}</p>
+                     <p><strong>Portfólio:</strong> <a href="${body.portfolio}">${body.portfolio}</a></p>
+                     <p><strong>Bio:</strong> ${body.bio}</p>
+                     <p><strong>Mensagem:</strong> ${body.message ?? "—"}</p>`,
+            }),
+          });
+          // Confirma para candidato
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "The Beyond <noreply@thebeyond.art>",
+              to: body.email,
+              subject: "Candidatura recebida — The Beyond",
+              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
+                <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#f6f6f6">Candidatura recebida</h1>
+                <p style="color:#9ba1ab;font-size:15px">Recebemos a candidatura de <strong style="color:#f6f6f6">${body.artistName}</strong> em ${body.field}. A curadoria avalia por ordem de chegada.</p>
+                <p style="color:#9ba1ab;font-size:15px;margin-top:12px">Prazo: <strong style="color:#f6f6f6">até 15 dias úteis</strong>. Você receberá uma resposta neste e-mail com aprovação ou recusa comentada.</p>
+              </div>`,
+            }),
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
       // Atualizar PDF de uma obra (autor/admin)
       if (pathname.startsWith("/api/works/") && pathname.endsWith("/pdf") && request.method === "PATCH") {
         const { auth } = await import("./lib/auth-server");

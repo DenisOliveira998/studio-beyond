@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { SITE_URL } from "@/lib/site-url";
 import { PLATFORM_FEE } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/sobre")({
@@ -17,8 +18,10 @@ export const Route = createFileRoute("/sobre")({
         content: "Plataforma editorial independente: curadoria humana, zero anúncios e 88% da receita para quem cria.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/sobre` },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/sobre` }],
   }),
   component: AboutPage,
 });

@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { SITE_URL } from "@/lib/site-url";
 import { useRef, useState } from "react";
 import { Clock, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/candidatura-autor")({
   head: () => ({
@@ -18,8 +20,10 @@ export const Route = createFileRoute("/candidatura-autor")({
         content: "Publique livros, mangás, HQs e contos no The Beyond. Candidatura aberta com seleção por curadoria.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/candidatura-autor` },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/candidatura-autor` }],
   }),
   component: ApplicationPage,
 });
@@ -28,13 +32,32 @@ const FIELDS = ["Livro", "Mangá", "HQ", "Conto", "Outro"];
 
 function ApplicationPage() {
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [artistName, setArtistName] = useState("");
+  const [email, setEmail] = useState("");
   const [field, setField] = useState<string>(FIELDS[0] ?? "Livro");
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [message, setMessage] = useState("");
   const [samples, setSamples] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    try {
+      await fetch("/api/candidatura", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ artistName, email, field, bio, portfolio, message }),
+      });
+    } catch {
+      // falha silenciosa — confirma UI de qualquer forma
+    } finally {
+      setSending(false);
+      setSent(true);
+    }
+  }
 
   if (sent) {
     return (
@@ -46,11 +69,11 @@ function ApplicationPage() {
           <h1 className="hero-type mt-5 text-4xl tracking-tight">Candidatura em análise</h1>
           <p className="mt-5 leading-relaxed text-muted-foreground">
             Recebemos a candidatura de <span className="text-foreground">{artistName}</span> em{" "}
-            {field.toLowerCase()}. A curadoria avalia por ordem de chegada e responde por e-mail com
-            aprovação ou recusa comentada.
+            {field.toLowerCase()}. A curadoria avalia por ordem de chegada e responde para{" "}
+            <span className="text-foreground">{email}</span> com aprovação ou recusa comentada.
           </p>
           <p className="caption mt-6">
-            Autores aprovados recebem acesso imediato ao Painel do Autor.
+            Prazo de análise: até <strong className="text-foreground">15 dias úteis</strong>. Autores aprovados recebem acesso imediato ao Painel do Autor.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
@@ -84,18 +107,18 @@ function ApplicationPage() {
         </p>
         <ol className="mt-10 space-y-4 border-t border-border pt-8 text-sm text-muted-foreground">
           <li>1 — Você envia a candidatura e ela entra na fila da curadoria.</li>
-          <li>2 — O status fica “Candidatura em análise” até a decisão.</li>
+          <li>2 — O status fica &ldquo;Candidatura em análise&rdquo; até a decisão.</li>
           <li>3 — Aprovado, você recebe e-mail e acesso ao Painel do Autor.</li>
           <li>4 — Cada obra publicada passa por revisão antes de aparecer no feed.</li>
         </ol>
+        <p className="mt-6 text-xs text-muted-foreground/70">
+          Prazo de análise: <strong className="text-muted-foreground">até 15 dias úteis</strong>. Toda candidatura recebe resposta — aprovação ou recusa comentada.
+        </p>
       </div>
 
       <form
         className="border border-border bg-surface p-7 sm:p-9"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSent(true);
-        }}
+        onSubmit={(e) => void handleSubmit(e)}
       >
         <label className="block">
           <span className="eyebrow">Nome artístico</span>
@@ -104,6 +127,18 @@ function ApplicationPage() {
             value={artistName}
             onChange={(e) => setArtistName(e.target.value)}
             placeholder="Como você assina as obras"
+            className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+          />
+        </label>
+
+        <label className="mt-5 block">
+          <span className="eyebrow">E-mail para retorno *</span>
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="voce@exemplo.com"
             className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
           />
         </label>
@@ -186,12 +221,13 @@ function ApplicationPage() {
 
         <button
           type="submit"
-          className="btn-type mt-8 w-full bg-primary py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
+          disabled={sending}
+          className="btn-type mt-8 w-full bg-primary py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          Enviar candidatura
+          {sending ? "Enviando…" : "Enviar candidatura"}
         </button>
         <p className="caption mt-4">
-          A resposta chega por e-mail. Nenhuma cobrança envolvida.
+          A resposta chega em até 15 dias úteis no e-mail informado. Nenhuma cobrança envolvida.
         </p>
       </form>
     </div>

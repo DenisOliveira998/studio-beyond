@@ -1,4 +1,6 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+﻿import { createFileRoute, notFound } from "@tanstack/react-router";
+import { SITE_URL } from "@/lib/site-url";
+import { ExternalLink, Instagram } from "lucide-react";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { compact, getArtist, worksByArtist } from "@/lib/beyond-data";
@@ -18,14 +20,27 @@ export const Route = createFileRoute("/artist/$slug")({
         ],
       };
     }
-    const { artist } = loaderData;
+    const { artist, works } = loaderData;
     const description = `${artist.discipline} em ${artist.location}. ${artist.bio}`;
+    const meta: Array<Record<string, string>> = [
+      { title: `${artist.name} — The Beyond` },
+      { name: "description", content: description },
+      { property: "og:title", content: `${artist.name} — The Beyond` },
+      { property: "og:description", content: description },
+      { property: "og:type", content: "profile" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ];
+    // Usa a capa da primeira obra como og:image do artista
+    const firstCover = works.find((w) => w.cover)?.cover;
+    if (firstCover) {
+      meta.push({ property: "og:image", content: firstCover });
+      meta.push({ name: "twitter:image", content: firstCover });
+    }
+    meta.push({ property: "og:url", content: `${SITE_URL}/artist/${artist.slug}` });
     return {
-      meta: [
-        { title: `${artist.name} — The Beyond` },
-        { name: "description", content: description },
-        { property: "og:title", content: `${artist.name} — The Beyond` },
-        { property: "og:description", content: description },
+      meta,
+      links: [
+        { rel: "canonical", href: `${SITE_URL}/artist/${artist.slug}` },
       ],
     };
   },
@@ -47,6 +62,44 @@ function ArtistPage() {
             {artist.name}
           </h1>
           <p className="mt-6 text-base leading-relaxed text-muted-foreground">{artist.bio}</p>
+
+          {/* Social links */}
+          {artist.social && (
+            <div className="mt-5 flex flex-wrap gap-4">
+              {artist.social.instagram && (
+                <a
+                  href={artist.social.instagram}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-gilt"
+                >
+                  <Instagram className="size-3.5" strokeWidth={1.5} />
+                  Instagram
+                </a>
+              )}
+              {artist.social.website && (
+                <a
+                  href={artist.social.website}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-gilt"
+                >
+                  <ExternalLink className="size-3.5" strokeWidth={1.5} />
+                  Site pessoal
+                </a>
+              )}
+              {artist.social.twitter && (
+                <a
+                  href={artist.social.twitter}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-xs text-muted-foreground transition-colors hover:text-gilt"
+                >
+                  X / Twitter
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="lg:text-right">

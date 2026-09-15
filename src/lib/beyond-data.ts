@@ -1,6 +1,8 @@
-import { formatMoney, formatNumber } from "@/lib/i18n";
+﻿import { formatMoney, formatNumber } from "@/lib/i18n";
 
 export type Medium = "livro" | "manga" | "hq" | "conto";
+
+export type WorkChapter = { number: number; title: string; date: string };
 
 export type Work = {
   id: string;
@@ -19,6 +21,7 @@ export type Work = {
   genre?: string;
   pages?: number;
   pdfUrl?: string;
+  chapters?: WorkChapter[];
 };
 
 export type Artist = {
@@ -30,6 +33,7 @@ export type Artist = {
   initials: string;
   supporters: number;
   works: string[];
+  social?: { instagram?: string; website?: string; twitter?: string };
 };
 
 export const MEDIUM_LABEL: Record<Medium, string> = {
@@ -49,6 +53,7 @@ export const artists: Artist[] = [
     supporters: 634,
     bio: "Desenha histórias de vida comum em traço limpo e silêncio. Nascida em São Paulo, filha de imigrantes japoneses, usa o mangá para retratar o cotidiano nipo-brasileiro sem romantismo.",
     works: ["tokiwa-23h", "os-meses-sem-nome"],
+    social: { instagram: "https://instagram.com/anakiyomi.art" },
   },
   {
     slug: "rafael-bravo",
@@ -59,6 +64,7 @@ export const artists: Artist[] = [
     supporters: 411,
     bio: "Cria HQs de viés noir e documental sobre o Nordeste. Trabalha com nanquim e aquarela preta, uma página por semana, sem assistente.",
     works: ["a-ultima-linha", "pedra-e-luz"],
+    social: { instagram: "https://instagram.com/rafaelbravo.hq", website: "https://rafaelbravo.com.br" },
   },
   {
     slug: "leticia-voss",
@@ -69,6 +75,7 @@ export const artists: Artist[] = [
     supporters: 892,
     bio: "Escreve ficção literária sobre herança, silêncio e memória de família. Publicou dois romances por selos independentes; o terceiro nasce aqui, capítulo por capítulo.",
     works: ["o-barulho-das-coisas-quietas", "antes-que-a-mare-mude"],
+    social: { instagram: "https://instagram.com/leticiavoss", website: "https://leticiavoss.com" },
   },
   {
     slug: "tome-omolade",
@@ -79,6 +86,7 @@ export const artists: Artist[] = [
     supporters: 318,
     bio: "Escreve contos sobre o Sul da Bahia, memória e o que as pessoas carregam quando partem. Acredita que o conto é a forma mais honesta de dizer uma coisa de vez.",
     works: ["sete-historias-para-nao-dormir", "o-fim-de-todas-as-partidas"],
+    social: { instagram: "https://instagram.com/tomeomolade" },
   },
 ];
 
@@ -102,6 +110,13 @@ export const works: Work[] = [
     clicks: 44210,
     likes: 3820,
     published: "3 de agosto de 2026",
+    chapters: [
+      { number: 1, title: "O ônibus das 23h", date: "3 ago 2026" },
+      { number: 2, title: "Kiko, o insone", date: "10 ago 2026" },
+      { number: 3, title: "A senhora dos tricôs", date: "17 ago 2026" },
+      { number: 4, title: "Ninguém desembarca no fim da linha", date: "24 ago 2026" },
+      { number: 5, title: "Madrugada de terça", date: "31 ago 2026" },
+    ],
   },
   {
     id: "2",
@@ -181,6 +196,13 @@ export const works: Work[] = [
     clicks: 67230,
     likes: 5810,
     published: "1 de agosto de 2026",
+    chapters: [
+      { number: 1, title: "Chegada", date: "1 ago 2026" },
+      { number: 2, title: "A chave do quarto da mãe", date: "15 ago 2026" },
+      { number: 3, title: "Caixas", date: "29 ago 2026" },
+      { number: 4, title: "A gaveta que ninguém abriu", date: "12 set 2026" },
+      { number: 5, title: "Sábado à noite", date: "26 set 2026" },
+    ],
   },
   {
     id: "6",

@@ -16,15 +16,16 @@ const DEFAULT_CONFIG: SiteConfigData = {
   instagram: "https://instagram.com/thebeyond.art",
   youtube: "https://youtube.com/@thebeyond",
   email: "contato@thebeyond.art",
-  phone: "(11) 99999-9999",
+  phone: "",
   address: "Rua das Artes, 142 — São Paulo, SP",
-  cnpj: "00.000.000/0001-00",
+  cnpj: "",
 };
 
 const nav = [
   { to: "/", label: "Obras" },
   { to: "/artists", label: "Artistas" },
   { to: "/explorar", label: "Explorar" },
+  { to: "/planos", label: "Planos" },
   { to: "/sobre", label: "Quem somos" },
 ];
 
@@ -70,6 +71,7 @@ const navLinks = [
   { to: "/", label: "Obras" },
   { to: "/artists", label: "Artistas" },
   { to: "/explorar", label: "Explorar categorias" },
+  { to: "/planos", label: "Planos de leitura" },
   { to: "/sobre", label: "Quem somos" },
   { to: "/contato", label: "Contato" },
 ] as const;

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
@@ -42,10 +42,17 @@ function AuthPage() {
 
   // ---- Google OAuth ----
   async function signInWithGoogle() {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/",
-    });
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/",
+      });
+      if (result?.error) {
+        toast.error("Erro ao entrar com Google. Tente novamente.");
+      }
+    } catch {
+      toast.error("Erro ao entrar com Google. Tente novamente.");
+    }
   }
 
   // ---- Passo 1: enviar codigo ----
@@ -120,6 +127,9 @@ function AuthPage() {
           <li>Conta criada automaticamente no primeiro acesso.</li>
           <li>Novos leitores entram com papel Leitor por padrao.</li>
           <li>Autores aprovados pela curadoria acessam o Painel do Autor.</li>
+          <li className="mt-2 text-xs text-muted-foreground/60">
+            Codigo expira em 10 min. Seus dados nao sao compartilhados ou vendidos.
+          </li>
         </ul>
       </div>
 

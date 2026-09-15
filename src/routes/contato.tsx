@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
+import { SITE_URL } from "@/lib/site-url";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Instagram, Mail, MapPin, Phone, Send } from "lucide-react";
@@ -21,8 +22,10 @@ export const Route = createFileRoute("/contato")({
         content: "Fale com a equipe do The Beyond: dúvidas, parcerias e suporte.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/contato` },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/contato` }],
   }),
   component: ContactPage,
 });
@@ -31,9 +34,9 @@ const DEFAULT_CFG: SiteConfigData = {
   instagram: "https://instagram.com/thebeyond.art",
   youtube: "",
   email: "contato@thebeyond.art",
-  phone: "(11) 99999-9999",
+  phone: "",
   address: "Rua das Artes, 142 — São Paulo, SP",
-  cnpj: "00.000.000/0001-00",
+  cnpj: "",
 };
 
 type Field = "name" | "email" | "subject" | "message";
@@ -74,11 +77,20 @@ function ContactPage() {
       return;
     }
     setSending(true);
-    // Simulação — integrar com Resend quando pronto
-    await new Promise((r) => setTimeout(r, 1200));
-    setSending(false);
-    setSent(true);
-    toast.success("Mensagem enviada! Respondemos em até 2 dias úteis.");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("server");
+      setSent(true);
+      toast.success("Mensagem enviada! Respondemos em até 2 dias úteis.");
+    } catch {
+      toast.error("Erro ao enviar. Tente novamente ou escreva para contato@thebeyond.art");
+    } finally {
+      setSending(false);
+    }
   }
 
   const igHandle = cfg.instagram

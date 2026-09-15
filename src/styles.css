@@ -237,6 +237,53 @@
   }
 }
 
+/* ── TipTap RichEditor ────────────────────────────────────────────────────── */
+
+/* Placeholder via atributo data-placeholder do Tiptap */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Foco do editor sem outline nativo */
+.tiptap:focus {
+  outline: none;
+}
+
+/* Estilos tipográficos dentro do editor (herda do prose) */
+.tiptap h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+  color: var(--foreground);
+}
+.tiptap h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1em 0 0.4em;
+  color: var(--foreground);
+}
+.tiptap blockquote {
+  border-left: 3px solid var(--gilt);
+  padding-left: 1rem;
+  margin: 1em 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.tiptap ul, .tiptap ol {
+  padding-left: 1.5rem;
+  margin: 0.75em 0;
+}
+.tiptap li + li {
+  margin-top: 0.25em;
+}
+
 /* ── Prose (typography plugin) personalizado para o Beyond ── */
 .prose {
   --tw-prose-body: var(--foreground);

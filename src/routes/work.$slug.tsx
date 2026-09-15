@@ -1,9 +1,11 @@
 ﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { Download, Heart, Link2, Play } from "lucide-react";
+import { SITE_URL } from "@/lib/site-url";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ArrowUp, Bookmark, Download, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { DonateDialog } from "@/components/donate-dialog";
-import { MEDIUM_LABEL, compact, getArtist, getWork } from "@/lib/beyond-data";
+import { WorkCard } from "@/components/work-card";
+import { MEDIUM_LABEL, compact, getArtist, getWork, works } from "@/lib/beyond-data";
 import { stripHtml, isHtml } from "@/lib/utils";
 
 export const Route = createFileRoute("/work/$slug")({
@@ -11,7 +13,10 @@ export const Route = createFileRoute("/work/$slug")({
     const work = getWork(params.slug);
     const artist = work ? getArtist(work.artistSlug) : undefined;
     if (!work || !artist) throw notFound();
-    return { work, artist };
+    const related = works
+      .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
+      .slice(0, 3);
+    return { work, artist, related };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -26,13 +31,23 @@ export const Route = createFileRoute("/work/$slug")({
     // Lição Galinha GSB: sempre stripHtml em meta tags — rich text vaza <p>Título</p>
     const cleanTitle = stripHtml(work.title);
     const cleanExcerpt = stripHtml(work.excerpt);
+    const meta: Array<Record<string, string>> = [
+      { title: `${cleanTitle}, de ${artist.name} — The Beyond` },
+      { name: "description", content: cleanExcerpt },
+      { property: "og:title", content: `${cleanTitle}, de ${artist.name}` },
+      { property: "og:description", content: cleanExcerpt },
+      { property: "og:type", content: "article" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ];
+    if (work.cover) {
+      meta.push({ property: "og:image", content: work.cover });
+      meta.push({ name: "twitter:image", content: work.cover });
+    }
+    meta.push({ property: "og:url", content: `${SITE_URL}/work/${work.slug}` });
     return {
-      meta: [
-        { title: `${cleanTitle}, de ${artist.name} — The Beyond` },
-        { name: "description", content: cleanExcerpt },
-        { property: "og:title", content: `${cleanTitle}, de ${artist.name}` },
-        { property: "og:description", content: cleanExcerpt },
-        { property: "og:type", content: "article" },
+      meta,
+      links: [
+        { rel: "canonical", href: `${SITE_URL}/work/${work.slug}` },
       ],
     };
   },
@@ -48,7 +63,7 @@ export const Route = createFileRoute("/work/$slug")({
 function WorkParagraph({ content, className }: { content: string; className?: string }) {
   if (isHtml(content)) {
     return (
-      <p
+      <div
         className={className}
         dangerouslySetInnerHTML={{ __html: content }}
       />
@@ -57,13 +72,150 @@ function WorkParagraph({ content, className }: { content: string; className?: st
   return <p className={className}>{content}</p>;
 }
 
-function WorkPage() {
-  const { work, artist } = Route.useLoaderData();
-  const [liked, setLiked] = useState(false);
-  const views = work.clicks + 1;
+// ── Comentários ────────────────────────────────────────────────
+
+type Comment = { id: string; author: string; text: string; ago: string };
+
+const SEED_COMMENTS: Comment[] = [
+  { id: "c1", author: "Mariana T.", text: "Que obra densa. Terminei de ler às 2h da manhã e fiquei olhando pro teto por meia hora.", ago: "3 dias atrás" },
+  { id: "c2", author: "Felipe R.", text: "A escrita tem um ritmo muito particular — às vezes lenta demais e depois te pega de surpresa. Gostei muito.", ago: "1 semana atrás" },
+];
+
+const COMMENTS_KEY = "beyond:comments:";
+
+function CommentsSection({ workSlug }: { workSlug: string }) {
+  const key = COMMENTS_KEY + workSlug;
+  const [comments, setComments] = useState<Comment[]>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as Comment[]) : SEED_COMMENTS;
+    } catch { return SEED_COMMENTS; }
+  });
+  const [draft, setDraft] = useState("");
+  const [name, setName] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const persist = useCallback((list: Comment[]) => {
+    try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* ignore */ }
+  }, [key]);
+
+  function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    setSending(true);
+    setTimeout(() => {
+      const next: Comment[] = [
+        { id: `c${Date.now()}`, author: name.trim() || "Anônimo", text: draft.trim(), ago: "agora mesmo" },
+        ...comments,
+      ];
+      setComments(next);
+      persist(next);
+      setDraft("");
+      setSending(false);
+      toast.success("Comentário publicado.");
+    }, 600);
+  }
 
   return (
-    <article className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
+    <section className="mt-20 border-t border-border pt-12">
+      <h2 className="font-display text-2xl tracking-tight">
+        Comentários <span className="ml-2 text-base text-muted-foreground">({comments.length})</span>
+      </h2>
+
+      {/* Formulário */}
+      <form onSubmit={handleSend} className="mt-8 border border-border bg-surface p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="eyebrow">Seu nome (opcional)</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Como quer ser chamado?"
+              className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+            />
+          </label>
+        </div>
+        <label className="mt-4 block">
+          <span className="eyebrow">Seu comentário</span>
+          <textarea
+            required
+            rows={3}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="O que achou da obra?"
+            className="mt-2 w-full resize-y border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={sending}
+          className="btn-type mt-4 border border-gilt px-5 py-2 text-xs text-gilt transition-colors hover:bg-gilt hover:text-primary-foreground disabled:opacity-60"
+        >
+          {sending ? "Publicando…" : "Publicar comentário"}
+        </button>
+      </form>
+
+      {/* Lista */}
+      <div className="mt-8 divide-y divide-border">
+        {comments.map((c) => (
+          <div key={c.id} className="py-6">
+            <div className="flex items-baseline gap-3">
+              <span className="font-display text-base">{c.author}</span>
+              <span className="text-xs text-muted-foreground">{c.ago}</span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Bookmark ────────────────────────────────────────────────────
+
+const BOOKMARK_KEY = "beyond:bookmarks";
+
+function useBookmark(slug: string) {
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BOOKMARK_KEY);
+      const list: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+      setSaved(list.includes(slug));
+    } catch { /* ignore */ }
+  }, [slug]);
+
+  function toggle() {
+    try {
+      const raw = localStorage.getItem(BOOKMARK_KEY);
+      const list: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+      const next = list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug];
+      localStorage.setItem(BOOKMARK_KEY, JSON.stringify(next));
+      setSaved(next.includes(slug));
+      toast.success(next.includes(slug) ? "Obra salva na sua lista." : "Removida da lista.");
+    } catch { /* ignore */ }
+  }
+
+  return { saved, toggle };
+}
+
+function WorkPage() {
+  const { work, artist, related } = Route.useLoaderData();
+  const [liked, setLiked] = useState(false);
+  const [followed, setFollowed] = useState(false);
+  const { saved, toggle: toggleBookmark } = useBookmark(work.slug);
+  const [showBackTop, setShowBackTop] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
+  const views = work.clicks + 1;
+
+  useEffect(() => {
+    const onScroll = () => setShowBackTop(window.scrollY > 600);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <article ref={topRef} className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
       {/* Eyebrow: categoria + gênero + data */}
       <p className="eyebrow">
         {MEDIUM_LABEL[work.medium]}
@@ -99,6 +251,27 @@ function WorkPage() {
         )}
       </div>
 
+      {/* Seguir autor */}
+      <div className="mt-5">
+        <button
+          onClick={() => {
+            setFollowed((v) => !v);
+            toast.success(
+              followed
+                ? `Você deixou de seguir ${artist.name}.`
+                : `Você está seguindo ${artist.name}. Novidades chegarão por e-mail.`,
+            );
+          }}
+          className={`text-xs uppercase tracking-[0.18em] border px-4 py-2 transition-colors ${
+            followed
+              ? "border-gilt text-gilt"
+              : "border-border text-muted-foreground hover:border-gilt hover:text-gilt"
+          }`}
+        >
+          {followed ? "✓ Seguindo" : `+ Seguir ${artist.name.split(" ")[0]}`}
+        </button>
+      </div>
+
       {work.cover && (
         <img
           src={work.cover}
@@ -128,6 +301,27 @@ function WorkPage() {
         </div>
       )}
 
+      {/* ── Índice de capítulos ── */}
+      {work.chapters && work.chapters.length > 0 && (
+        <div className="mt-10 border border-border bg-surface">
+          <p className="eyebrow border-b border-border px-5 py-3 text-xs">Capítulos</p>
+          <ol className="divide-y divide-border">
+            {work.chapters.map((ch) => (
+              <li
+                key={ch.number}
+                className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm"
+              >
+                <span className="flex items-baseline gap-3">
+                  <span className="tabular-nums text-muted-foreground/50">{String(ch.number).padStart(2, "0")}</span>
+                  <span className="text-foreground">{ch.title}</span>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {/* Corpo da obra com prose (typography plugin) para experiência de leitura */}
       <div className="prose mt-10 max-w-none">
         <p className="lead text-muted-foreground not-prose text-lg leading-relaxed">
@@ -140,6 +334,7 @@ function WorkPage() {
         </div>
       </div>
 
+      {/* Ações */}
       <div className="mt-14 flex flex-wrap items-center gap-3 border-t border-border pt-8">
         <button
           onClick={() => setLiked((v) => !v)}
@@ -151,6 +346,18 @@ function WorkPage() {
           <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
           {compact(work.likes + (liked ? 1 : 0))}
         </button>
+
+        <button
+          onClick={toggleBookmark}
+          aria-label={saved ? "Remover da lista" : "Salvar na lista"}
+          className={`flex items-center gap-2 border px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-colors ${
+            saved ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
+          {saved ? "Salvo" : "Salvar"}
+        </button>
+
         <button
           onClick={() => {
             if (typeof window !== "undefined") {
@@ -163,6 +370,7 @@ function WorkPage() {
           <Link2 className="h-3.5 w-3.5" />
           Compartilhar
         </button>
+
         <DonateDialog
           artistName={artist.name}
           trigger={
@@ -171,6 +379,7 @@ function WorkPage() {
             </button>
           }
         />
+
         {work.pdfUrl && (
           <a
             href={work.pdfUrl}
@@ -183,6 +392,32 @@ function WorkPage() {
           </a>
         )}
       </div>
+
+      {/* ── Obras relacionadas ── */}
+      {related.length > 0 && (
+        <section className="mt-20 border-t border-border pt-12">
+          <p className="eyebrow mb-8">Você também pode gostar</p>
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((w) => (
+              <WorkCard key={w.id} work={w} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Comentários ── */}
+      <CommentsSection workSlug={work.slug} />
+
+      {/* ── Voltar ao topo ── */}
+      {showBackTop && (
+        <button
+          onClick={() => topRef.current?.scrollIntoView({ behavior: "smooth" })}
+          aria-label="Voltar ao topo"
+          className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center border border-border bg-surface text-muted-foreground shadow-sm transition-colors hover:border-gilt hover:text-gilt"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </button>
+      )}
     </article>
   );
 }

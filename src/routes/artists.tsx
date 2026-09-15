@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { SITE_URL } from "@/lib/site-url";
+import { useState } from "react";
 import { artists, worksByArtist } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/artists")({
@@ -18,13 +20,21 @@ export const Route = createFileRoute("/artists")({
           "Escritores, mangakistas e quadrinistas independentes. Conheça quem publica no The Beyond e ganha por cada leitura.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/artists` },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/artists` }],
   }),
   component: ArtistsPage,
 });
 
+const disciplines = ["Todos", ...Array.from(new Set(artists.map((a) => a.discipline)))];
+
 function ArtistsPage() {
+  const [filter, setFilter] = useState("Todos");
+
+  const list = filter === "Todos" ? artists : artists.filter((a) => a.discipline === filter);
+
   return (
     <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
       <p className="eyebrow">O elenco</p>
@@ -32,8 +42,25 @@ function ArtistsPage() {
         Artistas residentes
       </h1>
 
-      <div className="mt-14 divide-y divide-border border-y border-border">
-        {artists.map((a) => (
+      {/* Filtro por disciplina */}
+      <div className="mt-8 flex flex-wrap gap-2">
+        {disciplines.map((d) => (
+          <button
+            key={d}
+            onClick={() => setFilter(d)}
+            className={`border px-4 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors ${
+              filter === d
+                ? "border-gilt text-gilt"
+                : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
+            }`}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-10 divide-y divide-border border-y border-border">
+        {list.map((a) => (
           <Link
             key={a.slug}
             to="/artist/$slug"

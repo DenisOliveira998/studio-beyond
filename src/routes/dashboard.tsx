@@ -1,5 +1,6 @@
 ﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import { RichEditor } from "@/components/RichEditor";
 import { toast } from "sonner";
 import {
   FileClock,
@@ -9,13 +10,16 @@ import {
   FileText,
   FileUp,
   Heart,
+  History,
   ImagePlus,
   LayoutDashboard,
   Library,
   Pencil,
   Send,
   UserRound,
+  X,
 } from "lucide-react";
+import type { Work } from "@/lib/beyond-data";
 import {
   PLATFORM_FEE,
   RATE_PER_CLICK,
@@ -52,9 +56,46 @@ const NAV = [
   { id: "minhas-obras", label: "Minhas Obras", icon: Library },
   { id: "publicar", label: "Publicar Obra", icon: Send },
   { id: "em-revisao", label: "Em revisão", icon: FileClock },
+  { id: "historico", label: "Histórico", icon: History },
   { id: "ganhos", label: "Ganhos", icon: CircleDollarSign },
   { id: "perfil", label: "Meu Perfil", icon: UserRound },
 ];
+
+type LogType = "submit" | "donation" | "edit" | "publish" | "unpublish" | "review";
+
+const CHANGELOG: Array<{
+  date: string;
+  work: string;
+  action: string;
+  type: LogType;
+}> = [
+  { date: "30 ago 2026", work: "O Barulho das Coisas Quietas — Cap. 13", action: "Enviado para revisão da curadoria", type: "submit" },
+  { date: "28 ago 2026", work: "Antes que a Maré Mude", action: "Doação recebida: R$ 15,00 — Anônimo", type: "donation" },
+  { date: "22 ago 2026", work: "O Barulho das Coisas Quietas — Cap. 12", action: "Curadoria solicitou ajustes: revisar consistência de voz no 2º parágrafo", type: "review" },
+  { date: "14 ago 2026", work: "Antes que a Maré Mude", action: "Título atualizado para a versão atual", type: "edit" },
+  { date: "10 ago 2026", work: "Antes que a Maré Mude", action: "Publicada no feed após aprovação da curadoria", type: "publish" },
+  { date: "05 ago 2026", work: "O Barulho das Coisas Quietas", action: "Imagem de capa substituída", type: "edit" },
+  { date: "21 jul 2026", work: "Antes que a Maré Mude", action: "Enviado para revisão da curadoria", type: "submit" },
+  { date: "15 jul 2026", work: "O Barulho das Coisas Quietas", action: "Publicada no feed após aprovação da curadoria", type: "publish" },
+];
+
+const LOG_DOT: Record<LogType, string> = {
+  submit:   "bg-gilt/70 border-gilt/50",
+  donation: "bg-gilt border-gilt",
+  edit:     "bg-border border-border",
+  publish:  "bg-[var(--chart-2)]/70 border-[var(--chart-2)]/50",
+  unpublish:"bg-destructive/50 border-destructive/30",
+  review:   "bg-muted-foreground/40 border-muted-foreground/30",
+};
+
+const LOG_LABEL: Record<LogType, string> = {
+  submit:   "Envio",
+  donation: "Doação",
+  edit:     "Edição",
+  publish:  "Publicação",
+  unpublish:"Despublicação",
+  review:   "Revisão",
+};
 
 const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto"];
 
@@ -85,14 +126,20 @@ function Dashboard() {
   const fee = gross * PLATFORM_FEE;
   const net = gross - fee;
 
+  const [editingWork, setEditingWork] = useState<Work | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editType, setEditType] = useState("");
+
   const [title, setTitle] = useState("");
   const [workType, setWorkType] = useState(WORK_TYPES[0]);
   const [body, setBody] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const [tags, setTags] = useState("");
   const [coverName, setCoverName] = useState<string | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState<"idle" | "pdf" | "work">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<
@@ -127,10 +174,12 @@ function Dashboard() {
       return;
     }
     setUploading(true);
+    setUploadStep("idle");
     let pdfUrl: string | null = null;
     try {
       // Se tiver PDF selecionado, faz upload primeiro
       if (pdfFile) {
+        setUploadStep("pdf");
         const fd = new FormData();
         fd.append("file", pdfFile);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -138,10 +187,12 @@ function Dashboard() {
         if (!res.ok || !data.url) {
           toast.error(data.error ?? "Erro ao enviar o PDF.");
           setUploading(false);
+          setUploadStep("idle");
           return;
         }
         pdfUrl = data.url;
       }
+      setUploadStep("work");
 
       const mediumMap: Record<string, string> = {
         Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto",
@@ -183,6 +234,7 @@ function Dashboard() {
       toast.error("Erro ao enviar a obra. Tente novamente.");
     } finally {
       setUploading(false);
+      setUploadStep("idle");
     }
   }
 
@@ -294,7 +346,11 @@ function Dashboard() {
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
                           <ActionButton
-                            onClick={() => toast.success(`Edição de "${w.title}" aberta (demo).`)}
+                            onClick={() => {
+                              setEditingWork(w);
+                              setEditTitle(w.title);
+                              setEditType(WORK_TYPES.find((t) => t.toLowerCase() === w.medium) ?? WORK_TYPES[0] ?? "Livro");
+                            }}
                           >
                             <Pencil className="size-3.5" /> Editar
                           </ActionButton>
@@ -349,13 +405,10 @@ function Dashboard() {
               </Field>
 
               <Field label="Descrição / conteúdo" htmlFor="obra-conteudo">
-                <textarea
-                  id="obra-conteudo"
+                <RichEditor
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={8}
+                  onChange={setBody}
                   placeholder="Escreva ou descreva sua obra aqui…"
-                  className="w-full resize-y border border-border bg-transparent px-4 py-3 text-sm leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
                 />
               </Field>
 
@@ -415,7 +468,63 @@ function Dashboard() {
               </Field>
             </div>
 
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            {/* Pré-visualização (item 25-26) */}
+            {showPreview && (
+              <div className="mt-8 rounded-[2px] border border-gilt/30 bg-background p-6">
+                <p className="eyebrow mb-4 flex items-center gap-2 text-gilt">
+                  <Eye className="size-3.5" strokeWidth={1.5} /> Pré-visualização
+                </p>
+                {title ? (
+                  <>
+                    <p className="eyebrow text-muted-foreground">{workType}</p>
+                    <h3 className="mt-2 font-display text-2xl tracking-tight">{title}</h3>
+                    {body && (
+                      <div
+                        className="prose mt-4 max-w-none text-sm text-muted-foreground"
+                        dangerouslySetInnerHTML={{ __html: body.slice(0, 800) + (body.length > 800 ? "…" : "") }}
+                      />
+                    )}
+                    {tags && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                          <span key={t} className="border border-border px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    {coverName && (
+                      <p className="mt-3 text-xs text-muted-foreground">Capa: {coverName}</p>
+                    )}
+                    {pdfName && (
+                      <p className="mt-1 text-xs text-muted-foreground">PDF: {pdfName}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground/60">Preencha o título para ver a pré-visualização.</p>
+                )}
+              </div>
+            )}
+
+            {/* Barra de progresso do upload */}
+            {uploading && (
+              <div className="mt-8">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                  <span>
+                    {uploadStep === "pdf" && "Enviando PDF…"}
+                    {uploadStep === "work" && "Salvando obra…"}
+                    {uploadStep === "idle" && "Preparando…"}
+                  </span>
+                  <span className="animate-pulse text-gilt">●</span>
+                </div>
+                <div className="h-0.5 w-full overflow-hidden bg-border">
+                  <div
+                    className="h-full bg-gilt transition-all duration-500"
+                    style={{ width: uploadStep === "pdf" ? "40%" : uploadStep === "work" ? "80%" : "10%" }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
                 type="submit"
                 disabled={uploading}
@@ -430,6 +539,14 @@ function Dashboard() {
                 className="inline-flex items-center justify-center gap-2 border border-border px-8 py-3.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-60"
               >
                 <FileText className="size-4" /> Salvar rascunho
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="inline-flex items-center justify-center gap-2 border border-border px-6 py-3.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+              >
+                {showPreview ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPreview ? "Fechar prévia" : "Pré-visualizar"}
               </button>
             </div>
           </form>
@@ -484,6 +601,46 @@ function Dashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        {/* Histórico de alterações */}
+        <section id="historico" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={History}>Histórico de alterações</SectionTitle>
+          <p className="caption mt-4">
+            Todas as ações realizadas nas suas obras, por ordem cronológica.
+          </p>
+
+          <div className="relative ml-3 mt-8">
+            {/* Linha vertical */}
+            <div className="absolute bottom-2 left-2 top-2 w-px bg-border" />
+
+            <div className="space-y-0">
+              {CHANGELOG.map((entry, i) => (
+                <div key={i} className="relative flex gap-6 pb-8 pl-9">
+                  {/* Dot */}
+                  <div
+                    className={`absolute left-0 top-1 size-4 shrink-0 rounded-[2px] border ${LOG_DOT[entry.type]}`}
+                  />
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      <span className="caption whitespace-nowrap">{entry.date}</span>
+                      <span
+                        className={`inline-block border px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] ${LOG_DOT[entry.type]} opacity-80`}
+                      >
+                        {LOG_LABEL[entry.type]}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-display text-lg leading-snug">{entry.work}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {entry.action}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -567,6 +724,65 @@ function Dashboard() {
             </table>
           </div>
         </section>
+
+        {/* Modal de edição de obra (item 9) */}
+        {editingWork && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="w-full max-w-lg border border-gilt/40 bg-surface p-8 shadow-[var(--shadow-gallery)]">
+              <div className="flex items-center justify-between">
+                <p className="font-display text-xl tracking-tight">Editar obra</p>
+                <button
+                  onClick={() => setEditingWork(null)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Fechar"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-4">
+                <label className="block">
+                  <span className="eyebrow">Título</span>
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-gilt"
+                  />
+                </label>
+                <label className="block">
+                  <span className="eyebrow">Tipo de obra</span>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-gilt"
+                  >
+                    {WORK_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => {
+                    toast.success(`Alterações em "${editTitle}" salvas.`);
+                    setEditingWork(null);
+                  }}
+                  className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Salvar alterações
+                </button>
+                <button
+                  onClick={() => setEditingWork(null)}
+                  className="border border-border px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Meu Perfil */}
         <section id="perfil" className="mt-16 scroll-mt-24">
