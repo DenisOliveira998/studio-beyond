@@ -39,9 +39,11 @@ function AuthPage() {
   const [step, setStep] = useState<OtpStep>("email");
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [signingInGoogle, setSigningInGoogle] = useState(false);
 
   // ---- Google OAuth ----
   async function signInWithGoogle() {
+    setSigningInGoogle(true);
     try {
       const result = await authClient.signIn.social({
         provider: "google",
@@ -49,9 +51,12 @@ function AuthPage() {
       });
       if (result?.error) {
         toast.error("Erro ao entrar com Google. Tente novamente.");
+        setSigningInGoogle(false);
       }
+      // sucesso → redireciona para Google; estado fica true até sair da página
     } catch {
       toast.error("Erro ao entrar com Google. Tente novamente.");
+      setSigningInGoogle(false);
     }
   }
 
@@ -139,8 +144,16 @@ function AuthPage() {
         <button
           type="button"
           onClick={() => void signInWithGoogle()}
-          className="flex w-full items-center justify-center gap-3 border border-border bg-surface px-5 py-3.5 text-sm transition-colors hover:border-gilt hover:text-foreground"
+          disabled={signingInGoogle}
+          className="flex w-full items-center justify-center gap-3 border border-border bg-surface px-5 py-3.5 text-sm transition-colors hover:border-gilt hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
+          {signingInGoogle ? (
+            <>
+              <span className="size-5 shrink-0 animate-spin rounded-full border-2 border-border border-t-gilt" />
+              Redirecionando…
+            </>
+          ) : (
+          <>
           {/* SVG Google */}
           <svg viewBox="0 0 24 24" className="size-5 shrink-0" aria-hidden>
             <path
@@ -161,6 +174,8 @@ function AuthPage() {
             />
           </svg>
           Continuar com Google
+          </>
+          )}
         </button>
 
         {/* Divisor */}
