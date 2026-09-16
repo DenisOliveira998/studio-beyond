@@ -1,7 +1,8 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect } from "react";
-import { MEDIUM_LABEL, compact, works, type Medium } from "@/lib/beyond-data";
+import { useQuery } from "@tanstack/react-query";
+import { MEDIUM_LABEL, compact, type Work, type Medium } from "@/lib/beyond-data";
 import { WorkCardSkeleton } from "@/components/work-card-skeleton";
 
 export const Route = createFileRoute("/explorar")({
@@ -44,7 +45,12 @@ function ExplorePage() {
   const [filter, setFilter] = useState<FilterType>(ALL);
   const [loading, setLoading] = useState(false);
 
-  // Breve estado de carregamento ao trocar filtro (skeleton UX)
+  const { data: works = [] } = useQuery<Work[]>({
+    queryKey: ["works"],
+    queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 250);
     return () => clearTimeout(t);
@@ -61,7 +67,6 @@ function ExplorePage() {
         Livros, mangás, HQs e contos autorais — nenhuma recomendação automática. Escolha por onde entrar.
       </p>
 
-      {/* Filtros */}
       <div className="mt-10 flex flex-wrap gap-2">
         {([ALL, ...MEDIA] as FilterType[]).map((m) => (
           <button
@@ -83,7 +88,6 @@ function ExplorePage() {
       </p>
 
       {filter === ALL ? (
-        /* Grade por categoria */
         <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
           {MEDIA.map((m) => {
             const list = works.filter((w) => w.medium === m);
@@ -95,32 +99,34 @@ function ExplorePage() {
                   {MEDIUM_LABEL[m]}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{NOTE[m]}</p>
-                <ul className="mt-6 space-y-3 border-t border-border pt-5">
-                  {list.map((w) => (
-                    <li key={w.slug}>
-                      <Link
-                        to="/work/$slug"
-                        params={{ slug: w.slug }}
-                        className="rule-hover title-italic text-lg transition-colors hover:text-gilt"
-                      >
-                        {w.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                {list.length > 0 && (
+                  <ul className="mt-6 space-y-3 border-t border-border pt-5">
+                    {list.map((w) => (
+                      <li key={w.slug}>
+                        <Link
+                          to="/work/$slug"
+                          params={{ slug: w.slug }}
+                          className="rule-hover title-italic text-lg transition-colors hover:text-gilt"
+                        >
+                          {w.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             );
           })}
         </div>
       ) : loading ? (
-        /* Skeleton durante troca de filtro */
         <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => <WorkCardSkeleton key={i} />)}
         </div>
       ) : (
-        /* Lista da categoria filtrada */
         <div className="mt-10 divide-y divide-border border-y border-border">
-          {filtered.map((w) => (
+          {filtered.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma obra nesta categoria ainda.</p>
+          ) : filtered.map((w) => (
             <Link
               key={w.slug}
               to="/work/$slug"

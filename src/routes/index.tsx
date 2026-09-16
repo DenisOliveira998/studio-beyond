@@ -1,11 +1,11 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, artists, works, getArtist, type Medium } from "@/lib/beyond-data";
-import type { CarouselItemData, ReaderProfileStats } from "@/lib/beyond-db";
+import { MEDIUM_LABEL, type Work, type Medium } from "@/lib/beyond-data";
+import type { CarouselItemData, ReaderProfileStats, ArtistSummary } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
@@ -26,11 +26,7 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/` },
-      { property: "og:image", content: `${SITE_URL}/images/work-1.jpg` },
-      { property: "og:image:width", content: "1280" },
-      { property: "og:image:height", content: "720" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: `${SITE_URL}/images/work-1.jpg` },
     ],
     links: [
       { rel: "canonical", href: `${SITE_URL}/` },
@@ -41,13 +37,11 @@ export const Route = createFileRoute("/")({
 
 const filters: ("all" | Medium)[] = ["all", "livro", "manga", "hq", "conto"];
 
-const FEATURED_FALLBACK = [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 3);
-
 type SlideItem =
   | { kind: "db"; item: CarouselItemData }
-  | { kind: "work"; work: (typeof FEATURED_FALLBACK)[0] };
+  | { kind: "work"; work: Work };
 
-function FeaturedCarousel() {
+function FeaturedCarousel({ works }: { works: Work[] }) {
   const [cur, setCur] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -57,12 +51,14 @@ function FeaturedCarousel() {
     staleTime: 60_000,
   });
 
+  const featuredFallback = [...works].slice(0, 3);
+
   const slides: SlideItem[] =
     dbItems.filter((i) => i.active).length > 0
       ? dbItems.filter((i) => i.active).map((item) => ({ kind: "db" as const, item }))
-      : FEATURED_FALLBACK.map((work) => ({ kind: "work" as const, work }));
+      : featuredFallback.map((work) => ({ kind: "work" as const, work }));
 
-  const count = slides.length;
+  const count = slides.length || 1;
 
   useEffect(() => {
     if (paused) return;
@@ -73,6 +69,8 @@ function FeaturedCarousel() {
   const prev = () => setCur((i) => (i - 1 + count) % count);
   const next = () => setCur((i) => (i + 1) % count);
 
+  if (slides.length === 0) return null;
+
   return (
     <section
       className="border-b border-border/70 bg-surface"
@@ -82,14 +80,13 @@ function FeaturedCarousel() {
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
         <p className="eyebrow text-gilt">Em Destaque</p>
 
-        {/* Slide area */}
         <div className="relative mt-6">
           {slides.map((slide, i) => {
             const isDb = slide.kind === "db";
             const title = isDb ? slide.item.title : slide.work.title;
-            const subtitle = isDb ? slide.item.subtitle : (getArtist(slide.work.artistSlug)?.name ?? "");
+            const subtitle = isDb ? slide.item.subtitle : (slide.work.artistName ?? "");
             const excerpt = isDb ? "" : slide.work.excerpt;
-            const imgUrl = isDb ? slide.item.imageUrl : "";
+            const imgUrl = isDb ? slide.item.imageUrl : (slide.work.cover ?? "");
             const linkUrl = isDb ? slide.item.linkUrl : `/work/${slide.work.slug}`;
             const tag = isDb ? "" : MEDIUM_LABEL[slide.work.medium];
 
@@ -104,7 +101,6 @@ function FeaturedCarousel() {
                 }`}
               >
                 <div className="grid gap-8 sm:grid-cols-[1fr_200px] sm:items-start">
-                  {/* Text */}
                   <div>
                     {tag && <p className="caption">{tag}</p>}
                     <h2 className="hero-type mt-3 text-3xl leading-tight sm:text-5xl">{title}</h2>
@@ -126,7 +122,6 @@ function FeaturedCarousel() {
                     )}
                   </div>
 
-                  {/* Painel decorativo / imagem */}
                   <div className="hidden sm:block">
                     {imgUrl ? (
                       <div className="aspect-[3/4] overflow-hidden border border-gilt/20">
@@ -149,9 +144,7 @@ function FeaturedCarousel() {
           })}
         </div>
 
-        {/* Controls */}
         <div className="mt-10 flex items-center justify-between">
-          {/* Indicadores */}
           <div className="flex items-center gap-2">
             {slides.map((_, i) => (
               <button
@@ -164,8 +157,6 @@ function FeaturedCarousel() {
               />
             ))}
           </div>
-
-          {/* Setas */}
           <div className="flex gap-2">
             <button
               onClick={prev}
@@ -188,7 +179,7 @@ function FeaturedCarousel() {
   );
 }
 
-function ContinueReading() {
+function ContinueReading({ works }: { works: Work[] }) {
   const { user, loading } = useAuth();
 
   const { data: stats } = useQuery<ReaderProfileStats>({
@@ -207,7 +198,7 @@ function ContinueReading() {
       const work = works.find((w) => w.slug === p.workSlug);
       return work ? { work, pagesRead: p.pagesRead } : null;
     })
-    .filter(Boolean) as { work: (typeof works)[0]; pagesRead: number }[];
+    .filter(Boolean) as { work: Work; pagesRead: number }[];
 
   if (!inProgress.length) return null;
 
@@ -219,34 +210,31 @@ function ContinueReading() {
           <p className="eyebrow">De onde você parou</p>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
-          {inProgress.map(({ work, pagesRead }) => {
-            const artist = getArtist(work.artistSlug);
-            return (
-              <Link
-                key={work.id}
-                to="/work/$slug"
-                params={{ slug: work.slug }}
-                className="group shrink-0 w-48 border border-border bg-background p-4 transition-colors hover:border-gilt"
-              >
-                <p className="eyebrow text-gilt/70">{MEDIUM_LABEL[work.medium]}</p>
-                <p className="mt-2 font-display text-base leading-tight line-clamp-2 group-hover:text-gilt">
-                  {work.title}
-                </p>
-                {artist && (
-                  <p className="mt-1 text-xs text-muted-foreground">{artist.name}</p>
-                )}
-                <div className="mt-3 h-px w-full bg-border">
-                  <div
-                    className="h-px bg-gilt transition-all"
-                    style={{ width: `${Math.min(pagesRead, 100)}%` }}
-                  />
-                </div>
-                <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
-                  {pagesRead}% lido
-                </p>
-              </Link>
-            );
-          })}
+          {inProgress.map(({ work, pagesRead }) => (
+            <Link
+              key={work.id}
+              to="/work/$slug"
+              params={{ slug: work.slug }}
+              className="group shrink-0 w-48 border border-border bg-background p-4 transition-colors hover:border-gilt"
+            >
+              <p className="eyebrow text-gilt/70">{MEDIUM_LABEL[work.medium]}</p>
+              <p className="mt-2 font-display text-base leading-tight line-clamp-2 group-hover:text-gilt">
+                {work.title}
+              </p>
+              {work.artistName && (
+                <p className="mt-1 text-xs text-muted-foreground">{work.artistName}</p>
+              )}
+              <div className="mt-3 h-px w-full bg-border">
+                <div
+                  className="h-px bg-gilt transition-all"
+                  style={{ width: `${Math.min(pagesRead, 100)}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
+                {pagesRead}% lido
+              </p>
+            </Link>
+          ))}
         </div>
       </div>
     </section>
@@ -255,13 +243,25 @@ function ContinueReading() {
 
 function Home() {
   const [filter, setFilter] = useState<"all" | Medium>("all");
+
+  const { data: works = [] } = useQuery<Work[]>({
+    queryKey: ["works"],
+    queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
+    staleTime: 60_000,
+  });
+
+  const { data: artists = [] } = useQuery<ArtistSummary[]>({
+    queryKey: ["artists"],
+    queryFn: () => fetch("/api/artists").then((r) => r.json() as Promise<ArtistSummary[]>),
+    staleTime: 60_000,
+  });
+
   const feed = filter === "all" ? works : works.filter((w) => w.medium === filter);
 
   return (
     <div>
       <section className="border-b border-border/70">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-
           <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
           <h1 className="hero-type mt-6 max-w-3xl text-4xl sm:text-6xl">
             Um espaço silencioso para livros, mangás, HQs e contos que merecem ser lidos por mais tempo.
@@ -287,8 +287,8 @@ function Home() {
         </div>
       </section>
 
-      <ContinueReading />
-      <FeaturedCarousel />
+      <ContinueReading works={works} />
+      <FeaturedCarousel works={works} />
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-border/70 pb-4">
@@ -308,34 +308,37 @@ function Home() {
           </div>
         </div>
 
-        <div className="grid gap-14 pt-12 sm:grid-cols-2">
-          {feed.map((work, i) => (
-            <WorkCard key={work.id} work={work} priority={i === 0} />
-          ))}
-        </div>
+        {feed.length === 0 ? (
+          <p className="pt-12 text-center text-muted-foreground text-sm">Nenhuma obra publicada ainda.</p>
+        ) : (
+          <div className="grid gap-14 pt-12 sm:grid-cols-2">
+            {feed.map((work, i) => (
+              <WorkCard key={work.id} work={work} priority={i === 0} />
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-16 sm:px-8">
-        <h2 className="font-display text-2xl font-bold">Artistas residentes</h2>
-        <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-          {artists.map((a) => (
-            <Link
-              key={a.slug}
-              to="/artist/$slug"
-              params={{ slug: a.slug }}
-              className="group bg-background p-6 transition-colors hover:bg-surface"
-            >
-              <p className="eyebrow">{a.discipline}</p>
-              <p className="mt-3 font-display text-lg font-bold group-hover:text-gilt">
-                {a.name}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {a.location} · {a.supporters} apoiadores
-              </p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {artists.length > 0 && (
+        <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-16 sm:px-8">
+          <h2 className="font-display text-2xl font-bold">Artistas residentes</h2>
+          <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+            {artists.map((a) => (
+              <Link
+                key={a.slug}
+                to="/artist/$slug"
+                params={{ slug: a.slug }}
+                className="group bg-background p-6 transition-colors hover:bg-surface"
+              >
+                <p className="eyebrow">{a.workCount} {a.workCount === 1 ? "obra" : "obras"}</p>
+                <p className="mt-3 font-display text-lg font-bold group-hover:text-gilt">
+                  {a.name}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

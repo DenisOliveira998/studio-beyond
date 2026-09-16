@@ -5,18 +5,21 @@ import { ArrowUp, Bookmark, Download, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, compact, getArtist, getWork, works } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, compact } from "@/lib/beyond-data";
 import { stripHtml, isHtml } from "@/lib/utils";
 
 export const Route = createFileRoute("/work/$slug")({
-  loader: ({ params }) => {
-    const work = getWork(params.slug);
-    const artist = work ? getArtist(work.artistSlug) : undefined;
-    if (!work || !artist) throw notFound();
-    const related = works
+  loader: async ({ params }) => {
+    const { fetchWorkBySlug, fetchApprovedWorks, dbWorkToWork } = await import("@/lib/beyond-db");
+    const dbWork = await fetchWorkBySlug(params.slug);
+    if (!dbWork || dbWork.status !== "approved") throw notFound();
+    const work = dbWorkToWork(dbWork);
+    const allWorks = await fetchApprovedWorks();
+    const related = allWorks
       .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
-      .slice(0, 3);
-    return { work, artist, related };
+      .slice(0, 3)
+      .map(dbWorkToWork);
+    return { work, related };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -27,14 +30,15 @@ export const Route = createFileRoute("/work/$slug")({
         ],
       };
     }
-    const { work, artist } = loaderData;
+    const { work } = loaderData;
     // Lição Galinha GSB: sempre stripHtml em meta tags — rich text vaza <p>Título</p>
     const cleanTitle = stripHtml(work.title);
     const cleanExcerpt = stripHtml(work.excerpt);
+    const artistName = work.artistName ?? "";
     const meta: Array<Record<string, string>> = [
-      { title: `${cleanTitle}, de ${artist.name} — The Beyond` },
+      { title: `${cleanTitle}${artistName ? `, de ${artistName}` : ""} — The Beyond` },
       { name: "description", content: cleanExcerpt },
-      { property: "og:title", content: `${cleanTitle}, de ${artist.name}` },
+      { property: "og:title", content: `${cleanTitle}${artistName ? `, de ${artistName}` : ""}` },
       { property: "og:description", content: cleanExcerpt },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -200,7 +204,9 @@ function useBookmark(slug: string) {
 }
 
 function WorkPage() {
-  const { work, artist, related } = Route.useLoaderData();
+  const { work, related } = Route.useLoaderData();
+  const artistName = work.artistName ?? "";
+  const artistSlug = work.artistSlug;
   const [liked, setLiked] = useState(false);
   const [followed, setFollowed] = useState(false);
   const { saved, toggle: toggleBookmark } = useBookmark(work.slug);
@@ -228,13 +234,15 @@ function WorkPage() {
       </h1>
 
       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <Link
-          to="/artist/$slug"
-          params={{ slug: artist.slug }}
-          className="rule-hover text-foreground"
-        >
-          {artist.name}
-        </Link>
+        {artistName && (
+          <Link
+            to="/artist/$slug"
+            params={{ slug: artistSlug }}
+            className="rule-hover text-foreground"
+          >
+            {artistName}
+          </Link>
+        )}
         <span aria-hidden>·</span>
         <span>{compact(views)} visualizações contabilizadas</span>
         {work.readTime && (
@@ -252,25 +260,27 @@ function WorkPage() {
       </div>
 
       {/* Seguir autor */}
-      <div className="mt-5">
-        <button
-          onClick={() => {
-            setFollowed((v) => !v);
-            toast.success(
+      {artistName && (
+        <div className="mt-5">
+          <button
+            onClick={() => {
+              setFollowed((v) => !v);
+              toast.success(
+                followed
+                  ? `Você deixou de seguir ${artistName}.`
+                  : `Você está seguindo ${artistName}. Novidades chegarão por e-mail.`,
+              );
+            }}
+            className={`text-xs uppercase tracking-[0.18em] border px-4 py-2 transition-colors ${
               followed
-                ? `Você deixou de seguir ${artist.name}.`
-                : `Você está seguindo ${artist.name}. Novidades chegarão por e-mail.`,
-            );
-          }}
-          className={`text-xs uppercase tracking-[0.18em] border px-4 py-2 transition-colors ${
-            followed
-              ? "border-gilt text-gilt"
-              : "border-border text-muted-foreground hover:border-gilt hover:text-gilt"
-          }`}
-        >
-          {followed ? "✓ Seguindo" : `+ Seguir ${artist.name.split(" ")[0]}`}
-        </button>
-      </div>
+                ? "border-gilt text-gilt"
+                : "border-border text-muted-foreground hover:border-gilt hover:text-gilt"
+            }`}
+          >
+            {followed ? "✓ Seguindo" : `+ Seguir ${artistName.split(" ")[0]}`}
+          </button>
+        </div>
+      )}
 
       {work.cover && (
         <img
@@ -371,14 +381,16 @@ function WorkPage() {
           Compartilhar
         </button>
 
-        <DonateDialog
-          artistName={artist.name}
-          trigger={
-            <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-              Doar para {artist.name.split(" ")[0]}
-            </button>
-          }
-        />
+        {artistName && (
+          <DonateDialog
+            artistName={artistName}
+            trigger={
+              <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
+                Doar para {artistName.split(" ")[0]}
+              </button>
+            }
+          />
+        )}
 
         {work.pdfUrl && (
           <a

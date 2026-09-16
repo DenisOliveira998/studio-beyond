@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { RichEditor } from "@/components/RichEditor";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileClock,
   CircleDollarSign,
@@ -20,15 +21,9 @@ import {
   X,
 } from "lucide-react";
 import type { Work } from "@/lib/beyond-data";
-import {
-  PLATFORM_FEE,
-  RATE_PER_CLICK,
-  compact,
-  getArtist,
-  money,
-  workDonations,
-  worksByArtist,
-} from "@/lib/beyond-data";
+import { PLATFORM_FEE, RATE_PER_CLICK, compact, money, MEDIUM_LABEL } from "@/lib/beyond-data";
+import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -99,32 +94,56 @@ const LOG_LABEL: Record<LogType, string> = {
 
 const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto"];
 
-const HISTORY = [
-  { date: "28 ago 2026", work: "O Barulho das Coisas Quietas", type: "Doação", from: "A. Ferreira", amount: 40 },
-  { date: "26 ago 2026", work: "Antes que a Maré Mude", type: "Doação", from: "Anônimo", amount: 15 },
-  { date: "25 ago 2026", work: "O Barulho das Coisas Quietas", type: "Cliques", from: "67.230 visualizações", amount: 67230 * RATE_PER_CLICK },
-  { date: "21 ago 2026", work: "O Barulho das Coisas Quietas", type: "Doação", from: "R. Silva", amount: 100 },
-  { date: "18 ago 2026", work: "Antes que a Maré Mude", type: "Doação", from: "M. Lindqvist", amount: 5 },
-  { date: "12 ago 2026", work: "Antes que a Maré Mude", type: "Cliques", from: "38.900 visualizações", amount: 38900 * RATE_PER_CLICK },
-];
+
+type DashboardData = {
+  works: Work[];
+  stats: WorkStats;
+  donations: DonationRow[];
+};
 
 function Dashboard() {
-  const artist = getArtist("leticia-voss")!;
-  const initialWorks = worksByArtist(artist.slug);
-  const [published, setPublished] = useState<Record<string, boolean>>(
-    Object.fromEntries(initialWorks.map((w) => [w.id, true])),
-  );
+  const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
+  const displayName = profile?.name ?? user?.name ?? "Autor";
+  const initials = displayName.slice(0, 2).toUpperCase();
 
-  const clicks = initialWorks.reduce((s, w) => s + w.clicks, 0);
-  const donationsTotal = initialWorks.reduce((s, w) => s + workDonations(w.slug), 0);
-  const clickGross = clicks * RATE_PER_CLICK;
-  const donationGross = HISTORY.filter((h) => h.type === "Doação").reduce(
-    (s, d) => s + d.amount,
-    0,
-  );
+  const { data: dashData, refetch: refetchDash } = useQuery<DashboardData>({
+    queryKey: ["author-dashboard"],
+    queryFn: () => fetch("/api/author/dashboard").then((r) => r.json() as Promise<DashboardData>),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  const initialWorks: Work[] = dashData?.works ?? [];
+  const donations: DonationRow[] = dashData?.donations ?? [];
+  const stats: WorkStats = dashData?.stats ?? { views: {}, donations: {}, supporters: {} };
+
+  const [published, setPublished] = useState<Record<string, boolean>>({});
+
+  const totalViews = Object.entries(stats.views)
+    .filter(([slug]) => initialWorks.some((w) => w.slug === slug))
+    .reduce((s, [, v]) => s + v, 0);
+  const clickGross = totalViews * RATE_PER_CLICK;
+  const donationGross = donations.reduce((s, d) => s + d.amount, 0);
   const gross = clickGross + donationGross;
   const fee = gross * PLATFORM_FEE;
   const net = gross - fee;
+
+  const { data: myDbWorks = [] } = useQuery<DbWork[]>({
+    queryKey: ["works-mine"],
+    queryFn: () => fetch("/api/works/mine").then((r) => r.json() as Promise<DbWork[]>),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const queue = myDbWorks
+    .filter((w) => w.status !== "approved" && w.status !== "draft")
+    .map((w) => ({
+      id: w.id,
+      title: w.title,
+      type: MEDIUM_LABEL[w.medium],
+      submitted: new Date(w.createdAt).toLocaleDateString("pt-BR"),
+      note: w.curatorNote ?? undefined,
+    }));
 
   const [editingWork, setEditingWork] = useState<Work | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -142,23 +161,6 @@ function Dashboard() {
   const [uploadStep, setUploadStep] = useState<"idle" | "pdf" | "work">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
-  const [queue, setQueue] = useState<
-    Array<{ id: string; title: string; type: string; submitted: string; note?: string }>
-  >([
-    {
-      id: "q0",
-      title: "O Barulho das Coisas Quietas — Cap. 13",
-      type: "Livro",
-      submitted: "30 ago 2026",
-    },
-    {
-      id: "qn",
-      title: "O Barulho das Coisas Quietas — Cap. 12 (revisão)",
-      type: "Livro",
-      submitted: "22 ago 2026",
-      note: "Curadoria pediu ajuste: revisar consistência de voz no segundo parágrafo.",
-    },
-  ]);
 
   function togglePublish(id: string, workTitle: string) {
     setPublished((prev) => {
@@ -204,7 +206,7 @@ function Dashboard() {
         body: JSON.stringify({
           title: title.trim(),
           medium,
-          artistName: artist.name,
+          artistName: displayName,
           excerpt: body.slice(0, 240),
           body,
           tags,
@@ -214,10 +216,8 @@ function Dashboard() {
       });
 
       if (kind === "publish") {
-        setQueue((prev) => [
-          { id: `q${prev.length + 1}`, title: title.trim(), type: workType ?? "Texto", submitted: "hoje" },
-          ...prev,
-        ]);
+        void queryClient.invalidateQueries({ queryKey: ["works-mine"] });
+        void refetchDash();
       }
       toast.success(
         kind === "publish"
@@ -244,7 +244,7 @@ function Dashboard() {
       <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[220px] shrink-0 flex-col border-r border-border bg-surface md:flex">
         <div className="px-6 pt-8 pb-6">
           <p className="eyebrow">Painel do autor</p>
-          <p className="mt-2 font-display text-xl tracking-tight">{artist.name}</p>
+          <p className="mt-2 font-display text-xl tracking-tight">{displayName}</p>
         </div>
         <nav className="flex flex-col gap-1 px-3">
           {NAV.map((item) => (
@@ -259,7 +259,7 @@ function Dashboard() {
           ))}
         </nav>
         <div className="mt-auto px-6 pb-8">
-          <p className="text-xs text-muted-foreground">Agosto 2026 · dados mockados</p>
+          <p className="text-xs text-muted-foreground">{user?.email ?? ""}</p>
         </div>
       </aside>
 
@@ -285,23 +285,23 @@ function Dashboard() {
           <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <Stat
               label="Total de Visualizações"
-              value={compact(clicks)}
+              value={compact(totalViews)}
               note="Todas as obras"
             />
             <Stat
               label="Doações Recebidas"
-              value={money(donationsTotal)}
+              value={money(donationGross)}
               note="Apoio direto de leitores"
             />
             <Stat
               label="Obras Publicadas"
-              value={String(initialWorks.length)}
-              note={`${compact(initialWorks.reduce((s, w) => s + w.likes, 0))} curtidas no total`}
+              value={String(initialWorks.filter((w) => !["pending", "draft", "rejected"].includes((w as unknown as { status?: string }).status ?? "")).length || initialWorks.length)}
+              note="No feed público"
             />
             <Stat
-              label="Seguidores"
-              value={compact(artist.supporters)}
-              note="Apoiadores da sua página"
+              label="Receita Líquida"
+              value={money(net)}
+              note={`Após ${Math.round(PLATFORM_FEE * 100)}% da plataforma`}
               accent
             />
           </div>
@@ -342,7 +342,7 @@ function Dashboard() {
                       </Td>
                       <Td className="text-muted-foreground">{w.published}</Td>
                       <Td>{compact(w.clicks)}</Td>
-                      <Td className="text-gilt">{money(workDonations(w.slug))}</Td>
+                      <Td className="text-gilt">{money(donations.filter((d) => d.workSlug === w.slug).reduce((s, d) => s + d.amount, 0))}</Td>
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
                           <ActionButton
@@ -696,28 +696,24 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {HISTORY.map((h, i) => (
-                  <tr key={i} className="transition-colors hover:bg-surface/60">
-                    <Td className="whitespace-nowrap text-muted-foreground">{h.date}</Td>
-                    <Td>{h.work}</Td>
+                {donations.length === 0 ? (
+                  <tr>
+                    <Td className="text-muted-foreground" colSpan={5}>Nenhuma doação recebida ainda.</Td>
+                  </tr>
+                ) : donations.map((d) => (
+                  <tr key={d.id} className="transition-colors hover:bg-surface/60">
+                    <Td className="whitespace-nowrap text-muted-foreground">
+                      {new Date(d.createdAt).toLocaleDateString("pt-BR")}
+                    </Td>
+                    <Td>{d.workSlug}</Td>
                     <Td>
-                      <span
-                        className={`inline-flex items-center gap-1.5 border px-2 py-1 text-xs uppercase tracking-[0.14em] ${
-                          h.type === "Doação"
-                            ? "border-gilt/50 bg-gilt/10 text-gilt"
-                            : "border-border bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {h.type === "Doação" ? (
-                          <Heart className="size-3" />
-                        ) : (
-                          <Eye className="size-3" />
-                        )}
-                        {h.type}
+                      <span className="inline-flex items-center gap-1.5 border px-2 py-1 text-xs uppercase tracking-[0.14em] border-gilt/50 bg-gilt/10 text-gilt">
+                        <Heart className="size-3" />
+                        Doação
                       </span>
                     </Td>
-                    <Td className="text-muted-foreground">{h.from}</Td>
-                    <Td className="text-right text-gilt">{money(h.amount)}</Td>
+                    <Td className="text-muted-foreground">{d.donorName}</Td>
+                    <Td className="text-right text-gilt">{money(d.amount)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -790,26 +786,25 @@ function Dashboard() {
           <div className="mt-8 border border-gilt/25 bg-background p-8 sm:p-10">
             <div className="flex flex-col gap-8 sm:flex-row sm:items-start">
               <div className="flex size-20 shrink-0 items-center justify-center border border-gilt/40 font-display text-2xl text-gilt">
-                {artist.initials}
+                {initials}
               </div>
               <div className="min-w-0">
-                <p className="font-display text-2xl tracking-tight">{artist.name}</p>
+                <p className="font-display text-2xl tracking-tight">{displayName}</p>
                 <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {artist.discipline} · {artist.location}
-                </p>
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  {artist.bio}
+                  {user?.email ?? ""}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    to="/artist/$slug"
-                    params={{ slug: artist.slug }}
-                    className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-                  >
-                    Ver página pública
-                  </Link>
+                  {initialWorks.length > 0 && (
+                    <Link
+                      to="/artist/$slug"
+                      params={{ slug: initialWorks[0]!.artistSlug }}
+                      className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                    >
+                      Ver página pública
+                    </Link>
+                  )}
                   <button
-                    onClick={() => toast.success("Edição de perfil disponível em breve (demo).")}
+                    onClick={() => toast.success("Edição de perfil disponível em breve.")}
                     className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
                   >
                     Editar perfil

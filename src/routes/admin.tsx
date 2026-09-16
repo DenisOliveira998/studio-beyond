@@ -2,7 +2,16 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { SiteConfigData, CarouselItemData } from "@/lib/beyond-db";
+import type {
+  SiteConfigData,
+  CarouselItemData,
+  AccountRow,
+  DbApplication,
+  DbWork,
+  WorkStats,
+} from "@/lib/beyond-db";
+import type { AppRole } from "@/lib/auth";
+import { ROLE_LABEL } from "@/lib/auth";
 import {
   ArrowDown,
   ArrowUp,
@@ -22,24 +31,13 @@ import {
   Users,
 } from "lucide-react";
 import {
-  ACCOUNT_LABEL,
   PLATFORM_FEE,
   RATE_PER_CLICK,
-  accounts as seedAccounts,
   compact,
-  getArtist,
   money,
-  works,
-  workDonations,
   MEDIUM_LABEL,
-  REVIEW_LABEL,
-  authorApplications as seedApplications,
-  workSubmissions as seedSubmissions,
-  type Account,
-  type AccountType,
-  type AuthorApplication,
   type ReviewStatus,
-  type WorkSubmission,
+  type Work,
 } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/admin")({
@@ -63,9 +61,9 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const FILTERS: Array<{ value: AccountType | "all"; label: string }> = [
+const FILTERS: Array<{ value: AppRole | "all"; label: string }> = [
   { value: "all", label: "Todos" },
-  { value: "free", label: "Gratuito" },
+  { value: "reader", label: "Leitor" },
   { value: "vip", label: "VIP" },
   { value: "author", label: "Autor" },
   { value: "gerente", label: "Gerente" },
@@ -73,7 +71,7 @@ const FILTERS: Array<{ value: AccountType | "all"; label: string }> = [
   { value: "owner", label: "Dono" },
 ];
 
-const LADDER: AccountType[] = ["free", "vip", "author", "gerente", "admin", "owner"];
+const LADDER: AppRole[] = ["reader", "vip", "author", "gerente", "admin", "owner"];
 
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
@@ -86,8 +84,8 @@ const NAV = [
   { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
-const TYPE_BADGE: Record<AccountType, string> = {
-  free: "border-border bg-muted text-muted-foreground",
+const TYPE_BADGE: Record<AppRole, string> = {
+  reader: "border-border bg-muted text-muted-foreground",
   vip: "border-gilt/50 bg-gilt/10 text-gilt",
   author: "border-[color:var(--chart-2)]/50 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]",
   gerente: "border-blue-500/50 bg-blue-500/10 text-blue-400",
@@ -105,13 +103,38 @@ const EMPTY_CONFIG: SiteConfigData = {
 };
 
 function AdminPage() {
-  const [accounts, setAccounts] = useState<Account[]>(seedAccounts);
-  const [filter, setFilter] = useState<AccountType | "all">("all");
-  const [applications, setApplications] = useState<AuthorApplication[]>(seedApplications);
-  const [submissions, setSubmissions] = useState<WorkSubmission[]>(seedSubmissions);
+  const [filter, setFilter] = useState<AppRole | "all">("all");
+
+  const queryClient = useQueryClient();
+
+  // Dados reais do DB
+  const { data: accounts = [] } = useQuery<AccountRow[]>({
+    queryKey: ["accounts"],
+    queryFn: () => fetch("/api/accounts").then((r) => r.json() as Promise<AccountRow[]>),
+    staleTime: 30_000,
+  });
+  const { data: applications = [] } = useQuery<DbApplication[]>({
+    queryKey: ["applications"],
+    queryFn: () => fetch("/api/applications").then((r) => r.json() as Promise<DbApplication[]>),
+    staleTime: 30_000,
+  });
+  const { data: submissions = [] } = useQuery<DbWork[]>({
+    queryKey: ["admin-works"],
+    queryFn: () => fetch("/api/admin/works").then((r) => r.json() as Promise<DbWork[]>),
+    staleTime: 30_000,
+  });
+  const { data: allWorks = [] } = useQuery<Work[]>({
+    queryKey: ["works"],
+    queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
+    staleTime: 30_000,
+  });
+  const { data: adminStats } = useQuery<WorkStats>({
+    queryKey: ["admin-stats"],
+    queryFn: () => fetch("/api/admin/stats").then((r) => r.json() as Promise<WorkStats>),
+    staleTime: 30_000,
+  });
 
   // Configurações do site
-  const queryClient = useQueryClient();
   const { data: siteConfig } = useQuery<SiteConfigData>({
     queryKey: ["site-config"],
     queryFn: () => fetch("/api/site-config").then((r) => r.json() as Promise<SiteConfigData>),
@@ -222,82 +245,107 @@ function AdminPage() {
     onError: () => toast.error("Erro ao salvar configurações."),
   });
 
-  function decideApplication(id: string, status: ReviewStatus) {
-    setApplications((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        toast.success(
-          status === "approved"
-            ? `${a.artistName} aprovado — e-mail de acesso ao Painel do Autor enviado.`
-            : `${a.artistName} recusado — mensagem da curadoria enviada.`,
-        );
-        return { ...a, status };
+  const patchApplication = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ReviewStatus }) =>
+      fetch(`/api/applications/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
       }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["applications"] }),
+    onError: () => toast.error("Erro ao atualizar candidatura."),
+  });
+
+  const patchWork = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ReviewStatus }) =>
+      fetch(`/api/admin/works/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-works"] });
+      void queryClient.invalidateQueries({ queryKey: ["works"] });
+    },
+    onError: () => toast.error("Erro ao atualizar obra."),
+  });
+
+  const patchAccount = useMutation({
+    mutationFn: ({ id, role, suspended }: { id: string; role?: AppRole; suspended?: boolean }) =>
+      fetch(`/api/accounts/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ role, suspended }),
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+    onError: () => toast.error("Erro ao atualizar conta."),
+  });
+
+  function decideApplication(id: string, status: ReviewStatus) {
+    const app = applications.find((a) => a.id === id);
+    if (!app) return;
+    toast.success(
+      status === "approved"
+        ? `${app.artistName} aprovado — e-mail de acesso ao Painel do Autor enviado.`
+        : `${app.artistName} recusado — mensagem da curadoria enviada.`,
     );
+    patchApplication.mutate({ id, status });
   }
 
   function decideSubmission(id: string, status: ReviewStatus) {
-    setSubmissions((prev) =>
-      prev.map((w) => {
-        if (w.id !== id) return w;
-        toast.success(
-          status === "approved"
-            ? `"${w.title}" aprovada e publicada no feed.`
-            : status === "changes"
-              ? `Ajustes solicitados ao autor de "${w.title}".`
-              : `"${w.title}" recusada com comentário do curador.`,
-        );
-        return { ...w, status };
-      }),
+    const sub = submissions.find((w) => w.id === id);
+    if (!sub) return;
+    toast.success(
+      status === "approved"
+        ? `"${sub.title}" aprovada e publicada no feed.`
+        : status === "changes"
+          ? `Ajustes solicitados ao autor de "${sub.title}".`
+          : `"${sub.title}" recusada com comentário do curador.`,
     );
+    patchWork.mutate({ id, status });
   }
 
-  const pendingApplications = applications.filter((a) => a.status === "pending").length;
-  const pendingSubmissions = submissions.filter((w) => w.status === "pending").length;
-
-  const byClicks = useMemo(
-    () => [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 5),
-    [],
-  );
-  const byDonations = useMemo(
-    () =>
-      [...works]
-        .sort((a, b) => workDonations(b.slug) - workDonations(a.slug))
-        .slice(0, 5),
-    [],
-  );
-
-  const clickGross = works.reduce((s, w) => s + w.clicks * RATE_PER_CLICK, 0);
-  const donationGross = works.reduce((s, w) => s + workDonations(w.slug), 0);
-  const gross = clickGross + donationGross;
-  const platformCut = gross * PLATFORM_FEE;
-  const totalClicks = works.reduce((s, w) => s + w.clicks, 0);
-
-  const visible = filter === "all" ? accounts : accounts.filter((a) => a.type === filter);
-
   function change(id: string, direction: 1 | -1) {
-    setAccounts((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const idx = Math.min(LADDER.length - 1, Math.max(0, LADDER.indexOf(a.type) + direction));
-        const next = LADDER[idx] as AccountType;
-        if (next !== a.type) {
-          toast.success(`${a.name} agora é ${ACCOUNT_LABEL[next]}.`);
-        }
-        return { ...a, type: next };
-      }),
-    );
+    const account = accounts.find((a) => a.id === id);
+    if (!account) return;
+    const idx = Math.min(LADDER.length - 1, Math.max(0, LADDER.indexOf(account.role) + direction));
+    const next = LADDER[idx] as AppRole;
+    if (next !== account.role) {
+      toast.success(`${account.name} agora é ${ROLE_LABEL[next]}.`);
+      patchAccount.mutate({ id, role: next });
+    }
   }
 
   function toggleSuspend(id: string) {
-    setAccounts((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        toast.success(a.suspended ? `${a.name} reativado.` : `${a.name} suspenso.`);
-        return { ...a, suspended: !a.suspended };
-      }),
-    );
+    const account = accounts.find((a) => a.id === id);
+    if (!account) return;
+    toast.success(account.suspended ? `${account.name} reativado.` : `${account.name} suspenso.`);
+    patchAccount.mutate({ id, suspended: !account.suspended });
   }
+
+  const reviewableSubmissions = submissions.filter((w) => w.status !== "draft");
+  const pendingApplications = applications.filter((a) => a.status === "pending").length;
+  const pendingSubmissions = reviewableSubmissions.filter((w) => w.status === "pending").length;
+
+  const byClicks = useMemo(
+    () => [...allWorks].sort((a, b) => b.clicks - a.clicks).slice(0, 5),
+    [allWorks],
+  );
+  const byDonations = useMemo(
+    () =>
+      [...allWorks]
+        .sort((a, b) => (adminStats?.donations[b.slug] ?? 0) - (adminStats?.donations[a.slug] ?? 0))
+        .slice(0, 5),
+    [allWorks, adminStats],
+  );
+
+  const clickGross = allWorks.reduce((s, w) => s + w.clicks * RATE_PER_CLICK, 0);
+  const donationGross = Object.values(adminStats?.donations ?? {}).reduce((s, v) => s + v, 0);
+  const gross = clickGross + donationGross;
+  const platformCut = gross * PLATFORM_FEE;
+  const totalClicks = allWorks.reduce((s, w) => s + w.clicks, 0);
+
+  const visible = filter === "all" ? accounts : accounts.filter((a) => a.role === filter);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -320,7 +368,7 @@ function AdminPage() {
           ))}
         </nav>
         <div className="mt-auto px-6 pb-8">
-          <p className="text-xs text-muted-foreground">Agosto 2026 · dados mockados</p>
+          <p className="text-xs text-muted-foreground">The Beyond · Admin</p>
         </div>
       </aside>
 
@@ -370,7 +418,7 @@ function AdminPage() {
               rows={byClicks.map((w) => ({
                 slug: w.slug,
                 title: w.title,
-                artist: getArtist(w.artistSlug)?.name ?? "",
+                artist: w.artistName ?? "",
                 metric: `${compact(w.clicks)} cliques`,
               }))}
             />
@@ -380,8 +428,8 @@ function AdminPage() {
               rows={byDonations.map((w) => ({
                 slug: w.slug,
                 title: w.title,
-                artist: getArtist(w.artistSlug)?.name ?? "",
-                metric: money(workDonations(w.slug)),
+                artist: w.artistName ?? "",
+                metric: money(adminStats?.donations[w.slug] ?? 0),
               }))}
             />
           </div>
@@ -402,7 +450,7 @@ function AdminPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
                     <div>
                       <p className="eyebrow">
-                        {a.field} · enviada em {a.submitted}
+                        {a.field} · enviada em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{a.artistName}</h3>
                       <p className="caption mt-1">{a.email}</p>
@@ -466,17 +514,17 @@ function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {submissions.map((w) => (
+                {reviewableSubmissions.map((w) => (
                   <tr key={w.id} className="transition-colors hover:bg-surface/60">
                     <Td>
                       <p className="font-display text-lg leading-tight">{w.title}</p>
                       <p className="caption mt-0.5">{MEDIUM_LABEL[w.medium]}</p>
-                      {w.note && <p className="caption mt-1">Nota: {w.note}</p>}
+                      {w.curatorNote && <p className="caption mt-1">Nota: {w.curatorNote}</p>}
                     </Td>
                     <Td className="text-muted-foreground">
-                      {getArtist(w.artistSlug)?.name ?? "—"}
+                      {w.artistName || "—"}
                     </Td>
-                    <Td className="text-muted-foreground">{w.submitted}</Td>
+                    <Td className="text-muted-foreground">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</Td>
                     <Td>
                       {w.pdfUrl ? (
                         <a
@@ -551,15 +599,15 @@ function AdminPage() {
                     <Td>
                       <p className="font-medium">{a.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        desde {a.joined} · doou {money(a.donated)}
+                        desde {new Date(a.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                     </Td>
                     <Td className="text-muted-foreground">{a.email}</Td>
                     <Td>
                       <span
-                        className={`inline-block border px-2 py-1 text-xs uppercase tracking-[0.14em] ${TYPE_BADGE[a.type]}`}
+                        className={`inline-block border px-2 py-1 text-xs uppercase tracking-[0.14em] ${TYPE_BADGE[a.role]}`}
                       >
-                        {ACCOUNT_LABEL[a.type]}
+                        {ROLE_LABEL[a.role]}
                       </span>
                     </Td>
                     <Td>
@@ -592,9 +640,6 @@ function AdminPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-5 text-xs text-muted-foreground">
-            Dados mockados: alterações valem apenas nesta sessão.
-          </p>
         </section>
 
         {/* Receita */}
@@ -825,19 +870,30 @@ function AdminPage() {
   );
 }
 
-const REVIEW_BADGE: Record<ReviewStatus, string> = {
+type AnyReviewStatus = ReviewStatus | "draft";
+
+const REVIEW_BADGE: Record<AnyReviewStatus, string> = {
+  draft: "border-border bg-muted text-muted-foreground",
   pending: "border-gilt/50 bg-gilt/10 text-gilt",
   approved: "border-[color:var(--chart-2)]/50 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]",
   changes: "border-border bg-muted text-muted-foreground",
   rejected: "border-destructive/50 bg-destructive/10 text-destructive",
 };
 
-function ReviewBadge({ status }: { status: ReviewStatus }) {
+const REVIEW_BADGE_LABEL: Record<AnyReviewStatus, string> = {
+  draft: "Rascunho",
+  pending: "Em análise",
+  approved: "Aprovada",
+  changes: "Ajustes",
+  rejected: "Recusada",
+};
+
+function ReviewBadge({ status }: { status: AnyReviewStatus }) {
   return (
     <span
       className={`btn-type inline-block border px-2 py-1 text-[0.6rem] ${REVIEW_BADGE[status]}`}
     >
-      {REVIEW_LABEL[status]}
+      {REVIEW_BADGE_LABEL[status]}
     </span>
   );
 }

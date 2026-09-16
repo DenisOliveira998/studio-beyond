@@ -4,6 +4,8 @@ import { stripHtml } from "@/lib/utils";
 
 export function WorkCard({ work, priority = false }: { work: Work; priority?: boolean }) {
   const artist = getArtist(work.artistSlug);
+  const artistName = artist?.name ?? work.artistName;
+  const artistSlug = work.artistSlug;
   // Lição Galinha GSB: alt e aria nunca devem conter HTML — stripHtml por precaução
   const cleanTitle = stripHtml(work.title);
 
@@ -43,13 +45,13 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
         </h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{work.excerpt}</p>
         <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
-          {artist && (
+          {artistName && (
             <Link
               to="/artist/$slug"
-              params={{ slug: artist.slug }}
+              params={{ slug: artistSlug }}
               className="text-foreground transition-colors hover:text-gilt"
             >
-              {artist.name}
+              {artistName}
             </Link>
           )}
           <span aria-hidden>·</span>

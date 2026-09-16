@@ -540,6 +540,7 @@ export function dbWorkToWork(w: DbWork): Work {
     title: w.title,
     medium: w.medium,
     artistSlug: w.artistSlug,
+    artistName: w.artistName,
     ...(w.coverUrl ? { cover: w.coverUrl } : {}),
     ...(w.pdfUrl ? { pdfUrl: w.pdfUrl } : {}),
     ...(w.genre ? { genre: w.genre } : {}),
@@ -553,6 +554,33 @@ export function dbWorkToWork(w: DbWork): Work {
       year: "numeric",
     }),
   };
+}
+
+export async function fetchWorksByArtistSlug(artistSlug: string): Promise<DbWork[]> {
+  const rows = await prisma.work.findMany({
+    where: { artistSlug, status: "approved" },
+    orderBy: { publishedAt: "desc" },
+  });
+  return rows.map(workToDb);
+}
+
+export type ArtistSummary = {
+  name: string;
+  slug: string;
+  workCount: number;
+};
+
+export async function fetchDistinctArtists(): Promise<ArtistSummary[]> {
+  const rows = await prisma.work.groupBy({
+    by: ["artistSlug", "artistName"],
+    where: { status: "approved" },
+    _count: { id: true },
+  });
+  return rows.map((r) => ({
+    name: r.artistName,
+    slug: r.artistSlug,
+    workCount: r._count.id,
+  }));
 }
 
 /* ---------- helpers internos ---------- */
