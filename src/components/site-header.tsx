@@ -13,11 +13,11 @@ async function fetchSiteConfig(): Promise<SiteConfigData> {
 }
 
 const DEFAULT_CONFIG: SiteConfigData = {
-  instagram: "https://instagram.com/thebeyond.art",
-  youtube: "https://youtube.com/@thebeyond",
-  email: "contato@thebeyond.art",
+  instagram: "",
+  youtube: "",
+  email: "",
   phone: "",
-  address: "Rua das Artes, 142 — São Paulo, SP",
+  address: "",
   cnpj: "",
 };
 

@@ -1,9 +1,11 @@
 ﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, artists, works, getArtist, type Medium } from "@/lib/beyond-data";
+import type { CarouselItemData } from "@/lib/beyond-db";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,12 +40,28 @@ export const Route = createFileRoute("/")({
 
 const filters: ("all" | Medium)[] = ["all", "livro", "manga", "hq", "conto"];
 
-const FEATURED = [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 3);
+const FEATURED_FALLBACK = [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 3);
+
+type SlideItem =
+  | { kind: "db"; item: CarouselItemData }
+  | { kind: "work"; work: (typeof FEATURED_FALLBACK)[0] };
 
 function FeaturedCarousel() {
   const [cur, setCur] = useState(0);
   const [paused, setPaused] = useState(false);
-  const count = FEATURED.length;
+
+  const { data: dbItems = [] } = useQuery<CarouselItemData[]>({
+    queryKey: ["carousel"],
+    queryFn: () => fetch("/api/carousel").then((r) => r.json() as Promise<CarouselItemData[]>),
+    staleTime: 60_000,
+  });
+
+  const slides: SlideItem[] =
+    dbItems.filter((i) => i.active).length > 0
+      ? dbItems.filter((i) => i.active).map((item) => ({ kind: "db" as const, item }))
+      : FEATURED_FALLBACK.map((work) => ({ kind: "work" as const, work }));
+
+  const count = slides.length;
 
   useEffect(() => {
     if (paused) return;
@@ -65,11 +83,18 @@ function FeaturedCarousel() {
 
         {/* Slide area */}
         <div className="relative mt-6">
-          {FEATURED.map((work, i) => {
-            const artist = getArtist(work.artistSlug);
+          {slides.map((slide, i) => {
+            const isDb = slide.kind === "db";
+            const title = isDb ? slide.item.title : slide.work.title;
+            const subtitle = isDb ? slide.item.subtitle : (getArtist(slide.work.artistSlug)?.name ?? "");
+            const excerpt = isDb ? "" : slide.work.excerpt;
+            const imgUrl = isDb ? slide.item.imageUrl : "";
+            const linkUrl = isDb ? slide.item.linkUrl : `/work/${slide.work.slug}`;
+            const tag = isDb ? "" : MEDIUM_LABEL[slide.work.medium];
+
             return (
               <div
-                key={work.id}
+                key={isDb ? slide.item.id : slide.work.id}
                 aria-hidden={i !== cur}
                 className={`transition-opacity duration-700 ${
                   i === cur
@@ -77,38 +102,45 @@ function FeaturedCarousel() {
                     : "pointer-events-none absolute inset-0 opacity-0"
                 }`}
               >
-                <div className="grid gap-8 sm:grid-cols-[1fr_160px] sm:items-start">
+                <div className="grid gap-8 sm:grid-cols-[1fr_200px] sm:items-start">
                   {/* Text */}
                   <div>
-                    <p className="caption">{MEDIUM_LABEL[work.medium]}</p>
-                    <h2 className="hero-type mt-3 text-3xl leading-tight sm:text-5xl">
-                      {work.title}
-                    </h2>
-                    {artist && (
-                      <p className="mt-3 text-sm text-muted-foreground">{artist.name}</p>
+                    {tag && <p className="caption">{tag}</p>}
+                    <h2 className="hero-type mt-3 text-3xl leading-tight sm:text-5xl">{title}</h2>
+                    {subtitle && (
+                      <p className="mt-3 text-sm text-muted-foreground">{subtitle}</p>
                     )}
-                    <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground line-clamp-3">
-                      {work.excerpt}
-                    </p>
-                    <Link
-                      to="/work/$slug"
-                      params={{ slug: work.slug }}
-                      className="btn-type mt-7 inline-block border border-gilt px-6 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
-                    >
-                      Ler obra
-                    </Link>
+                    {excerpt && (
+                      <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground line-clamp-3">
+                        {excerpt}
+                      </p>
+                    )}
+                    {linkUrl && (
+                      <a
+                        href={linkUrl}
+                        className="btn-type mt-7 inline-block border border-gilt px-6 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
+                      >
+                        {isDb ? "Ver mais" : "Ler obra"}
+                      </a>
+                    )}
                   </div>
 
-                  {/* Decorative panel */}
+                  {/* Painel decorativo / imagem */}
                   <div className="hidden sm:block">
-                    <div className="aspect-[3/4] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
-                      <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
-                        <span className="font-display text-6xl font-bold text-gilt/15">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span className="eyebrow text-gilt/30">{MEDIUM_LABEL[work.medium]}</span>
+                    {imgUrl ? (
+                      <div className="aspect-[3/4] overflow-hidden border border-gilt/20">
+                        <img src={imgUrl} alt={title} className="h-full w-full object-cover" />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="aspect-[3/4] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
+                        <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
+                          <span className="font-display text-6xl font-bold text-gilt/15">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          {tag && <span className="eyebrow text-gilt/30">{tag}</span>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -120,7 +152,7 @@ function FeaturedCarousel() {
         <div className="mt-10 flex items-center justify-between">
           {/* Indicadores */}
           <div className="flex items-center gap-2">
-            {FEATURED.map((_, i) => (
+            {slides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCur(i)}

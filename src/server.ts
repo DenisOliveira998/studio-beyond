@@ -199,6 +199,56 @@ export default {
         }
       }
 
+      // Carrossel — leitura pública / gestão admin
+      if (pathname === "/api/carousel") {
+        if (request.method === "GET") {
+          const { getCarouselItems } = await import("./lib/beyond-db");
+          const items = await getCarouselItems();
+          return new Response(JSON.stringify(items), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "POST") {
+          const { auth } = await import("./lib/auth-server");
+          const session = await auth.api.getSession({ headers: request.headers });
+          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const { createCarouselItem } = await import("./lib/beyond-db");
+          const body = (await request.json()) as Parameters<typeof createCarouselItem>[0];
+          const item = await createCarouselItem(body);
+          return new Response(JSON.stringify(item), { headers: { "content-type": "application/json" } });
+        }
+      }
+
+      if (pathname.startsWith("/api/carousel/reorder") && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        const { ids } = (await request.json()) as { ids: string[] };
+        const { reorderCarouselItems } = await import("./lib/beyond-db");
+        await reorderCarouselItems(ids);
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
+      const carouselItemMatch = pathname.match(/^\/api\/carousel\/([^/]+)$/);
+      if (carouselItemMatch) {
+        const id = carouselItemMatch[1];
+        if (request.method === "PATCH") {
+          const { auth } = await import("./lib/auth-server");
+          const session = await auth.api.getSession({ headers: request.headers });
+          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const body = (await request.json()) as Record<string, unknown>;
+          const { updateCarouselItem } = await import("./lib/beyond-db");
+          await updateCarouselItem(id, body as Parameters<typeof updateCarouselItem>[1]);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "DELETE") {
+          const { auth } = await import("./lib/auth-server");
+          const session = await auth.api.getSession({ headers: request.headers });
+          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const { deleteCarouselItem } = await import("./lib/beyond-db");
+          await deleteCarouselItem(id);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        }
+      }
+
       // Upload de arquivo (PDF de obra) → Vercel Blob
       if (pathname === "/api/upload" && request.method === "POST") {
         const { auth } = await import("./lib/auth-server");

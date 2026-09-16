@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { SiteConfigData } from "@/lib/beyond-db";
+import type { SiteConfigData, CarouselItemData } from "@/lib/beyond-db";
 import {
   ArrowDown,
   ArrowUp,
@@ -12,9 +12,12 @@ import {
   Eye,
   FileDown,
   FileClock,
+  Image,
   LayoutDashboard,
+  Plus,
   Save,
   Settings,
+  Trash2,
   Trophy,
   Users,
 } from "lucide-react";
@@ -79,6 +82,7 @@ const NAV = [
   { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
+  { id: "carrossel", label: "Carrossel", icon: Image },
   { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -115,6 +119,93 @@ function AdminPage() {
   });
   const [cfgDraft, setCfgDraft] = useState<SiteConfigData | null>(null);
   const cfg = cfgDraft ?? siteConfig ?? EMPTY_CONFIG;
+
+  // Carrossel
+  const { data: carouselItems = [], refetch: refetchCarousel } = useQuery<CarouselItemData[]>({
+    queryKey: ["carousel"],
+    queryFn: () => fetch("/api/carousel").then((r) => r.json() as Promise<CarouselItemData[]>),
+    staleTime: 30_000,
+  });
+
+  const [newSlide, setNewSlide] = useState<Omit<CarouselItemData, "id" | "order">>({
+    title: "",
+    subtitle: "",
+    imageUrl: "",
+    linkUrl: "",
+    active: true,
+  });
+  const [uploadingImg, setUploadingImg] = useState(false);
+
+  async function uploadSlideImage(file: File) {
+    setUploadingImg(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Upload falhou");
+      const { url } = (await res.json()) as { url: string };
+      setNewSlide((p) => ({ ...p, imageUrl: url }));
+    } catch {
+      toast.error("Erro ao fazer upload da imagem.");
+    } finally {
+      setUploadingImg(false);
+    }
+  }
+
+  const createSlide = useMutation({
+    mutationFn: () =>
+      fetch("/api/carousel", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...newSlide, order: carouselItems.length }),
+      }),
+    onSuccess: () => {
+      void refetchCarousel();
+      setNewSlide({ title: "", subtitle: "", imageUrl: "", linkUrl: "", active: true });
+      toast.success("Slide adicionado.");
+    },
+    onError: () => toast.error("Erro ao adicionar slide."),
+  });
+
+  const toggleSlide = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      fetch(`/api/carousel/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ active }),
+      }),
+    onSuccess: () => void refetchCarousel(),
+    onError: () => toast.error("Erro ao atualizar slide."),
+  });
+
+  const deleteSlide = useMutation({
+    mutationFn: (id: string) => fetch(`/api/carousel/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      void refetchCarousel();
+      toast.success("Slide removido.");
+    },
+    onError: () => toast.error("Erro ao remover slide."),
+  });
+
+  const reorderSlide = useMutation({
+    mutationFn: async ({ id, direction }: { id: string; direction: 1 | -1 }) => {
+      const sorted = [...carouselItems].sort((a, b) => a.order - b.order);
+      const idx = sorted.findIndex((s) => s.id === id);
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= sorted.length) return;
+      const ids = sorted.map((s) => s.id);
+      const tmp = ids[idx] as string;
+      ids[idx] = ids[newIdx] as string;
+      ids[newIdx] = tmp;
+      await fetch("/api/carousel/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+    },
+    onSuccess: () => void refetchCarousel(),
+    onError: () => toast.error("Erro ao reordenar."),
+  });
 
   const saveCfg = useMutation({
     mutationFn: (data: SiteConfigData) =>
@@ -553,6 +644,130 @@ function AdminPage() {
           </div>
         </section>
 
+        {/* Carrossel */}
+        <section id="carrossel" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Image}>Carrossel</SectionTitle>
+          <p className="caption mt-4">
+            {carouselItems.filter((s) => s.active).length} slide(s) ativo(s) — aparece na página inicial
+          </p>
+
+          {/* Slides existentes */}
+          <div className="mt-6 space-y-3">
+            {[...carouselItems].sort((a, b) => a.order - b.order).map((slide, idx, arr) => (
+              <div key={slide.id} className="flex items-start gap-4 border border-border bg-surface p-4">
+                {slide.imageUrl && (
+                  <img
+                    src={slide.imageUrl}
+                    alt={slide.title}
+                    className="hidden h-16 w-12 flex-shrink-0 object-cover sm:block border border-border"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-base leading-tight">{slide.title}</p>
+                  {slide.subtitle && (
+                    <p className="caption mt-0.5">{slide.subtitle}</p>
+                  )}
+                  {slide.linkUrl && (
+                    <p className="mt-1 truncate text-xs text-muted-foreground/60">{slide.linkUrl}</p>
+                  )}
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => toggleSlide.mutate({ id: slide.id, active: !slide.active })}
+                    className={`border px-2.5 py-1.5 text-xs transition-colors ${
+                      slide.active
+                        ? "border-gilt/50 text-gilt hover:bg-gilt/10"
+                        : "border-border text-muted-foreground hover:border-foreground"
+                    }`}
+                  >
+                    {slide.active ? "Ativo" : "Inativo"}
+                  </button>
+                  <ActionButton onClick={() => reorderSlide.mutate({ id: slide.id, direction: -1 })} disabled={idx === 0}>
+                    <ArrowUp className="size-3.5" />
+                  </ActionButton>
+                  <ActionButton onClick={() => reorderSlide.mutate({ id: slide.id, direction: 1 })} disabled={idx === arr.length - 1}>
+                    <ArrowDown className="size-3.5" />
+                  </ActionButton>
+                  <ActionButton danger onClick={() => deleteSlide.mutate(slide.id)}>
+                    <Trash2 className="size-3.5" />
+                  </ActionButton>
+                </div>
+              </div>
+            ))}
+            {carouselItems.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhum slide cadastrado. O carrossel usará as obras em destaque.</p>
+            )}
+          </div>
+
+          {/* Adicionar novo slide */}
+          <div className="mt-8 border border-gilt/25 bg-background p-6">
+            <p className="eyebrow mb-5">Adicionar slide</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="eyebrow text-xs">Título *</label>
+                <input
+                  type="text"
+                  value={newSlide.title}
+                  onChange={(e) => setNewSlide((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="Ex: Nova Série"
+                  className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="eyebrow text-xs">Subtítulo</label>
+                <input
+                  type="text"
+                  value={newSlide.subtitle}
+                  onChange={(e) => setNewSlide((p) => ({ ...p, subtitle: e.target.value }))}
+                  placeholder="Ex: por Nome do Artista"
+                  className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="eyebrow text-xs">Link de destino</label>
+                <input
+                  type="text"
+                  value={newSlide.linkUrl}
+                  onChange={(e) => setNewSlide((p) => ({ ...p, linkUrl: e.target.value }))}
+                  placeholder="https://..."
+                  className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="eyebrow text-xs">Imagem</label>
+                <div className="flex items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 border border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
+                    <Image className="size-3.5" strokeWidth={1.5} />
+                    {uploadingImg ? "Enviando…" : newSlide.imageUrl ? "Trocar imagem" : "Selecionar imagem"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void uploadSlideImage(f);
+                      }}
+                    />
+                  </label>
+                  {newSlide.imageUrl && (
+                    <img src={newSlide.imageUrl} alt="" className="h-9 w-7 object-cover border border-border" />
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex items-center gap-4">
+              <button
+                onClick={() => createSlide.mutate()}
+                disabled={createSlide.isPending || !newSlide.title.trim()}
+                className="inline-flex items-center gap-2 bg-gilt px-5 py-2.5 text-sm font-medium text-ink transition-opacity disabled:opacity-50"
+              >
+                <Plus className="size-4" strokeWidth={1.5} />
+                {createSlide.isPending ? "Adicionando…" : "Adicionar slide"}
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Configurações do Site */}
         <section id="configuracoes" className="mt-16 scroll-mt-24">
           <SectionTitle icon={Settings}>Configurações do Site</SectionTitle>
@@ -675,15 +890,18 @@ function ActionButton({
   children,
   onClick,
   danger = false,
+  disabled = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 border px-2.5 py-1.5 text-xs transition-colors ${
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 border px-2.5 py-1.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40 ${
         danger
           ? "border-border text-muted-foreground hover:border-destructive hover:text-destructive"
           : "border-border text-muted-foreground hover:border-gilt hover:text-gilt"

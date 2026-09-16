@@ -218,11 +218,24 @@ model SiteConfig {
   id        String   @id @default("default")
   instagram String   @default("")
   youtube   String   @default("")
-  email     String   @default("contato@thebeyond.art")
+  email     String   @default("")
   phone     String   @default("")
   address   String   @default("")
   cnpj      String   @default("")
   updatedAt DateTime @updatedAt
 
   @@map("site_config")
+}
+
+model CarouselItem {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String   @default("")
+  imageUrl  String   @default("")
+  linkUrl   String   @default("")
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@map("carousel_item")
 }

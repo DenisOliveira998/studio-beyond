@@ -356,6 +356,57 @@ export async function saveSiteConfig(data: Partial<SiteConfigData>): Promise<voi
   });
 }
 
+/* ---------- carrossel ---------- */
+
+export type CarouselItemData = {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  linkUrl: string;
+  order: number;
+  active: boolean;
+};
+
+export async function getCarouselItems(): Promise<CarouselItemData[]> {
+  const rows = await prisma.carouselItem.findMany({ orderBy: { order: "asc" } });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    subtitle: r.subtitle,
+    imageUrl: r.imageUrl,
+    linkUrl: r.linkUrl,
+    order: r.order,
+    active: r.active,
+  }));
+}
+
+export async function createCarouselItem(
+  data: Omit<CarouselItemData, "id">,
+): Promise<CarouselItemData> {
+  const row = await prisma.carouselItem.create({ data });
+  return { ...data, id: row.id };
+}
+
+export async function updateCarouselItem(
+  id: string,
+  data: Partial<Omit<CarouselItemData, "id">>,
+): Promise<void> {
+  await prisma.carouselItem.update({ where: { id }, data });
+}
+
+export async function deleteCarouselItem(id: string): Promise<void> {
+  await prisma.carouselItem.delete({ where: { id } });
+}
+
+export async function reorderCarouselItems(ids: string[]): Promise<void> {
+  await Promise.all(
+    ids.map((id, index) =>
+      prisma.carouselItem.update({ where: { id }, data: { order: index } }),
+    ),
+  );
+}
+
 /* ---------- utilidades ---------- */
 
 export function slugify(value: string) {
