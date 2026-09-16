@@ -145,6 +145,7 @@ function Dashboard() {
 
   const [title, setTitle] = useState("");
   const [workType, setWorkType] = useState(WORK_TYPES[0]);
+  const [synopsis, setSynopsis] = useState("");
   const [body, setBody] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [tags, setTags] = useState("");
@@ -178,7 +179,19 @@ function Dashboard() {
 
   async function submit(kind: "publish" | "draft") {
     if (!title.trim()) {
-      toast.error("Informe o título da obra antes de continuar.");
+      toast.error("Informe o título da obra.");
+      return;
+    }
+    if (!synopsis.trim()) {
+      toast.error("A sinopse é obrigatória.");
+      return;
+    }
+    if (kind === "publish" && !coverFile) {
+      toast.error("A imagem de capa é obrigatória para envio.");
+      return;
+    }
+    if (kind === "publish" && !pdfFile) {
+      toast.error("O arquivo da obra é obrigatório para envio.");
       return;
     }
     setUploading(true);
@@ -229,7 +242,7 @@ function Dashboard() {
           title: title.trim(),
           medium,
           artistName: displayName,
-          excerpt: body.slice(0, 240),
+          excerpt: synopsis.trim(),
           body,
           tags,
           pdfUrl,
@@ -248,6 +261,7 @@ function Dashboard() {
           : `Rascunho de "${title}" salvo.`,
       );
       setTitle("");
+      setSynopsis("");
       setBody("");
       setTags("");
       setCoverName(null);
@@ -428,15 +442,29 @@ function Dashboard() {
                 </select>
               </Field>
 
-              <Field label="Descrição / conteúdo" htmlFor="obra-conteudo">
+              <Field label="Sinopse *" htmlFor="obra-sinopse">
+                <textarea
+                  id="obra-sinopse"
+                  required
+                  rows={3}
+                  maxLength={500}
+                  value={synopsis}
+                  onChange={(e) => setSynopsis(e.target.value)}
+                  placeholder="Breve descrição da obra exibida no feed e na página pública (máx. 500 caracteres)"
+                  className="w-full resize-y border border-border bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
+                />
+                <p className="mt-1 text-right text-xs text-muted-foreground/50">{synopsis.length}/500</p>
+              </Field>
+
+              <Field label="Descrição / conteúdo completo" htmlFor="obra-conteudo">
                 <RichEditor
                   value={body}
                   onChange={setBody}
-                  placeholder="Escreva ou descreva sua obra aqui…"
+                  placeholder="Escreva ou descreva sua obra aqui… (opcional — complementa a sinopse)"
                 />
               </Field>
 
-              <Field label="Imagem de capa" htmlFor="obra-capa">
+              <Field label="Imagem de capa *" htmlFor="obra-capa">
                 <input
                   ref={fileRef}
                   id="obra-capa"
@@ -452,19 +480,19 @@ function Dashboard() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-3 border border-dashed border-border px-4 py-10 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                  className={`flex w-full items-center justify-center gap-3 border border-dashed px-4 py-10 text-sm transition-colors hover:border-gilt hover:text-gilt ${coverFile ? "border-gilt/50 text-gilt" : "border-border text-muted-foreground"}`}
                 >
                   <ImagePlus className="size-5 text-gilt" strokeWidth={1.5} />
-                  {coverName ?? "Clique para enviar uma imagem de capa"}
+                  {coverName ?? "Clique para enviar a capa (obrigatório)"}
                 </button>
               </Field>
 
-              <Field label="Arquivo PDF (opcional)" htmlFor="obra-pdf">
+              <Field label="Arquivo da obra *" htmlFor="obra-pdf">
                 <input
                   ref={pdfRef}
                   id="obra-pdf"
                   type="file"
-                  accept="application/pdf"
+                  accept="application/pdf,image/png,image/jpeg,application/epub+zip,.epub"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
@@ -475,13 +503,13 @@ function Dashboard() {
                 <button
                   type="button"
                   onClick={() => pdfRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-3 border border-dashed border-border px-4 py-8 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                  className={`flex w-full items-center justify-center gap-3 border border-dashed px-4 py-8 text-sm transition-colors hover:border-gilt hover:text-gilt ${pdfFile ? "border-gilt/50 text-gilt" : "border-border text-muted-foreground"}`}
                 >
                   <FileUp className="size-5 text-gilt" strokeWidth={1.5} />
-                  {pdfName ?? "Clique para enviar o PDF da obra"}
+                  {pdfName ?? "Clique para enviar o arquivo (obrigatório)"}
                 </button>
                 <p className="mt-2 text-xs text-muted-foreground/60">
-                  Opcional. Leitores verão um botão de download na página da obra.
+                  Formatos aceitos: PDF, PNG, JPEG, EPUB · Leitores verão um botão de download na página da obra.
                 </p>
               </Field>
 
