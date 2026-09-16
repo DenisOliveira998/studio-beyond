@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, Youtube } from "lucide-react";
+import { Instagram, LayoutDashboard, LogOut, Shield, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSelector } from "@/components/language-selector";
 import { SiteSearch } from "@/components/site-search";
+import { useAuth } from "@/lib/auth";
 import type { SiteConfigData } from "@/lib/beyond-db";
 
 async function fetchSiteConfig(): Promise<SiteConfigData> {
@@ -29,7 +31,86 @@ const nav = [
   { to: "/sobre", label: "Quem somos" },
 ];
 
+function UserMenu() {
+  const { user, profile, isStaff, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const initials = (user?.name ?? user?.email ?? "?")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex size-8 items-center justify-center rounded-full border border-white/30 bg-gilt/20 text-xs font-bold text-gilt transition-colors hover:border-gilt"
+        aria-label="Menu da conta"
+      >
+        {initials}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-50 w-52 border border-border bg-ink shadow-lg">
+          <div className="border-b border-border/50 px-4 py-3">
+            <p className="text-xs font-medium text-white">{user?.name ?? user?.email}</p>
+            {profile?.role && profile.role !== "reader" && (
+              <p className="mt-0.5 text-[10px] uppercase tracking-widest text-gilt/70">
+                {profile.role === "owner" ? "Dono" :
+                 profile.role === "admin" ? "Administrador" :
+                 profile.role === "gerente" ? "Gerente" :
+                 profile.role === "author" ? "Autor" :
+                 profile.role === "vip" ? "Leitor Assíduo" : "Leitor"}
+              </p>
+            )}
+          </div>
+          <div className="py-1">
+            <Link
+              to="/dashboard"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
+            >
+              <LayoutDashboard className="size-3.5" strokeWidth={1.5} />
+              Minha conta
+            </Link>
+            {isStaff && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
+              >
+                <Shield className="size-3.5" strokeWidth={1.5} />
+                Administração
+              </Link>
+            )}
+            <button
+              onClick={() => { setOpen(false); void signOut(); }}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-red-400"
+            >
+              <LogOut className="size-3.5" strokeWidth={1.5} />
+              Sair
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SiteHeader() {
+  const { user, loading } = useAuth();
+
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-5 sm:px-8">
@@ -53,12 +134,18 @@ export function SiteHeader() {
             </Link>
           ))}
           <SiteSearch />
-          <Link
-            to="/entrar"
-            className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
-          >
-            Entrar
-          </Link>
+          {!loading && (
+            user ? (
+              <UserMenu />
+            ) : (
+              <Link
+                to="/entrar"
+                className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
+              >
+                Entrar
+              </Link>
+            )
+          )}
           <LanguageSelector />
           <ThemeToggle />
         </nav>

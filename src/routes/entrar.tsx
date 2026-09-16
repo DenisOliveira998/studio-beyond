@@ -71,7 +71,12 @@ function EntrarPage() {
     try {
       const result = await authClient.signIn.email({ email: email.trim(), password });
       if (result?.error) {
-        toast.error(result.error.message ?? "E-mail ou senha incorretos.");
+        const msg = result.error.message ?? "";
+        if (/exist|already|social|google|provider/i.test(msg)) {
+          toast.error("Essa conta foi criada com Google. Clique em 'Entrar com Google' ou use 'Esqueci minha senha' para adicionar senha.");
+        } else {
+          toast.error("E-mail ou senha incorretos.");
+        }
       } else {
         void navigate({ to: "/" });
       }

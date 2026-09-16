@@ -74,7 +74,12 @@ function CriarPage() {
         callbackURL: "/",
       });
       if (result?.error) {
-        toast.error(result.error.message ?? "Erro ao criar conta.");
+        const msg = result.error.message ?? "";
+        if (/exist|already|exists/i.test(msg)) {
+          toast.error("Esse e-mail já possui uma conta. Entre em /entrar ou use 'Esqueci minha senha'.");
+        } else {
+          toast.error(msg || "Erro ao criar conta.");
+        }
       } else {
         toast.success("Conta criada! Bem-vindo ao The Beyond.");
         void navigate({ to: "/" });

@@ -114,10 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const AUTH_LOADING: AuthValue = {
+  loading: true,
+  session: null,
+  user: null,
+  profile: null,
+  role: "reader",
+  isOwner: false,
+  isAdmin: false,
+  isGerente: false,
+  isStaff: false,
+  isAuthor: false,
+  isVip: false,
+  refresh: async () => {},
+  signOut: async () => {},
+};
+
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth precisa estar dentro de AuthProvider");
-  return ctx;
+  return useContext(AuthContext) ?? AUTH_LOADING;
 }
 
 export function highestRole(roles: AppRole[]): AppRole {

@@ -15,7 +15,9 @@ import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor'
 import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as CriarRouteImport } from './routes/criar'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as ExplorarRouteImport } from './routes/explorar'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -54,9 +56,19 @@ const ContatoRoute = ContatoRouteImport.update({
   path: '/contato',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CriarRoute = CriarRouteImport.update({
+  id: '/criar',
+  path: '/criar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorarRoute = ExplorarRouteImport.update({
@@ -102,7 +114,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
+  '/criar': typeof CriarRoute
   '/dashboard': typeof DashboardRoute
+  '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -118,7 +132,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
+  '/criar': typeof CriarRoute
   '/dashboard': typeof DashboardRoute
+  '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -135,7 +151,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
+  '/criar': typeof CriarRoute
   '/dashboard': typeof DashboardRoute
+  '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -153,7 +171,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/candidatura-autor'
     | '/contato'
+    | '/criar'
     | '/dashboard'
+    | '/entrar'
     | '/explorar'
     | '/planos'
     | '/privacidade'
@@ -169,7 +189,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/candidatura-autor'
     | '/contato'
+    | '/criar'
     | '/dashboard'
+    | '/entrar'
     | '/explorar'
     | '/planos'
     | '/privacidade'
@@ -185,7 +207,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/candidatura-autor'
     | '/contato'
+    | '/criar'
     | '/dashboard'
+    | '/entrar'
     | '/explorar'
     | '/planos'
     | '/privacidade'
@@ -202,7 +226,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
   ContatoRoute: typeof ContatoRoute
+  CriarRoute: typeof CriarRoute
   DashboardRoute: typeof DashboardRoute
+  EntrarRoute: typeof EntrarRoute
   ExplorarRoute: typeof ExplorarRoute
   PlanosRoute: typeof PlanosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
@@ -256,11 +282,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContatoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/criar': {
+      id: '/criar'
+      path: '/criar'
+      fullPath: '/criar'
+      preLoaderRoute: typeof CriarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explorar': {
@@ -322,7 +362,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CandidaturaAutorRoute: CandidaturaAutorRoute,
   ContatoRoute: ContatoRoute,
+  CriarRoute: CriarRoute,
   DashboardRoute: DashboardRoute,
+  EntrarRoute: EntrarRoute,
   ExplorarRoute: ExplorarRoute,
   PlanosRoute: PlanosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
