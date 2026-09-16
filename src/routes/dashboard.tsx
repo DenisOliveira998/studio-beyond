@@ -139,6 +139,7 @@ function Dashboard() {
       type: MEDIUM_LABEL[w.medium],
       submitted: new Date(w.createdAt).toLocaleDateString("pt-BR"),
       note: w.curatorNote ?? undefined,
+      status: w.status,
     }));
 
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -161,7 +162,7 @@ function Dashboard() {
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadStep, setUploadStep] = useState<"idle" | "pdf" | "work">("idle");
+  const [uploadStep, setUploadStep] = useState<"idle" | "cover" | "pdf" | "work">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
@@ -208,7 +209,7 @@ function Dashboard() {
     try {
       // Se tiver capa selecionada, faz upload primeiro
       if (coverFile) {
-        setUploadStep("pdf");
+        setUploadStep("cover");
         const fd = new FormData();
         fd.append("file", coverFile);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -340,7 +341,7 @@ function Dashboard() {
             />
             <Stat
               label="Obras Publicadas"
-              value={String(initialWorks.filter((w) => !["pending", "draft", "rejected"].includes((w as unknown as { status?: string }).status ?? "")).length || initialWorks.length)}
+              value={String(initialWorks.filter((w) => !["pending", "draft", "rejected", "changes"].includes((w as unknown as { status?: string }).status ?? "")).length)}
               note="No feed público"
             />
             <Stat
@@ -583,7 +584,8 @@ function Dashboard() {
               <div className="mt-8">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                   <span>
-                    {uploadStep === "pdf" && "Enviando PDF…"}
+                    {uploadStep === "cover" && "Enviando capa…"}
+                    {uploadStep === "pdf" && "Enviando arquivo da obra…"}
                     {uploadStep === "work" && "Salvando obra…"}
                     {uploadStep === "idle" && "Preparando…"}
                   </span>
@@ -592,7 +594,7 @@ function Dashboard() {
                 <div className="h-0.5 w-full overflow-hidden bg-border">
                   <div
                     className="h-full bg-gilt transition-all duration-500"
-                    style={{ width: uploadStep === "pdf" ? "40%" : uploadStep === "work" ? "80%" : "10%" }}
+                    style={{ width: uploadStep === "cover" ? "30%" : uploadStep === "pdf" ? "60%" : uploadStep === "work" ? "85%" : "10%" }}
                   />
                 </div>
               </div>
@@ -656,19 +658,25 @@ function Dashboard() {
                   <tr key={q.id} className="transition-colors hover:bg-surface/60">
                     <Td>
                       <p className="font-display text-lg leading-tight">{q.title}</p>
-                      {q.note && <p className="caption mt-1">{q.note}</p>}
+                      {q.note && (
+                        <p className="mt-2 border-l-2 border-gilt/50 pl-2.5 text-xs leading-relaxed text-muted-foreground">
+                          <span className="font-medium text-foreground">Curadoria: </span>{q.note}
+                        </p>
+                      )}
                     </Td>
                     <Td className="text-muted-foreground">{q.type}</Td>
                     <Td className="text-muted-foreground">{q.submitted}</Td>
                     <Td className="text-right">
                       <span
                         className={`btn-type inline-block border px-2 py-1 text-[0.6rem] ${
-                          q.note
+                          q.status === "rejected"
+                            ? "border-destructive/50 bg-destructive/10 text-destructive"
+                            : q.status === "changes"
                             ? "border-border bg-muted text-muted-foreground"
                             : "border-gilt/50 bg-gilt/10 text-gilt"
                         }`}
                       >
-                        {q.note ? "Ajustes solicitados" : "Em revisão"}
+                        {q.status === "rejected" ? "Recusada" : q.status === "changes" ? "Ajustes solicitados" : "Em revisão"}
                       </span>
                     </Td>
                   </tr>

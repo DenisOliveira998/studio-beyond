@@ -291,29 +291,37 @@ function WorkPage() {
     if (!bodyEl) return;
     const totalPages = work.pages ? Number(work.pages) : 5;
     const segments = Math.min(totalPages, 10);
+    let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 
     function onScroll() {
-      if (!bodyEl) return;
-      const { top, height } = bodyEl.getBoundingClientRect();
-      const viewH = window.innerHeight;
-      const scrolled = Math.max(0, viewH - top);
-      const fraction = Math.min(scrolled / height, 1);
-      const pagesRead = Math.floor(fraction * segments);
-      const toConsume = pagesRead - pagesConsumedRef.current;
-      if (toConsume <= 0) return;
-      pagesConsumedRef.current = pagesRead;
-      void fetch("/api/quota/consume", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pages: toConsume }),
-      })
-        .then((r) => r.json() as Promise<{ allowed: boolean; remaining: number }>)
-        .then((res) => {
-          if (!res.allowed) void refetchQuota();
-        });
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null;
+        if (!bodyEl) return;
+        const { top, height } = bodyEl.getBoundingClientRect();
+        const viewH = window.innerHeight;
+        const scrolled = Math.max(0, viewH - top);
+        const fraction = Math.min(scrolled / height, 1);
+        const pagesRead = Math.floor(fraction * segments);
+        const toConsume = pagesRead - pagesConsumedRef.current;
+        if (toConsume <= 0) return;
+        pagesConsumedRef.current = pagesRead;
+        void fetch("/api/quota/consume", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ pages: toConsume }),
+        })
+          .then((r) => r.json() as Promise<{ allowed: boolean; remaining: number }>)
+          .then((res) => {
+            if (!res.allowed) void refetchQuota();
+          });
+      }, 500);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (throttleTimer) clearTimeout(throttleTimer);
+    };
   }, [user, quotaExhausted, work.pages, refetchQuota]);
 
   useEffect(() => {

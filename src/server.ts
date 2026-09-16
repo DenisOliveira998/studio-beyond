@@ -749,15 +749,18 @@ export default {
           const { email, artistName } = await decideApplication(appId, status as "approved" | "rejected" | "changes", note);
           const apiKey = process.env["RESEND_API_KEY"];
           if (apiKey && email) {
+            const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const safeName = esc(artistName);
+            const safeNote = note ? esc(note) : "";
             const subjects: Record<string, string> = {
               approved: "Candidatura aprovada — The Beyond",
               rejected: "Resposta à sua candidatura — The Beyond",
               changes: "Ajustes solicitados — The Beyond",
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${artistName}!<br><br>Sua candidatura ao <strong>The Beyond</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe The Beyond</em>`,
-              rejected: `Olá, ${artistName}.<br><br>Agradecemos o interesse em fazer parte do <strong>The Beyond</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${note ? `<br><br><em>Nota da curadoria: ${note}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe The Beyond</em>`,
-              changes: `Olá, ${artistName}.<br><br>Sua candidatura ao <strong>The Beyond</strong> precisa de alguns ajustes antes de ser aprovada.${note ? `<br><br><em>Nota da curadoria: ${note}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
+              approved: `Olá, ${safeName}!<br><br>Sua candidatura ao <strong>The Beyond</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe The Beyond</em>`,
+              rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte do <strong>The Beyond</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe The Beyond</em>`,
+              changes: `Olá, ${safeName}.<br><br>Sua candidatura ao <strong>The Beyond</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
             };
             await fetch("https://api.resend.com/emails", {
               method: "POST",
@@ -796,7 +799,34 @@ export default {
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
           const { decideWork } = await import("./lib/beyond-db");
-          await decideWork(workId, status as "approved" | "rejected" | "changes", note);
+          const { authorEmail, authorName, title } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
+          const apiKey = process.env["RESEND_API_KEY"];
+          if (apiKey && authorEmail) {
+            const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const safeName = esc(authorName);
+            const safeTitle = esc(title);
+            const safeNote = note ? esc(note) : "";
+            const subjects: Record<string, string> = {
+              approved: `"${title}" foi aprovada — The Beyond`,
+              rejected: `"${title}" não foi aprovada — The Beyond`,
+              changes: `Ajustes solicitados para "${title}" — The Beyond`,
+            };
+            const bodies: Record<string, string> = {
+              approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria do <strong>The Beyond</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe The Beyond</em>`,
+              rejected: `Olá, ${safeName}.<br><br>Após análise, sua obra <strong>${safeTitle}</strong> não foi aprovada neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br><em>Equipe The Beyond</em>`,
+              changes: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
+            };
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: "The Beyond <noreply@thebeyond.art>",
+                to: [authorEmail],
+                subject: subjects[status] ?? "Atualização da sua obra — The Beyond",
+                html: bodies[status] ?? "",
+              }),
+            }).catch(() => {});
+          }
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "DELETE") {
@@ -815,7 +845,7 @@ export default {
         return new Response(JSON.stringify(stats), { headers: { "content-type": "application/json" } });
       }
 
-      // Atualizar PDF de uma obra (autor/admin)
+      // Atualizar PDF de uma obra (autor dono ou admin)
       if (pathname.startsWith("/api/works/") && pathname.endsWith("/pdf") && request.method === "PATCH") {
         const { auth } = await import("./lib/auth-server");
         const session = await auth.api.getSession({ headers: request.headers });
@@ -826,6 +856,16 @@ export default {
           });
         }
         const id = pathname.replace("/api/works/", "").replace("/pdf", "");
+        const { prisma } = await import("./lib/prisma");
+        const work = await prisma.work.findUnique({ where: { id }, select: { authorId: true } });
+        if (!work) {
+          return new Response(JSON.stringify({ error: "Obra não encontrada" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        const adminCheck = await requireAdmin(request);
+        const isAdminUser = !adminCheck.error;
+        if (!isAdminUser && work.authorId !== session.user.id) {
+          return new Response(JSON.stringify({ error: "Sem permissão" }), { status: 403, headers: { "content-type": "application/json" } });
+        }
         const { pdfUrl } = (await request.json()) as { pdfUrl: string | null };
         const { updateWorkPdf } = await import("./lib/beyond-db");
         await updateWorkPdf(id, pdfUrl ?? null);

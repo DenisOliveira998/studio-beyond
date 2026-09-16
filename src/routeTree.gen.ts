@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BibliotecaRouteImport } from './routes/biblioteca'
 import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as CriarRouteImport } from './routes/criar'
@@ -46,6 +47,11 @@ const ArtistsRoute = ArtistsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BibliotecaRoute = BibliotecaRouteImport.update({
+  id: '/biblioteca',
+  path: '/biblioteca',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CandidaturaAutorRoute = CandidaturaAutorRouteImport.update({
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
+  '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
+  '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
+  '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/artists'
     | '/auth'
+    | '/biblioteca'
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/artists'
     | '/auth'
+    | '/biblioteca'
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/artists'
     | '/auth'
+    | '/biblioteca'
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ArtistsRoute: typeof ArtistsRoute
   AuthRoute: typeof AuthRouteWithChildren
+  BibliotecaRoute: typeof BibliotecaRoute
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
   ContatoRoute: typeof ContatoRoute
   CriarRoute: typeof CriarRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/biblioteca': {
+      id: '/biblioteca'
+      path: '/biblioteca'
+      fullPath: '/biblioteca'
+      preLoaderRoute: typeof BibliotecaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/candidatura-autor': {
@@ -409,6 +429,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ArtistsRoute: ArtistsRoute,
   AuthRoute: AuthRouteWithChildren,
+  BibliotecaRoute: BibliotecaRoute,
   CandidaturaAutorRoute: CandidaturaAutorRoute,
   ContatoRoute: ContatoRoute,
   CriarRoute: CriarRoute,

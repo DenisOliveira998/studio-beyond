@@ -132,7 +132,15 @@ export async function decideWork(
   id: string,
   status: "approved" | "rejected" | "changes",
   note?: string,
-) {
+): Promise<{ authorEmail: string; authorName: string; title: string }> {
+  const work = await prisma.work.findUnique({
+    where: { id },
+    select: { title: true, authorId: true },
+  });
+  if (!work) throw new Error("Work not found");
+  const author = work.authorId
+    ? await prisma.profile.findUnique({ where: { id: work.authorId }, select: { email: true, name: true } })
+    : null;
   await prisma.work.update({
     where: { id },
     data: {
@@ -141,6 +149,7 @@ export async function decideWork(
       ...(status === "approved" ? { publishedAt: new Date() } : {}),
     },
   });
+  return { authorEmail: author?.email ?? "", authorName: author?.name ?? "Autor", title: work.title };
 }
 
 export async function updateWorkPdf(id: string, pdfUrl: string | null) {

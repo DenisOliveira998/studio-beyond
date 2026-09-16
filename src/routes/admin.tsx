@@ -299,22 +299,22 @@ function AdminPage() {
   });
 
   const patchApplication = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ReviewStatus }) =>
+    mutationFn: ({ id, status, note }: { id: string; status: ReviewStatus; note?: string }) =>
       fetch(`/api/applications/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, note }),
       }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["applications"] }),
     onError: () => toast.error("Erro ao atualizar candidatura."),
   });
 
   const patchWork = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ReviewStatus }) =>
+    mutationFn: ({ id, status, note }: { id: string; status: ReviewStatus; note?: string }) =>
       fetch(`/api/admin/works/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, note }),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin-works"] });
@@ -346,22 +346,34 @@ function AdminPage() {
   function decideApplication(id: string, status: ReviewStatus) {
     const app = applications.find((a) => a.id === id);
     if (!app) return;
+    let note: string | undefined;
+    if (status === "rejected" || status === "changes") {
+      const input = window.prompt(`Nota para ${app.artistName} (opcional, será enviada por e-mail):`);
+      if (input === null) return; // cancelado
+      note = input.trim() || undefined;
+    }
     const label = status === "approved" ? "aprovado" : status === "rejected" ? "recusado" : "ajuste solicitado";
     toast.success(`${app.artistName} — ${label}. E-mail enviado.`);
-    patchApplication.mutate({ id, status });
+    patchApplication.mutate(note ? { id, status, note } : { id, status });
   }
 
   function decideSubmission(id: string, status: ReviewStatus) {
     const sub = submissions.find((w) => w.id === id);
     if (!sub) return;
+    let note: string | undefined;
+    if (status === "rejected" || status === "changes") {
+      const input = window.prompt(`Nota para o autor de "${sub.title}" (opcional, será enviada por e-mail):`);
+      if (input === null) return; // cancelado
+      note = input.trim() || undefined;
+    }
     toast.success(
       status === "approved"
-        ? `"${sub.title}" aprovada e publicada no feed.`
+        ? `"${sub.title}" aprovada e publicada no feed. E-mail enviado.`
         : status === "changes"
-          ? `Ajustes solicitados ao autor de "${sub.title}".`
-          : `"${sub.title}" recusada com comentário do curador.`,
+          ? `Ajustes solicitados ao autor de "${sub.title}". E-mail enviado.`
+          : `"${sub.title}" recusada. E-mail enviado.`,
     );
-    patchWork.mutate({ id, status });
+    patchWork.mutate(note ? { id, status, note } : { id, status });
   }
 
   function changeRole(id: string, role: AppRole) {
