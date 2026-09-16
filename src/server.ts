@@ -699,6 +699,110 @@ export default {
         });
       }
 
+      // Registrar visualização de obra
+      const workViewMatch = pathname.match(/^\/api\/works\/([^/]+)\/view$/);
+      if (workViewMatch && request.method === "POST") {
+        const slug = decodeURIComponent(workViewMatch[1]!);
+        const { registerWorkView } = await import("./lib/beyond-db");
+        const views = await registerWorkView(slug);
+        return new Response(JSON.stringify({ views }), { headers: { "content-type": "application/json" } });
+      }
+
+      // Like/unlike obra
+      const workLikeMatch = pathname.match(/^\/api\/works\/([^/]+)\/like$/);
+      if (workLikeMatch) {
+        const slug = decodeURIComponent(workLikeMatch[1]!);
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (request.method === "GET") {
+          if (!session?.user) {
+            const { getWorkLikeCount } = await import("./lib/beyond-db");
+            const count = await getWorkLikeCount(slug);
+            return new Response(JSON.stringify({ liked: false, count }), { headers: { "content-type": "application/json" } });
+          }
+          const { getWorkLikeStatus } = await import("./lib/beyond-db");
+          const status = await getWorkLikeStatus(session.user.id, slug);
+          return new Response(JSON.stringify(status), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "POST") {
+          if (!session?.user) {
+            return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          }
+          const { toggleWorkLike } = await import("./lib/beyond-db");
+          const result = await toggleWorkLike(session.user.id, slug);
+          return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // Comentários de obra
+      const workCommentsMatch = pathname.match(/^\/api\/works\/([^/]+)\/comments$/);
+      if (workCommentsMatch) {
+        const slug = decodeURIComponent(workCommentsMatch[1]!);
+        if (request.method === "GET") {
+          const { getWorkComments } = await import("./lib/beyond-db");
+          const comments = await getWorkComments(slug);
+          return new Response(JSON.stringify(comments), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "POST") {
+          const { author, text } = (await request.json()) as { author?: string; text: string };
+          if (!text?.trim()) {
+            return new Response(JSON.stringify({ error: "Texto obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
+          }
+          const { auth } = await import("./lib/auth-server");
+          const session = await auth.api.getSession({ headers: request.headers });
+          const { addWorkComment } = await import("./lib/beyond-db");
+          const comment = await addWorkComment({
+            workSlug: slug,
+            userId: session?.user?.id ?? null,
+            author: author?.trim() || session?.user?.name || "Anônimo",
+            text: text.trim(),
+          });
+          return new Response(JSON.stringify(comment), { headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // Seguir/deixar de seguir artista
+      const artistFollowMatch = pathname.match(/^\/api\/artists\/([^/]+)\/follow$/);
+      if (artistFollowMatch) {
+        const artistSlug = decodeURIComponent(artistFollowMatch[1]!);
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (request.method === "GET") {
+          if (!session?.user) {
+            return new Response(JSON.stringify({ followed: false }), { headers: { "content-type": "application/json" } });
+          }
+          const { isArtistFollowed } = await import("./lib/beyond-db");
+          const followed = await isArtistFollowed(session.user.id, artistSlug);
+          return new Response(JSON.stringify({ followed }), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "POST") {
+          if (!session?.user) {
+            return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          }
+          const { toggleArtistFollow } = await import("./lib/beyond-db");
+          const result = await toggleArtistFollow(session.user.id, artistSlug);
+          return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // Atualizar perfil
+      if (pathname === "/api/profile" && request.method === "PATCH") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        const { name } = (await request.json()) as { name?: string };
+        if (name !== undefined && !name.trim()) {
+          return new Response(JSON.stringify({ error: "Nome não pode ser vazio" }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const { updateProfile } = await import("./lib/beyond-db");
+        const patch: { name?: string } = {};
+        if (name !== undefined) patch.name = name.trim();
+        await updateProfile(session.user.id, patch);
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

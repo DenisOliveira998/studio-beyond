@@ -1,12 +1,15 @@
 ﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowUp, Bookmark, Download, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, compact } from "@/lib/beyond-data";
 import { stripHtml, isHtml } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import type { CommentData } from "@/lib/beyond-db";
 
 export const Route = createFileRoute("/work/$slug")({
   loader: async ({ params }) => {
@@ -78,46 +81,39 @@ function WorkParagraph({ content, className }: { content: string; className?: st
 
 // ── Comentários ────────────────────────────────────────────────
 
-type Comment = { id: string; author: string; text: string; ago: string };
-
-const SEED_COMMENTS: Comment[] = [
-  { id: "c1", author: "Mariana T.", text: "Que obra densa. Terminei de ler às 2h da manhã e fiquei olhando pro teto por meia hora.", ago: "3 dias atrás" },
-  { id: "c2", author: "Felipe R.", text: "A escrita tem um ritmo muito particular — às vezes lenta demais e depois te pega de surpresa. Gostei muito.", ago: "1 semana atrás" },
-];
-
-const COMMENTS_KEY = "beyond:comments:";
-
 function CommentsSection({ workSlug }: { workSlug: string }) {
-  const key = COMMENTS_KEY + workSlug;
-  const [comments, setComments] = useState<Comment[]>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as Comment[]) : SEED_COMMENTS;
-    } catch { return SEED_COMMENTS; }
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentData[]>({
+    queryKey: ["comments", workSlug],
+    queryFn: () => fetch(`/api/works/${workSlug}/comments`).then((r) => r.json() as Promise<CommentData[]>),
+    staleTime: 30_000,
   });
-  const [draft, setDraft] = useState("");
-  const [name, setName] = useState("");
-  const [sending, setSending] = useState(false);
+  const addComment = useMutation({
+    mutationFn: (payload: { author: string; text: string }) =>
+      fetch(`/api/works/${workSlug}/comments`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json() as Promise<CommentData>;
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["comments", workSlug] });
+      toast.success("Comentário publicado.");
+    },
+    onError: () => toast.error("Erro ao publicar comentário."),
+  });
 
-  const persist = useCallback((list: Comment[]) => {
-    try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* ignore */ }
-  }, [key]);
+  const [draft, setDraft] = useState("");
+  const [name, setName] = useState(user?.name ?? "");
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.trim()) return;
-    setSending(true);
-    setTimeout(() => {
-      const next: Comment[] = [
-        { id: `c${Date.now()}`, author: name.trim() || "Anônimo", text: draft.trim(), ago: "agora mesmo" },
-        ...comments,
-      ];
-      setComments(next);
-      persist(next);
-      setDraft("");
-      setSending(false);
-      toast.success("Comentário publicado.");
-    }, 600);
+    addComment.mutate({ author: name.trim() || user?.name || "Anônimo", text: draft.trim() });
+    setDraft("");
   }
 
   return (
@@ -152,20 +148,30 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
         </label>
         <button
           type="submit"
-          disabled={sending}
+          disabled={addComment.isPending}
           className="btn-type mt-4 border border-gilt px-5 py-2 text-xs text-gilt transition-colors hover:bg-gilt hover:text-primary-foreground disabled:opacity-60"
         >
-          {sending ? "Publicando…" : "Publicar comentário"}
+          {addComment.isPending ? "Publicando…" : "Publicar comentário"}
         </button>
       </form>
 
       {/* Lista */}
       <div className="mt-8 divide-y divide-border">
+        {commentsLoading && (
+          <div className="py-8 text-center">
+            <span className="size-5 animate-spin rounded-full border-2 border-border border-t-gilt inline-block" />
+          </div>
+        )}
+        {!commentsLoading && comments.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">Seja o primeiro a comentar.</p>
+        )}
         {comments.map((c) => (
           <div key={c.id} className="py-6">
             <div className="flex items-baseline gap-3">
               <span className="font-display text-base">{c.author}</span>
-              <span className="text-xs text-muted-foreground">{c.ago}</span>
+              <span className="text-xs text-muted-foreground">
+                {new Date(c.createdAt).toLocaleDateString("pt-BR")}
+              </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.text}</p>
           </div>
@@ -177,27 +183,34 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
 
 // ── Bookmark ────────────────────────────────────────────────────
 
-const BOOKMARK_KEY = "beyond:bookmarks";
+function useBookmark(slug: string, artistSlug: string) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data } = useQuery<{ favorited: boolean }>({
+    queryKey: ["bookmark", slug],
+    queryFn: () => fetch(`/api/favorites/${slug}`).then((r) => r.json() as Promise<{ favorited: boolean }>),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const saved = data?.favorited ?? false;
 
-function useBookmark(slug: string) {
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(BOOKMARK_KEY);
-      const list: string[] = raw ? (JSON.parse(raw) as string[]) : [];
-      setSaved(list.includes(slug));
-    } catch { /* ignore */ }
-  }, [slug]);
+  const mutation = useMutation({
+    mutationFn: () =>
+      fetch("/api/favorites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workSlug: slug, artistSlug }),
+      }).then((r) => r.json() as Promise<{ favorited: boolean }>),
+    onSuccess: (result) => {
+      qc.setQueryData(["bookmark", slug], result);
+      toast.success(result.favorited ? "Obra salva na sua lista." : "Removida da lista.");
+    },
+    onError: () => toast.error("Erro ao salvar. Tente novamente."),
+  });
 
   function toggle() {
-    try {
-      const raw = localStorage.getItem(BOOKMARK_KEY);
-      const list: string[] = raw ? (JSON.parse(raw) as string[]) : [];
-      const next = list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug];
-      localStorage.setItem(BOOKMARK_KEY, JSON.stringify(next));
-      setSaved(next.includes(slug));
-      toast.success(next.includes(slug) ? "Obra salva na sua lista." : "Removida da lista.");
-    } catch { /* ignore */ }
+    if (!user) { toast.error("Faça login para salvar obras."); return; }
+    mutation.mutate();
   }
 
   return { saved, toggle };
@@ -205,11 +218,58 @@ function useBookmark(slug: string) {
 
 function WorkPage() {
   const { work, related } = Route.useLoaderData();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const artistName = work.artistName ?? "";
   const artistSlug = work.artistSlug;
-  const [liked, setLiked] = useState(false);
-  const [followed, setFollowed] = useState(false);
-  const { saved, toggle: toggleBookmark } = useBookmark(work.slug);
+
+  // View counter — fire on mount
+  useEffect(() => {
+    void fetch(`/api/works/${work.slug}/view`, { method: "POST" });
+  }, [work.slug]);
+
+  // Like
+  const { data: likeData } = useQuery<{ liked: boolean; count: number }>({
+    queryKey: ["like", work.slug],
+    queryFn: () => fetch(`/api/works/${work.slug}/like`).then((r) => r.json() as Promise<{ liked: boolean; count: number }>),
+    staleTime: 60_000,
+  });
+  const liked = likeData?.liked ?? false;
+  const likeCount = likeData?.count ?? work.likes;
+  const likeMutation = useMutation({
+    mutationFn: () =>
+      fetch(`/api/works/${work.slug}/like`, { method: "POST" }).then((r) => r.json() as Promise<{ liked: boolean; count: number }>),
+    onSuccess: (data) => {
+      qc.setQueryData(["like", work.slug], data);
+    },
+    onError: () => toast.error("Erro ao curtir. Tente novamente."),
+  });
+
+  // Bookmark
+  const { saved, toggle: toggleBookmark } = useBookmark(work.slug, artistSlug);
+
+  // Follow
+  const { data: followData } = useQuery<{ followed: boolean }>({
+    queryKey: ["follow", artistSlug],
+    queryFn: () => fetch(`/api/artists/${artistSlug}/follow`).then((r) => r.json() as Promise<{ followed: boolean }>),
+    enabled: !!artistSlug,
+    staleTime: 60_000,
+  });
+  const followed = followData?.followed ?? false;
+  const followMutation = useMutation({
+    mutationFn: () =>
+      fetch(`/api/artists/${artistSlug}/follow`, { method: "POST" }).then((r) => r.json() as Promise<{ followed: boolean }>),
+    onSuccess: (data) => {
+      qc.setQueryData(["follow", artistSlug], data);
+      toast.success(
+        data.followed
+          ? `Você está seguindo ${artistName}. Novidades chegarão por e-mail.`
+          : `Você deixou de seguir ${artistName}.`,
+      );
+    },
+    onError: () => toast.error("Erro. Tente novamente."),
+  });
+
   const [showBackTop, setShowBackTop] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
@@ -264,12 +324,8 @@ function WorkPage() {
         <div className="mt-5">
           <button
             onClick={() => {
-              setFollowed((v) => !v);
-              toast.success(
-                followed
-                  ? `Você deixou de seguir ${artistName}.`
-                  : `Você está seguindo ${artistName}. Novidades chegarão por e-mail.`,
-              );
+              if (!user) { toast.error("Faça login para seguir artistas."); return; }
+              followMutation.mutate();
             }}
             className={`text-xs uppercase tracking-[0.18em] border px-4 py-2 transition-colors ${
               followed
@@ -347,14 +403,17 @@ function WorkPage() {
       {/* Ações */}
       <div className="mt-14 flex flex-wrap items-center gap-3 border-t border-border pt-8">
         <button
-          onClick={() => setLiked((v) => !v)}
+          onClick={() => {
+            if (!user) { toast.error("Faça login para curtir."); return; }
+            likeMutation.mutate();
+          }}
           aria-label={liked ? "Remover curtida" : "Curtir"}
           className={`flex items-center gap-2 border px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-colors ${
             liked ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
           }`}
         >
           <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
-          {compact(work.likes + (liked ? 1 : 0))}
+          {compact(likeCount)}
         </button>
 
         <button

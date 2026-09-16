@@ -1,5 +1,5 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type {
@@ -12,6 +12,7 @@ import type {
 } from "@/lib/beyond-db";
 import type { AppRole } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import {
   ArrowDown,
   ArrowUp,
@@ -103,7 +104,16 @@ const EMPTY_CONFIG: SiteConfigData = {
 };
 
 function AdminPage() {
+  const { profile, loading } = useAuth();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<AppRole | "all">("all");
+
+  const ADMIN_ROLES_CLIENT = ["owner", "admin", "gerente"] as const;
+  const isStaff = !loading && profile && ADMIN_ROLES_CLIENT.includes(profile.role as typeof ADMIN_ROLES_CLIENT[number]);
+
+  useEffect(() => {
+    if (!loading && !isStaff) void navigate({ to: "/" });
+  }, [loading, isStaff, navigate]);
 
   const queryClient = useQueryClient();
 
@@ -343,6 +353,14 @@ function AdminPage() {
 
   const visible = filter === "all" ? accounts : accounts.filter((a) => a.role === filter);
 
+  if (loading || !isStaff) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       {/* Sidebar fixa */}
@@ -532,6 +550,13 @@ function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
+                {reviewableSubmissions.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      Nenhuma obra aguardando revisão.
+                    </td>
+                  </tr>
+                )}
                 {reviewableSubmissions.map((w) => (
                   <tr key={w.id} className="transition-colors hover:bg-surface/60">
                     <Td>

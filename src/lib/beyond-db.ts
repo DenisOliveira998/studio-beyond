@@ -558,6 +558,111 @@ export async function getReaderProfileStats(userId: string): Promise<ReaderProfi
   };
 }
 
+/* ---------- likes de obras ---------- */
+
+export async function toggleWorkLike(
+  userId: string,
+  workSlug: string,
+): Promise<{ liked: boolean; count: number }> {
+  const existing = await prisma.workLike.findUnique({
+    where: { userId_workSlug: { userId, workSlug } },
+  });
+  if (existing) {
+    await prisma.workLike.delete({ where: { id: existing.id } });
+  } else {
+    await prisma.workLike.create({ data: { userId, workSlug } });
+  }
+  const count = await prisma.workLike.count({ where: { workSlug } });
+  return { liked: !existing, count };
+}
+
+export async function getWorkLikeStatus(
+  userId: string,
+  workSlug: string,
+): Promise<{ liked: boolean; count: number }> {
+  const [row, count] = await Promise.all([
+    prisma.workLike.findUnique({ where: { userId_workSlug: { userId, workSlug } } }),
+    prisma.workLike.count({ where: { workSlug } }),
+  ]);
+  return { liked: !!row, count };
+}
+
+export async function getWorkLikeCount(workSlug: string): Promise<number> {
+  return prisma.workLike.count({ where: { workSlug } });
+}
+
+/* ---------- seguir artistas ---------- */
+
+export async function toggleArtistFollow(
+  userId: string,
+  artistSlug: string,
+): Promise<{ followed: boolean }> {
+  const existing = await prisma.artistFollow.findUnique({
+    where: { userId_artistSlug: { userId, artistSlug } },
+  });
+  if (existing) {
+    await prisma.artistFollow.delete({ where: { id: existing.id } });
+    return { followed: false };
+  }
+  await prisma.artistFollow.create({ data: { userId, artistSlug } });
+  return { followed: true };
+}
+
+export async function isArtistFollowed(userId: string, artistSlug: string): Promise<boolean> {
+  const row = await prisma.artistFollow.findUnique({
+    where: { userId_artistSlug: { userId, artistSlug } },
+  });
+  return !!row;
+}
+
+/* ---------- comentários de obras ---------- */
+
+export type CommentData = {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+};
+
+export async function getWorkComments(workSlug: string): Promise<CommentData[]> {
+  const rows = await prisma.workComment.findMany({
+    where: { workSlug },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    author: r.author,
+    text: r.text,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+export async function addWorkComment(input: {
+  workSlug: string;
+  userId?: string | null;
+  author: string;
+  text: string;
+}): Promise<CommentData> {
+  const row = await prisma.workComment.create({
+    data: {
+      workSlug: input.workSlug,
+      userId: input.userId ?? null,
+      author: input.author || "Anônimo",
+      text: input.text,
+    },
+  });
+  return { id: row.id, author: row.author, text: row.text, createdAt: row.createdAt.toISOString() };
+}
+
+/* ---------- atualizar perfil ---------- */
+
+export async function updateProfile(userId: string, data: { name?: string }): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if (data.name !== undefined) patch["name"] = data.name;
+  if (!Object.keys(patch).length) return;
+  await prisma.profile.update({ where: { id: userId }, data: patch });
+}
+
 /* ---------- utilidades ---------- */
 
 export function slugify(value: string) {

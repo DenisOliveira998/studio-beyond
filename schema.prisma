@@ -269,3 +269,37 @@ model ReadingProgress {
   @@index([userId])
   @@map("reading_progress")
 }
+
+model WorkLike {
+  id        String   @id @default(cuid())
+  userId    String
+  workSlug  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, workSlug])
+  @@index([workSlug])
+  @@map("work_likes")
+}
+
+model ArtistFollow {
+  id         String   @id @default(cuid())
+  userId     String
+  artistSlug String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, artistSlug])
+  @@index([artistSlug])
+  @@map("artist_follows")
+}
+
+model WorkComment {
+  id        String   @id @default(cuid())
+  workSlug  String
+  userId    String?
+  author    String   @default("Anônimo")
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([workSlug])
+  @@map("work_comments")
+}

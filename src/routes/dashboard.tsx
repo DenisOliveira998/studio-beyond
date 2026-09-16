@@ -135,6 +135,10 @@ function Dashboard() {
       note: w.curatorNote ?? undefined,
     }));
 
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editProfileName, setEditProfileName] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   const [editingWork, setEditingWork] = useState<Work | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState("");
@@ -848,6 +852,67 @@ function Dashboard() {
           </div>
         )}
 
+        {/* Modal editar perfil */}
+        {showEditProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="w-full max-w-md border border-gilt/30 bg-background p-8">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-2xl tracking-tight">Editar perfil</h2>
+                <button
+                  onClick={() => setShowEditProfile(false)}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Fechar"
+                >
+                  <X className="size-5" strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="eyebrow">Nome de exibição</span>
+                  <input
+                    value={editProfileName}
+                    onChange={(e) => setEditProfileName(e.target.value)}
+                    placeholder="Seu nome"
+                    className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+                  />
+                </label>
+              </div>
+              <div className="mt-6 flex gap-3">
+                <button
+                  disabled={savingProfile || !editProfileName.trim()}
+                  onClick={() => void (async () => {
+                    setSavingProfile(true);
+                    try {
+                      const res = await fetch("/api/profile", {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ name: editProfileName.trim() }),
+                      });
+                      if (!res.ok) throw new Error();
+                      void queryClient.invalidateQueries({ queryKey: ["author-dashboard"] });
+                      toast.success("Perfil atualizado.");
+                      setShowEditProfile(false);
+                    } catch {
+                      toast.error("Erro ao atualizar perfil.");
+                    } finally {
+                      setSavingProfile(false);
+                    }
+                  })()}
+                  className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {savingProfile ? "Salvando…" : "Salvar"}
+                </button>
+                <button
+                  onClick={() => setShowEditProfile(false)}
+                  className="border border-border px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Meu Perfil */}
         <section id="perfil" className="mt-16 scroll-mt-24">
           <SectionTitle icon={UserRound}>Meu Perfil</SectionTitle>
@@ -872,7 +937,7 @@ function Dashboard() {
                     </Link>
                   )}
                   <button
-                    onClick={() => toast.success("Edição de perfil disponível em breve.")}
+                    onClick={() => { setEditProfileName(displayName); setShowEditProfile(true); }}
                     className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
                   >
                     Editar perfil

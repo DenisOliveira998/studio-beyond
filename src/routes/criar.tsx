@@ -43,6 +43,7 @@ function PasswordRules({ password }: { password: string }) {
 function CriarPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -75,7 +76,7 @@ function CriarPage() {
       const result = await authClient.signUp.email({
         email: email.trim(),
         password,
-        name: email.split("@")[0],
+        name: name.trim() || email.split("@")[0] || "",
         callbackURL: "/",
       });
       if (result?.error) {
@@ -164,6 +165,17 @@ function CriarPage() {
         </div>
 
         <form onSubmit={(e) => void handleCriar(e)} className="border border-border bg-surface p-7 space-y-5 sm:p-9">
+          <label className="block">
+            <span className="eyebrow">Seu nome</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Como quer ser chamado?"
+              className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+            />
+          </label>
+
           <label className="block">
             <span className="eyebrow">E-mail</span>
             <input

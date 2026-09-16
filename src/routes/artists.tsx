@@ -29,7 +29,7 @@ export const Route = createFileRoute("/artists")({
 });
 
 function ArtistsPage() {
-  const { data: artists = [] } = useQuery<ArtistSummary[]>({
+  const { data: artists = [], isLoading } = useQuery<ArtistSummary[]>({
     queryKey: ["artists"],
     queryFn: () => fetch("/api/artists").then((r) => r.json() as Promise<ArtistSummary[]>),
     staleTime: 60_000,
@@ -43,7 +43,19 @@ function ArtistsPage() {
       </h1>
 
       <div className="mt-10 divide-y divide-border border-y border-border">
-        {artists.length === 0 ? (
+        {isLoading ? (
+          <>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-10 py-8 sm:px-4">
+                <div className="h-14 w-14 shrink-0 animate-pulse border border-border bg-surface" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-7 w-48 animate-pulse bg-surface" />
+                </div>
+                <div className="h-4 w-16 shrink-0 animate-pulse bg-surface" />
+              </div>
+            ))}
+          </>
+        ) : artists.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Nenhum artista publicou obras ainda.</p>
         ) : artists.map((a) => (
           <Link
