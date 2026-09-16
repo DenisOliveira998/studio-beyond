@@ -92,7 +92,7 @@ function CriarPage() {
   async function handleGoogle() {
     setSigningGoogle(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/auth/callback" });
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
       if (result?.error) {
         toast.error(result.error.message ?? "Erro ao entrar com Google.");
         setSigningGoogle(false);
