@@ -361,12 +361,25 @@ export default {
         });
       }
 
-      // Candidatura de autor → Resend
+      // Candidatura de autor → salva no DB + Resend
       if (pathname === "/api/candidatura" && request.method === "POST") {
         const body = (await request.json()) as {
           artistName: string; email: string; field: string;
           bio: string; portfolio: string; message?: string;
         };
+        // Persiste no banco independente do e-mail
+        const { createApplication } = await import("./lib/beyond-db");
+        const session = await (await import("./lib/auth-server")).auth.api.getSession({ headers: request.headers });
+        await createApplication({
+          userId: session?.user?.id ?? null,
+          artistName: body.artistName,
+          email: body.email,
+          field: body.field,
+          bio: body.bio,
+          portfolio: body.portfolio,
+          samples: 0,
+          message: body.message ?? "",
+        });
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey) {
           // Notifica equipe
