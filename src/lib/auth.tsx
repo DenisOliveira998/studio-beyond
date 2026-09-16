@@ -48,11 +48,31 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
+const CACHE_KEY = "beyond_auth_v1";
+
+function readCachedProfile(): Profile | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Profile) : null;
+  } catch {
+    return null;
+  }
+}
+function writeCachedProfile(p: Profile) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(p)); } catch {}
+}
+function clearCachedProfile() {
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<AuthSession | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const cached = readCachedProfile();
+  const [profile, setProfile] = useState<Profile | null>(cached);
+  // Se há cache, não bloqueia a UI enquanto revalida em segundo plano
+  const [loading, setLoading] = useState(!cached);
 
   const load = useCallback(async () => {
     try {
@@ -60,20 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data);
 
       if (data?.user?.id) {
-        // Busca perfil via API interna do Better Auth
         const res = await fetch("/api/me");
         if (res.ok) {
           const p = (await res.json()) as Profile;
           setProfile(p);
+          writeCachedProfile(p);
         } else {
           setProfile(null);
+          clearCachedProfile();
         }
       } else {
         setProfile(null);
+        clearCachedProfile();
       }
     } catch (err) {
       console.error("[auth] Erro ao carregar sessão:", err);
-      setProfile(null);
     } finally {
       setLoading(false);
     }
@@ -107,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authClient.signOut();
         setSession(null);
         setProfile(null);
+        clearCachedProfile();
       },
     };
   }, [loading, session, profile, load, queryClient]);
