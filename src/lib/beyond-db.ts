@@ -204,12 +204,16 @@ export async function decideApplication(
     },
   });
 
-  // Se aprovado e tem userId, promove para author
+  // Se aprovado e tem userId, promove para author — exceto roles superiores
   if (status === "approved" && app.userId) {
-    await prisma.profile.update({
-      where: { id: app.userId },
-      data: { role: "author" },
-    });
+    const current = await prisma.profile.findUnique({ where: { id: app.userId }, select: { role: true } });
+    const PROTECTED: string[] = ["owner", "admin", "gerente"];
+    if (current && !PROTECTED.includes(current.role)) {
+      await prisma.profile.update({
+        where: { id: app.userId },
+        data: { role: "author" },
+      });
+    }
   }
 }
 

@@ -294,6 +294,19 @@ export default {
         return handleMe(request);
       }
 
+      // Endpoint temporário: restaurar owner — remover após uso
+      if (pathname === "/api/restore-owner" && request.method === "POST") {
+        const { secret } = (await request.json()) as { secret?: string };
+        if (secret !== "beyond-restore-2026") {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403, headers: { "content-type": "application/json" } });
+        }
+        const { prisma } = await import("./lib/prisma");
+        const user = await prisma.user.findUnique({ where: { email: "denis.oliveirasilv@gmail.com" } });
+        if (!user) return new Response(JSON.stringify({ error: "Usuário não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
+        await prisma.profile.update({ where: { id: user.id }, data: { role: "owner" } });
+        return new Response(JSON.stringify({ ok: true, restored: "owner" }), { headers: { "content-type": "application/json" } });
+      }
+
       // Configurações públicas do site (Instagram, contato, etc.)
       if (pathname === "/api/site-config") {
         if (request.method === "GET") {
