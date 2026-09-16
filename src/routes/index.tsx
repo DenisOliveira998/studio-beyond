@@ -2,10 +2,11 @@
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, artists, works, getArtist, type Medium } from "@/lib/beyond-data";
-import type { CarouselItemData } from "@/lib/beyond-db";
+import type { CarouselItemData, ReaderProfileStats } from "@/lib/beyond-db";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -187,6 +188,71 @@ function FeaturedCarousel() {
   );
 }
 
+function ContinueReading() {
+  const { user, loading } = useAuth();
+
+  const { data: stats } = useQuery<ReaderProfileStats>({
+    queryKey: ["profile-stats"],
+    queryFn: () => fetch("/api/profile/stats").then((r) => r.json() as Promise<ReaderProfileStats>),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  if (loading || !user) return null;
+
+  const inProgress = (stats?.progress ?? [])
+    .filter((p) => !p.finished && p.pagesRead > 0)
+    .slice(0, 6)
+    .map((p) => {
+      const work = works.find((w) => w.slug === p.workSlug);
+      return work ? { work, pagesRead: p.pagesRead } : null;
+    })
+    .filter(Boolean) as { work: (typeof works)[0]; pagesRead: number }[];
+
+  if (!inProgress.length) return null;
+
+  return (
+    <section className="border-b border-border/70 bg-surface/40">
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+        <div className="flex items-center gap-2 mb-5">
+          <BookOpen className="size-4 text-gilt" strokeWidth={1.5} />
+          <p className="eyebrow">De onde você parou</p>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+          {inProgress.map(({ work, pagesRead }) => {
+            const artist = getArtist(work.artistSlug);
+            return (
+              <Link
+                key={work.id}
+                to="/work/$slug"
+                params={{ slug: work.slug }}
+                className="group shrink-0 w-48 border border-border bg-background p-4 transition-colors hover:border-gilt"
+              >
+                <p className="eyebrow text-gilt/70">{MEDIUM_LABEL[work.medium]}</p>
+                <p className="mt-2 font-display text-base leading-tight line-clamp-2 group-hover:text-gilt">
+                  {work.title}
+                </p>
+                {artist && (
+                  <p className="mt-1 text-xs text-muted-foreground">{artist.name}</p>
+                )}
+                <div className="mt-3 h-px w-full bg-border">
+                  <div
+                    className="h-px bg-gilt transition-all"
+                    style={{ width: `${Math.min(pagesRead, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
+                  {pagesRead}% lido
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   const [filter, setFilter] = useState<"all" | Medium>("all");
   const feed = filter === "all" ? works : works.filter((w) => w.medium === filter);
@@ -221,6 +287,7 @@ function Home() {
         </div>
       </section>
 
+      <ContinueReading />
       <FeaturedCarousel />
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
