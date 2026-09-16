@@ -927,7 +927,7 @@ function AdminPage() {
             <p className="eyebrow mb-5">Adicionar slide</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label className="eyebrow text-xs">Título *</label>
+                <label className="eyebrow text-xs">Título</label>
                 <input
                   type="text"
                   value={newSlide.title}
@@ -981,7 +981,7 @@ function AdminPage() {
             <div className="mt-6 flex items-center gap-4">
               <button
                 onClick={() => createSlide.mutate()}
-                disabled={createSlide.isPending || !newSlide.title.trim()}
+                disabled={createSlide.isPending || !newSlide.imageUrl.trim()}
                 className="inline-flex items-center gap-2 bg-gilt px-5 py-2.5 text-sm font-medium text-ink transition-opacity disabled:opacity-50"
               >
                 <Plus className="size-4" strokeWidth={1.5} />
