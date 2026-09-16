@@ -110,6 +110,8 @@ function AdminPage() {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<AppRole | "all">("all");
+  const [appTab, setAppTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [workTab, setWorkTab] = useState<"pending" | "approved" | "changes" | "rejected" | "all">("pending");
 
   const ADMIN_ROLES_CLIENT = ["owner", "admin", "gerente"] as const;
   const isStaff = !loading && profile && ADMIN_ROLES_CLIENT.includes(profile.role as typeof ADMIN_ROLES_CLIENT[number]);
@@ -494,12 +496,27 @@ function AdminPage() {
         <section id="candidaturas" className="mt-16 scroll-mt-24">
           <SectionTitle icon={ClipboardList}>Candidaturas</SectionTitle>
           <p className="caption mt-4">
-            {pendingApplications} candidatura(s) pendente(s) · fila por data de envio
+            {pendingApplications} pendente(s) · {applications.filter(a => a.status === "approved").length} aprovada(s) · {applications.filter(a => a.status === "rejected").length} recusada(s)
           </p>
 
-          <div className="mt-6 space-y-4">
-            {[...applications]
-              .sort((a, b) => (a.status === "pending" ? -1 : 1) - (b.status === "pending" ? -1 : 1))
+          {/* Tabs */}
+          <div className="mt-6 flex flex-wrap gap-1">
+            {(["pending", "approved", "rejected", "all"] as const).map((tab) => {
+              const labels = { pending: "Pendentes", approved: "Aprovadas", rejected: "Recusadas", all: "Todas" };
+              const counts = { pending: applications.filter(a => a.status === "pending").length, approved: applications.filter(a => a.status === "approved").length, rejected: applications.filter(a => a.status === "rejected").length, all: applications.length };
+              return (
+                <button key={tab} onClick={() => setAppTab(tab)}
+                  className={`border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors ${appTab === tab ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"}`}>
+                  {labels[tab]} ({counts[tab]})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {applications
+              .filter(a => appTab === "all" || a.status === appTab)
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map((a) => (
                 <article key={a.id} className="border border-border bg-surface p-6 sm:p-7">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -519,7 +536,6 @@ function AdminPage() {
                     </blockquote>
                   )}
 
-                  {/* Arquivos do portfólio */}
                   {(() => {
                     try {
                       const files: string[] = JSON.parse(a.portfolioFiles || "[]");
@@ -527,13 +543,8 @@ function AdminPage() {
                       return (
                         <div className="mt-4 flex flex-wrap gap-2">
                           {files.map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-                            >
+                            <a key={i} href={url} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
                               <FileDown className="size-3.5" strokeWidth={1.5} />
                               Arquivo {i + 1}
                             </a>
@@ -545,40 +556,54 @@ function AdminPage() {
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     {a.portfolio && (
-                      <a
-                        href={a.portfolio}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn-type inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-                      >
+                      <a href={a.portfolio} target="_blank" rel="noreferrer"
+                        className="btn-type inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
                         <Eye className="size-3.5" strokeWidth={1.5} /> Ver portfólio
                       </a>
                     )}
-                    {a.status === "pending" && (
-                      <div className="ml-auto flex flex-wrap gap-2">
+                    <div className="ml-auto flex flex-wrap gap-2">
+                      {a.status !== "approved" && (
                         <ActionButton onClick={() => decideApplication(a.id, "approved")}>
                           Aprovar
                         </ActionButton>
+                      )}
+                      {a.status !== "rejected" && (
                         <ActionButton danger onClick={() => decideApplication(a.id, "rejected")}>
                           Recusar
                         </ActionButton>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}
+            {applications.filter(a => appTab === "all" || a.status === appTab).length === 0 && (
+              <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma candidatura nesta categoria.</p>
+            )}
           </div>
         </section>
 
         {/* Obras em revisão */}
         <section id="obras-revisao" className="mt-16 scroll-mt-24">
-          <SectionTitle icon={FileClock}>Obras em revisão</SectionTitle>
+          <SectionTitle icon={FileClock}>Obras</SectionTitle>
           <p className="caption mt-4">
-            {pendingSubmissions} obra(s) aguardando revisão · a obra só aparece nas Obras após
-            aprovação
+            {pendingSubmissions} pendente(s) · {reviewableSubmissions.filter(w => w.status === "approved").length} aprovada(s) · {reviewableSubmissions.filter(w => w.status === "rejected").length} recusada(s)
           </p>
 
-          <div className="mt-6 overflow-x-auto border border-border">
+          {/* Tabs */}
+          <div className="mt-6 flex flex-wrap gap-1">
+            {(["pending", "approved", "changes", "rejected", "all"] as const).map((tab) => {
+              const labels = { pending: "Pendentes", approved: "Aprovadas", changes: "Ajustes", rejected: "Recusadas", all: "Todas" };
+              const count = tab === "all" ? reviewableSubmissions.length : reviewableSubmissions.filter(w => w.status === tab).length;
+              return (
+                <button key={tab} onClick={() => setWorkTab(tab)}
+                  className={`border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors ${workTab === tab ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"}`}>
+                  {labels[tab]} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 overflow-x-auto border border-border">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface">
@@ -591,52 +616,53 @@ function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {reviewableSubmissions.length === 0 && (
+                {reviewableSubmissions.filter(w => workTab === "all" || w.status === workTab).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      Nenhuma obra aguardando revisão.
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      Nenhuma obra nesta categoria.
                     </td>
                   </tr>
                 )}
-                {reviewableSubmissions.map((w) => (
+                {reviewableSubmissions
+                  .filter(w => workTab === "all" || w.status === workTab)
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((w) => (
                   <tr key={w.id} className="transition-colors hover:bg-surface/60">
                     <Td>
                       <p className="font-display text-lg leading-tight">{w.title}</p>
                       <p className="caption mt-0.5">{MEDIUM_LABEL[w.medium]}</p>
-                      {w.curatorNote && <p className="caption mt-1">Nota: {w.curatorNote}</p>}
+                      {w.curatorNote && <p className="caption mt-1 text-muted-foreground">Nota: {w.curatorNote}</p>}
                     </Td>
-                    <Td className="text-muted-foreground">
-                      {w.artistName || "—"}
-                    </Td>
+                    <Td className="text-muted-foreground">{w.artistName || "—"}</Td>
                     <Td className="text-muted-foreground">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</Td>
                     <Td>
                       {w.pdfUrl ? (
-                        <a
-                          href={w.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 text-xs text-gilt transition-colors hover:text-gilt/70"
-                        >
+                        <a href={w.pdfUrl} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-gilt transition-colors hover:text-gilt/70">
                           <FileDown className="size-3.5" strokeWidth={1.5} /> Ver PDF
                         </a>
                       ) : (
                         <span className="text-xs text-muted-foreground/50">—</span>
                       )}
                     </Td>
-                    <Td>
-                      <ReviewBadge status={w.status} />
-                    </Td>
+                    <Td><ReviewBadge status={w.status} /></Td>
                     <Td className="text-right">
                       <div className="flex justify-end gap-2">
-                        <ActionButton onClick={() => decideSubmission(w.id, "approved")}>
-                          Aprovar
-                        </ActionButton>
-                        <ActionButton onClick={() => decideSubmission(w.id, "changes")}>
-                          Solicitar ajuste
-                        </ActionButton>
-                        <ActionButton danger onClick={() => decideSubmission(w.id, "rejected")}>
-                          Recusar
-                        </ActionButton>
+                        {w.status !== "approved" && (
+                          <ActionButton onClick={() => decideSubmission(w.id, "approved")}>
+                            Aprovar
+                          </ActionButton>
+                        )}
+                        {w.status !== "changes" && (
+                          <ActionButton onClick={() => decideSubmission(w.id, "changes")}>
+                            Ajuste
+                          </ActionButton>
+                        )}
+                        {w.status !== "rejected" && (
+                          <ActionButton danger onClick={() => decideSubmission(w.id, "rejected")}>
+                            Recusar
+                          </ActionButton>
+                        )}
                       </div>
                     </Td>
                   </tr>
