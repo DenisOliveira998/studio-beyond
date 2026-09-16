@@ -286,13 +286,15 @@ export const compact = (n: number) => formatNumber(n);
 
 /* ---------- Contas e administração da plataforma (dados mockados) ---------- */
 
-export type AccountType = "free" | "vip" | "author" | "admin";
+export type AccountType = "free" | "vip" | "author" | "gerente" | "admin" | "owner";
 
 export const ACCOUNT_LABEL: Record<AccountType, string> = {
   free: "Gratuito",
   vip: "VIP",
   author: "Autor",
+  gerente: "Gerente",
   admin: "Administrador",
+  owner: "Dono",
 };
 
 export type Account = {

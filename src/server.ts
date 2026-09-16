@@ -110,6 +110,57 @@ export default {
         }
       }
 
+      // Redefinir senha após verificação OTP
+      if (pathname === "/api/password/set" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autenticado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { newPassword } = (await request.json()) as { newPassword: string };
+        const valid =
+          newPassword?.length >= 8 &&
+          /[A-Z]/.test(newPassword) &&
+          /[a-z]/.test(newPassword) &&
+          /[0-9]/.test(newPassword);
+        if (!valid) {
+          return new Response(JSON.stringify({ error: "Senha não atende os requisitos de segurança." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { hashPassword } = await import("better-auth/crypto");
+        const { prisma } = await import("./lib/prisma");
+        const hash = await hashPassword(newPassword);
+        const existing = await prisma.account.findFirst({
+          where: { userId: session.user.id, providerId: "credential" },
+        });
+        if (existing) {
+          await prisma.account.update({
+            where: { id: existing.id },
+            data: { password: hash, updatedAt: new Date() },
+          });
+        } else {
+          await prisma.account.create({
+            data: {
+              id: crypto.randomUUID(),
+              accountId: session.user.email,
+              providerId: "credential",
+              userId: session.user.id,
+              password: hash,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
       // Better Auth intercepta /api/auth/*
       if (pathname.startsWith("/api/auth")) {
         const { auth } = await import("./lib/auth-server");

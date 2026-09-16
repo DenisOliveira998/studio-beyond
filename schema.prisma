@@ -81,8 +81,9 @@ model Verification {
 // --------------------------------------------------------------- Perfil/Papéis
 
 enum AppRole {
+  owner
   admin
-  curator
+  gerente
   author
   vip
   reader

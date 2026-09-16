@@ -11,11 +11,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import type { AuthSession } from "@/lib/auth-client";
 
-export type AppRole = "admin" | "curator" | "author" | "vip" | "reader";
+export type AppRole = "owner" | "admin" | "gerente" | "author" | "vip" | "reader";
 
 export const ROLE_LABEL: Record<AppRole, string> = {
+  owner: "Dono",
   admin: "Administrador",
-  curator: "Curador",
+  gerente: "Gerente",
   author: "Autor",
   vip: "Leitor Assíduo",
   reader: "Leitor",
@@ -35,8 +36,9 @@ type AuthValue = {
   user: AuthSession["user"] | null;
   profile: Profile | null;
   role: AppRole;
+  isOwner: boolean;
   isAdmin: boolean;
-  isCurator: boolean;
+  isGerente: boolean;
   isStaff: boolean;
   isAuthor: boolean;
   isVip: boolean;
@@ -83,17 +85,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthValue>(() => {
     const role: AppRole = profile?.role ?? "reader";
-    const isAdmin = role === "admin";
-    const isCurator = role === "curator";
+    const isOwner = role === "owner";
+    const isAdmin = role === "admin" || isOwner;
+    const isGerente = role === "gerente";
     return {
       loading,
       session,
       user: session?.user ?? null,
       profile,
       role,
+      isOwner,
       isAdmin,
-      isCurator,
-      isStaff: isAdmin || isCurator,
+      isGerente,
+      isStaff: isOwner || isAdmin || isGerente,
       isAuthor: role === "author",
       isVip: role === "vip",
       refresh: load,
@@ -117,6 +121,6 @@ export function useAuth() {
 }
 
 export function highestRole(roles: AppRole[]): AppRole {
-  const order: AppRole[] = ["admin", "curator", "author", "vip", "reader"];
+  const order: AppRole[] = ["owner", "admin", "gerente", "author", "vip", "reader"];
   return order.find((r) => roles.includes(r)) ?? "reader";
 }

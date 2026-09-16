@@ -54,7 +54,7 @@ export function SiteHeader() {
           ))}
           <SiteSearch />
           <Link
-            to="/auth"
+            to="/entrar"
             className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
           >
             Entrar
@@ -77,7 +77,7 @@ const navLinks = [
 ] as const;
 
 const accountLinks = [
-  { to: "/auth", label: "Entrar" },
+  { to: "/entrar", label: "Entrar" },
   { to: "/planos", label: "Planos de assinatura" },
   { to: "/candidatura-autor", label: "Candidatura de Autor" },
 ] as const;

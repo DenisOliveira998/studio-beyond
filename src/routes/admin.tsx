@@ -65,10 +65,12 @@ const FILTERS: Array<{ value: AccountType | "all"; label: string }> = [
   { value: "free", label: "Gratuito" },
   { value: "vip", label: "VIP" },
   { value: "author", label: "Autor" },
+  { value: "gerente", label: "Gerente" },
   { value: "admin", label: "Administrador" },
+  { value: "owner", label: "Dono" },
 ];
 
-const LADDER: AccountType[] = ["free", "vip", "author", "admin"];
+const LADDER: AccountType[] = ["free", "vip", "author", "gerente", "admin", "owner"];
 
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
@@ -84,7 +86,9 @@ const TYPE_BADGE: Record<AccountType, string> = {
   free: "border-border bg-muted text-muted-foreground",
   vip: "border-gilt/50 bg-gilt/10 text-gilt",
   author: "border-[color:var(--chart-2)]/50 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]",
+  gerente: "border-blue-500/50 bg-blue-500/10 text-blue-400",
   admin: "border-destructive/50 bg-destructive/10 text-destructive",
+  owner: "border-purple-500/50 bg-purple-500/10 text-purple-400",
 };
 
 const EMPTY_CONFIG: SiteConfigData = {

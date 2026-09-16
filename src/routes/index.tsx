@@ -174,7 +174,7 @@ function Home() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Link
-              to="/auth"
+              to="/entrar"
               className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
             >
               Publique sua obra
