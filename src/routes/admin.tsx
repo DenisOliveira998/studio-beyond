@@ -637,7 +637,7 @@ function AdminPage() {
                     <Td className="text-muted-foreground">{new Date(w.createdAt).toLocaleDateString("pt-BR")}</Td>
                     <Td>
                       {w.pdfUrl ? (
-                        <a href={w.pdfUrl} target="_blank" rel="noreferrer"
+                        <a href={w.pdfUrl ? `/api/blob-proxy?url=${encodeURIComponent(w.pdfUrl)}` : "#"} target="_blank" rel="noreferrer"
                           className="flex items-center gap-1.5 text-xs text-gilt transition-colors hover:text-gilt/70">
                           <FileDown className="size-3.5" strokeWidth={1.5} /> Ver PDF
                         </a>

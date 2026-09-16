@@ -1013,6 +1013,32 @@ export default {
         }
       }
 
+      // ── Proxy de arquivos do Vercel Blob (private store) ─────────────────────
+
+      if (pathname === "/api/blob-proxy" && request.method === "GET") {
+        const blobUrl = new URL(request.url).searchParams.get("url");
+        if (!blobUrl || !blobUrl.includes("blob.vercel-storage.com")) {
+          return new Response("Forbidden", { status: 403 });
+        }
+        const token = process.env["BLOB_READ_WRITE_TOKEN"];
+        const upstream = await fetch(blobUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!upstream.ok) {
+          return new Response("Arquivo não encontrado", { status: upstream.status });
+        }
+        const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
+        const filename = decodeURIComponent(blobUrl.split("/").pop() ?? "arquivo");
+        const isInline = contentType.startsWith("image/") || contentType === "application/pdf";
+        return new Response(upstream.body, {
+          headers: {
+            "content-type": contentType,
+            "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename}"`,
+            "cache-control": "private, max-age=3600",
+          },
+        });
+      }
+
       // ── Biblioteca Standard Ebooks ───────────────────────────────────────────
 
       if (pathname === "/api/biblioteca" && request.method === "GET") {

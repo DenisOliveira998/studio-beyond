@@ -748,6 +748,12 @@ export function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function blobProxy(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (url.includes("blob.vercel-storage.com")) return `/api/blob-proxy?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
 export function dbWorkToWork(w: DbWork): Work {
   return {
     id: w.id,
@@ -756,8 +762,8 @@ export function dbWorkToWork(w: DbWork): Work {
     medium: w.medium,
     artistSlug: w.artistSlug,
     artistName: w.artistName,
-    ...(w.coverUrl ? { cover: w.coverUrl } : {}),
-    ...(w.pdfUrl ? { pdfUrl: w.pdfUrl } : {}),
+    ...(w.coverUrl ? { cover: blobProxy(w.coverUrl) } : {}),
+    ...(w.pdfUrl ? { pdfUrl: blobProxy(w.pdfUrl) } : {}),
     ...(w.genre ? { genre: w.genre } : {}),
     excerpt: w.excerpt,
     body: w.body ? w.body.split("\n").filter(Boolean) : [],
