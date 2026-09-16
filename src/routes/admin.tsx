@@ -305,15 +305,11 @@ function AdminPage() {
     patchWork.mutate({ id, status });
   }
 
-  function change(id: string, direction: 1 | -1) {
+  function changeRole(id: string, role: AppRole) {
     const account = accounts.find((a) => a.id === id);
-    if (!account) return;
-    const idx = Math.min(LADDER.length - 1, Math.max(0, LADDER.indexOf(account.role) + direction));
-    const next = LADDER[idx] as AppRole;
-    if (next !== account.role) {
-      toast.success(`${account.name} agora é ${ROLE_LABEL[next]}.`);
-      patchAccount.mutate({ id, role: next });
-    }
+    if (!account || role === account.role) return;
+    toast.success(`${account.name} agora é ${ROLE_LABEL[role]}.`);
+    patchAccount.mutate({ id, role });
   }
 
   function toggleSuspend(id: string) {
@@ -622,13 +618,16 @@ function AdminPage() {
                       )}
                     </Td>
                     <Td className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <ActionButton onClick={() => change(a.id, 1)}>
-                          <ArrowUp className="size-3.5" /> Promover
-                        </ActionButton>
-                        <ActionButton onClick={() => change(a.id, -1)}>
-                          <ArrowDown className="size-3.5" /> Rebaixar
-                        </ActionButton>
+                      <div className="flex items-center justify-end gap-2">
+                        <select
+                          value={a.role}
+                          onChange={(e) => changeRole(a.id, e.target.value as AppRole)}
+                          className="border border-border bg-surface px-2 py-1.5 text-xs text-foreground focus:border-gilt focus:outline-none"
+                        >
+                          {LADDER.map((r) => (
+                            <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                          ))}
+                        </select>
                         <ActionButton danger onClick={() => toggleSuspend(a.id)}>
                           <Ban className="size-3.5" />
                           {a.suspended ? "Reativar" : "Suspender"}
