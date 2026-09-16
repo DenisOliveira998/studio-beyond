@@ -26,7 +26,7 @@ export const Route = createFileRoute("/candidatura-autor")({
 });
 
 function ApplicationPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   const [sent, setSent] = useState(false);
@@ -36,8 +36,8 @@ function ApplicationPage() {
   const [email, setEmail] = useState(user?.email ?? "");
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/entrar" });
-  }, [user, loading, navigate]);
+    if (!loading && !user && !profile) void navigate({ to: "/entrar" });
+  }, [user, profile, loading, navigate]);
 
   useEffect(() => {
     if (user) {

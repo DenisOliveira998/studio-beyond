@@ -91,8 +91,8 @@ function Dashboard() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/entrar" });
-  }, [user, loading, navigate]);
+    if (!loading && !user && !profile) void navigate({ to: "/entrar" });
+  }, [user, profile, loading, navigate]);
   const displayName = profile?.name ?? user?.name ?? "Autor";
   const initials = displayName.slice(0, 2).toUpperCase();
 

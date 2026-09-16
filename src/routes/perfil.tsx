@@ -28,8 +28,8 @@ function PerfilPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/entrar" });
-  }, [user, loading, navigate]);
+    if (!loading && !user && !profile) void navigate({ to: "/entrar" });
+  }, [user, profile, loading, navigate]);
 
   const { data: stats, isLoading: statsLoading } = useQuery<ReaderProfileStats>({
     queryKey: ["profile-stats"],

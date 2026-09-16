@@ -43,13 +43,13 @@ function PasswordRules({ password }: { password: string }) {
 }
 
 function EntrarPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
 
   useEffect(() => {
-    if (!loading && user) void navigate({ to: "/" });
-  }, [user, loading, navigate]);
+    if (!loading && (user ?? profile)) void navigate({ to: "/" });
+  }, [user, profile, loading, navigate]);
 
   // login
   const [email, setEmail] = useState("");
