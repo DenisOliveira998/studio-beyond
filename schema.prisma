@@ -303,3 +303,30 @@ model WorkComment {
   @@index([workSlug])
   @@map("work_comments")
 }
+
+// Quota de leitura diária (leitores free: 10 páginas/dia)
+model DailyReadingQuota {
+  id             String   @id @default(cuid())
+  userId         String
+  date           String   // "YYYY-MM-DD"
+  pagesConsumed  Int      @default(0)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("daily_reading_quota")
+}
+
+// Eventos de email registrados via Resend webhook
+model EmailEvent {
+  id         String   @id @default(cuid())
+  eventType  String   // email.sent | email.delivered | email.opened | email.bounced | email.complained
+  recipient  String
+  subject    String
+  resendId   String?
+  payload    String   @db.Text // JSON raw do webhook
+  createdAt  DateTime @default(now())
+
+  @@index([recipient])
+  @@index([eventType])
+  @@map("email_events")
+}

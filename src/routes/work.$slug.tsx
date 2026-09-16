@@ -272,7 +272,49 @@ function WorkPage() {
 
   const [showBackTop, setShowBackTop] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
+
+  // Quota de leitura diária (free: 10 páginas/dia)
+  const { data: quota, refetch: refetchQuota } = useQuery<{ consumed: number; limit: number | null; remaining: number | null }>({
+    queryKey: ["reading-quota"],
+    queryFn: () => fetch("/api/quota").then((r) => r.json() as Promise<{ consumed: number; limit: number | null; remaining: number | null }>),
+    staleTime: 60_000,
+  });
+  const quotaExhausted = quota ? quota.remaining !== null && quota.remaining <= 0 : false;
+  const pagesConsumedRef = useRef(0);
+
+  // Consome páginas conforme o usuário rola — cada 20% do body = 1 página
+  useEffect(() => {
+    if (!user || quotaExhausted) return;
+    const bodyEl = bodyRef.current;
+    if (!bodyEl) return;
+    const totalPages = work.pages ? Number(work.pages) : 5;
+    const segments = Math.min(totalPages, 10);
+
+    function onScroll() {
+      if (!bodyEl) return;
+      const { top, height } = bodyEl.getBoundingClientRect();
+      const viewH = window.innerHeight;
+      const scrolled = Math.max(0, viewH - top);
+      const fraction = Math.min(scrolled / height, 1);
+      const pagesRead = Math.floor(fraction * segments);
+      const toConsume = pagesRead - pagesConsumedRef.current;
+      if (toConsume <= 0) return;
+      pagesConsumedRef.current = pagesRead;
+      void fetch("/api/quota/consume", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pages: toConsume }),
+      })
+        .then((r) => r.json() as Promise<{ allowed: boolean; remaining: number }>)
+        .then((res) => {
+          if (!res.allowed) void refetchQuota();
+        });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [user, quotaExhausted, work.pages, refetchQuota]);
 
   useEffect(() => {
     const onScroll = () => setShowBackTop(window.scrollY > 600);
@@ -393,11 +435,40 @@ function WorkPage() {
         <p className="lead text-muted-foreground not-prose text-lg leading-relaxed">
           {work.excerpt}
         </p>
-        <div className="mt-6">
+        <div className="relative mt-6" ref={bodyRef}>
           {work.body.map((p, i) => (
             <WorkParagraph key={i} content={p} />
           ))}
+          {/* Paywall overlay quando a quota diária acaba */}
+          {quotaExhausted && (
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background" />
+          )}
         </div>
+        {quotaExhausted && (
+          <div className="not-prose mt-0 border border-gilt/40 bg-surface px-8 py-10 text-center">
+            <p className="eyebrow">Limite diário atingido</p>
+            <p className="mt-4 font-display text-2xl tracking-tight">
+              Você leu suas 10 páginas de hoje
+            </p>
+            <p className="caption mt-3">
+              Volte amanhã para continuar — ou torne-se VIP para leitura ilimitada.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <Link
+                to="/planos"
+                className="btn-type border border-gilt bg-gilt/10 px-5 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
+              >
+                Ver planos VIP
+              </Link>
+              <Link
+                to="/explorar"
+                className="btn-type border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt/50 hover:text-foreground"
+              >
+                Explorar mais obras
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ações */}

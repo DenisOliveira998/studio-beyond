@@ -654,6 +654,80 @@ export async function addWorkComment(input: {
   return { id: row.id, author: row.author, text: row.text, createdAt: row.createdAt.toISOString() };
 }
 
+/* ---------- quota de leitura diária ---------- */
+
+const FREE_DAILY_QUOTA = 10;
+
+export async function getReadingQuota(userId: string): Promise<{ consumed: number; limit: number; remaining: number }> {
+  const date = new Date().toISOString().slice(0, 10);
+  const row = await prisma.dailyReadingQuota.findUnique({
+    where: { userId_date: { userId, date } },
+  });
+  const consumed = row?.pagesConsumed ?? 0;
+  return { consumed, limit: FREE_DAILY_QUOTA, remaining: Math.max(0, FREE_DAILY_QUOTA - consumed) };
+}
+
+export async function consumeReadingQuota(userId: string, pages: number): Promise<{ allowed: boolean; remaining: number }> {
+  const date = new Date().toISOString().slice(0, 10);
+  const existing = await prisma.dailyReadingQuota.findUnique({
+    where: { userId_date: { userId, date } },
+  });
+  const consumed = existing?.pagesConsumed ?? 0;
+  if (consumed >= FREE_DAILY_QUOTA) return { allowed: false, remaining: 0 };
+
+  await prisma.dailyReadingQuota.upsert({
+    where: { userId_date: { userId, date } },
+    update: { pagesConsumed: { increment: pages } },
+    create: { userId, date, pagesConsumed: pages },
+  });
+  const newConsumed = consumed + pages;
+  return { allowed: true, remaining: Math.max(0, FREE_DAILY_QUOTA - newConsumed) };
+}
+
+/* ---------- eventos de email (Resend webhooks) ---------- */
+
+export type EmailEventData = {
+  id: string;
+  eventType: string;
+  recipient: string;
+  subject: string;
+  resendId: string | null;
+  createdAt: string;
+};
+
+export async function createEmailEvent(input: {
+  eventType: string;
+  recipient: string;
+  subject: string;
+  resendId?: string | null;
+  payload: string;
+}): Promise<void> {
+  await prisma.emailEvent.create({
+    data: {
+      eventType: input.eventType,
+      recipient: input.recipient,
+      subject: input.subject,
+      resendId: input.resendId ?? null,
+      payload: input.payload,
+    },
+  });
+}
+
+export async function fetchEmailEvents(limit = 100): Promise<EmailEventData[]> {
+  const rows = await prisma.emailEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    eventType: r.eventType,
+    recipient: r.recipient,
+    subject: r.subject,
+    resendId: r.resendId,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
 /* ---------- atualizar perfil ---------- */
 
 export async function updateProfile(userId: string, data: { name?: string }): Promise<void> {

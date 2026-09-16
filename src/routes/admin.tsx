@@ -24,6 +24,7 @@ import {
   FileClock,
   Image,
   LayoutDashboard,
+  Mail,
   Plus,
   Save,
   Settings,
@@ -31,6 +32,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import type { EmailEventData } from "@/lib/beyond-db";
 import {
   PLATFORM_FEE,
   RATE_PER_CLICK,
@@ -81,6 +83,7 @@ const NAV = [
   { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
+  { id: "emails", label: "E-mails", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
   { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
@@ -143,6 +146,44 @@ function AdminPage() {
     queryFn: () => fetch("/api/admin/stats").then((r) => r.json() as Promise<WorkStats>),
     staleTime: 30_000,
   });
+
+  // Eventos de email (Resend webhooks)
+  const { data: emailEvents = [] } = useQuery<EmailEventData[]>({
+    queryKey: ["admin-email-events"],
+    queryFn: () => fetch("/api/admin/email-events").then((r) => r.json() as Promise<EmailEventData[]>),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
+  // Pusher — notificações em tempo real para staff
+  useEffect(() => {
+    if (!isStaff) return;
+    const key = import.meta.env["VITE_PUSHER_KEY"] as string | undefined;
+    if (!key) return;
+    let pusherClient: import("pusher-js").default | null = null;
+    void import("pusher-js").then(({ default: PusherJs }) => {
+      pusherClient = new PusherJs(key, {
+        cluster: (import.meta.env["VITE_PUSHER_CLUSTER"] as string | undefined) ?? "mt1",
+      });
+      const ch = pusherClient.subscribe("beyond-admin");
+      ch.bind("new-application", (d: { artistName: string; email: string }) =>
+        toast.info(`Nova candidatura: ${d.artistName} (${d.email})`)
+      );
+      ch.bind("work-submitted", (d: { title: string; artistName: string }) =>
+        toast.info(`Nova obra submetida: "${d.title}" por ${d.artistName}`)
+      );
+      ch.bind("new-comment", (d: { workSlug: string; author: string }) =>
+        toast.info(`Novo comentário em "${d.workSlug}" por ${d.author}`)
+      );
+      ch.bind("new-donation", (d: { artistName: string; amount: number }) =>
+        toast.success(`Doação de R$ ${d.amount.toFixed(2)} para ${d.artistName}`)
+      );
+    });
+    return () => {
+      pusherClient?.unsubscribe("beyond-admin");
+      pusherClient?.disconnect();
+    };
+  }, [isStaff]);
 
   // Configurações do site
   const { data: siteConfig } = useQuery<SiteConfigData>({
@@ -732,6 +773,54 @@ function AdminPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* E-mails */}
+        <section id="emails" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Mail}>E-mails (Resend Webhook)</SectionTitle>
+          <p className="caption mt-4">
+            Últimos {emailEvents.length} eventos registrados via webhook do Resend
+          </p>
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <Th>Tipo</Th>
+                  <Th>Destinatário</Th>
+                  <Th>Assunto</Th>
+                  <Th>Data</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {emailEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
+                      Nenhum evento registrado ainda. Configure o webhook no painel do Resend.
+                    </td>
+                  </tr>
+                ) : (
+                  emailEvents.map((ev) => (
+                    <tr key={ev.id} className="border-b border-border/50 hover:bg-surface/50">
+                      <td className="py-3 pr-4">
+                        <span className={`btn-type inline-block border px-2 py-0.5 text-[0.6rem] ${
+                          ev.eventType.includes("delivered") || ev.eventType.includes("sent")
+                            ? "border-[color:var(--chart-2)]/40 text-[color:var(--chart-2)]"
+                            : ev.eventType.includes("bounce") || ev.eventType.includes("complaint")
+                              ? "border-destructive/40 text-destructive"
+                              : "border-border text-muted-foreground"
+                        }`}>{ev.eventType}</span>
+                      </td>
+                      <td className="py-3 pr-4 text-xs text-muted-foreground">{ev.recipient}</td>
+                      <td className="py-3 pr-4 text-xs max-w-[260px] truncate">{ev.subject}</td>
+                      <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(ev.createdAt).toLocaleString("pt-BR")}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 

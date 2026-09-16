@@ -42,6 +42,112 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// ── Standard Ebooks catalog ──────────────────────────────────────────────────
+
+type SEBook = {
+  id: string;
+  title: string;
+  url: string;
+  author: string;
+  language: string;
+  description: string;
+  subjects: string[];
+  cover: string;
+  epubUrl: string;
+};
+
+let _seCache: SEBook[] | null = null;
+let _seCacheTs = 0;
+
+function extractXmlField(xml: string, tag: string): string {
+  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
+  return m ? m[1]!.trim().replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#[0-9]+;/g, (e) => String.fromCharCode(parseInt(e.slice(2, -1), 10))) : "";
+}
+
+function extractXmlAttr(xml: string, tag: string, attr: string): string {
+  const m = xml.match(new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"[^>]*>`));
+  return m ? m[1]! : "";
+}
+
+function extractAllXmlAttr(xml: string, tag: string, attr: string): string[] {
+  const re = new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"[^>]*>`, "g");
+  const results: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) results.push(m[1]!);
+  return results;
+}
+
+async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
+  const now = Date.now();
+  if (_seCache && now - _seCacheTs < 4 * 60 * 60 * 1000) return _seCache;
+
+  const entries: SEBook[] = [];
+  let nextUrl: string | null = "https://standardebooks.org/feeds/opds/all";
+
+  while (nextUrl && entries.length < 1000) {
+    const res = await fetch(nextUrl, {
+      headers: { "User-Agent": "TheBeyond/1.0 (https://thebeyond.art)", Accept: "application/atom+xml" },
+    });
+    if (!res.ok) break;
+    const xml = await res.text();
+
+    // Encontra cada <entry>
+    const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+    let em: RegExpExecArray | null;
+    while ((em = entryRe.exec(xml)) !== null) {
+      const entry = em[1]!;
+      const title = extractXmlField(entry, "title");
+      const id = extractXmlField(entry, "id");
+      if (!title || !id) continue;
+
+      const url = id.startsWith("http") ? id : `https://standardebooks.org${id}`;
+
+      // Links: epub e cover
+      const linkTags = entry.match(/<link[^>]*\/>/g) ?? entry.match(/<link[^>]*>/g) ?? [];
+      let epubUrl = "";
+      let cover = "";
+      for (const link of linkTags) {
+        const type = link.match(/type="([^"]*)"/)?.[1] ?? "";
+        const href = link.match(/href="([^"]*)"/)?.[1] ?? "";
+        const rel = link.match(/rel="([^"]*)"/)?.[1] ?? "";
+        if (type === "application/epub+zip" && !epubUrl) {
+          epubUrl = href.startsWith("http") ? href : `https://standardebooks.org${href}`;
+        }
+        if (rel.includes("opds-spec.org/image") && !rel.includes("thumbnail") && !cover) {
+          cover = href.startsWith("http") ? href : `https://standardebooks.org${href}`;
+        }
+      }
+
+      // Author
+      const authorBlock = entry.match(/<author>([\s\S]*?)<\/author>/)?.[1] ?? "";
+      const author = extractXmlField(authorBlock, "name");
+
+      // Language
+      const language = extractXmlField(entry, "dc:language") || extractXmlField(entry, "language");
+
+      // Description
+      const description = extractXmlField(entry, "summary") || extractXmlField(entry, "content");
+
+      // Subjects
+      const subjects = extractAllXmlAttr(entry, "category", "term");
+
+      if (epubUrl) {
+        entries.push({ id, title, url, author, language, description, subjects, cover, epubUrl });
+      }
+    }
+
+    // Paginação: rel="next"
+    const nextMatch = xml.match(/<link[^>]*rel="next"[^>]*href="([^"]*)"[^>]*>/);
+    nextUrl = nextMatch ? nextMatch[1]! : null;
+  }
+
+  _seCache = entries;
+  _seCacheTs = now;
+  return entries;
+}
+
+// ── Admin helpers ─────────────────────────────────────────────────────────────
+
 const ADMIN_ROLES = ["owner", "admin", "gerente"] as const;
 
 async function requireAdmin(request: Request): Promise<{ error?: Response }> {
@@ -317,6 +423,10 @@ export default {
           coverUrl: body.coverUrl ?? null,
           status: body.status ?? "pending",
         });
+        if ((body.status ?? "pending") === "pending") {
+          const { pushEvent: pushWork } = await import("./lib/pusher");
+          void pushWork({ event: "work-submitted", data: { title: body.title ?? "", artistName: body.artistName ?? "" } });
+        }
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json" },
         });
@@ -422,6 +532,8 @@ export default {
           samples: 0,
           message: body.message ?? "",
         });
+        const { pushEvent } = await import("./lib/pusher");
+        void pushEvent({ event: "new-application", data: { artistName: body.artistName, email: body.email } });
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey) {
           // Notifica equipe
@@ -699,6 +811,120 @@ export default {
         });
       }
 
+      // ── Quota de leitura ─────────────────────────────────────────────────────
+
+      if (pathname === "/api/quota" && request.method === "GET") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ consumed: 0, limit: 10, remaining: 10 }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { prisma } = await import("./lib/prisma");
+        const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (profile && ["vip", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+          return new Response(JSON.stringify({ consumed: 0, limit: null, remaining: null }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { getReadingQuota } = await import("./lib/beyond-db");
+        const quota = await getReadingQuota(session.user.id);
+        return new Response(JSON.stringify(quota), { headers: { "content-type": "application/json" } });
+      }
+
+      if (pathname === "/api/quota/consume" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ allowed: true, remaining: null }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { prisma } = await import("./lib/prisma");
+        const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (profile && ["vip", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+          return new Response(JSON.stringify({ allowed: true, remaining: null }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { pages = 1 } = (await request.json()) as { pages?: number };
+        const { consumeReadingQuota } = await import("./lib/beyond-db");
+        const result = await consumeReadingQuota(session.user.id, pages);
+        return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
+      }
+
+      // ── Resend webhook ───────────────────────────────────────────────────────
+
+      if (pathname === "/api/webhooks/resend" && request.method === "POST") {
+        const secret = process.env["RESEND_WEBHOOK_SECRET"];
+        if (secret) {
+          const svixId = request.headers.get("svix-id") ?? "";
+          const svixTs = request.headers.get("svix-timestamp") ?? "";
+          const svixSig = request.headers.get("svix-signature") ?? "";
+          const rawBody = await request.text();
+          const toSign = `${svixId}.${svixTs}.${rawBody}`;
+          const encoder = new TextEncoder();
+          const keyBytes = Uint8Array.from(atob(secret.replace(/^whsec_/, "")), (c) => c.charCodeAt(0));
+          const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+          const sig = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(toSign));
+          const computed = `v1,${btoa(String.fromCharCode(...new Uint8Array(sig)))}`;
+          const sigList = svixSig.split(" ");
+          if (!sigList.some((s) => s === computed)) {
+            return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers: { "content-type": "application/json" } });
+          }
+          const payload = JSON.parse(rawBody) as { type?: string; data?: { email_id?: string; to?: string[]; subject?: string } };
+          const { createEmailEvent } = await import("./lib/beyond-db");
+          await createEmailEvent({
+            eventType: payload.type ?? "unknown",
+            recipient: payload.data?.to?.[0] ?? "",
+            subject: payload.data?.subject ?? "",
+            resendId: payload.data?.email_id ?? null,
+            payload: rawBody,
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
+      // ── Pusher auth (canais privados) ────────────────────────────────────────
+
+      if (pathname === "/api/pusher/auth" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const formText = await request.text();
+        const params = new URLSearchParams(formText);
+        const socketId = params.get("socket_id") ?? "";
+        const channel = params.get("channel_name") ?? "";
+        const { pushEvent: _pe, ...pusherModule } = await import("./lib/pusher");
+        void _pe; // suppress unused warning
+        const Pusher = require("pusher") as typeof import("pusher").default;
+        const appId = process.env["PUSHER_APP_ID"];
+        const key = process.env["PUSHER_KEY"];
+        const secret = process.env["PUSHER_SECRET"];
+        const cluster = process.env["PUSHER_CLUSTER"] ?? "mt1";
+        if (!appId || !key || !secret) {
+          return new Response(JSON.stringify({ error: "Pusher não configurado" }), { status: 503, headers: { "content-type": "application/json" } });
+        }
+        const pusher = new Pusher({ appId, key, secret, cluster, useTLS: true });
+        const authResponse = pusher.authorizeChannel(socketId, channel);
+        return new Response(JSON.stringify(authResponse), { headers: { "content-type": "application/json" } });
+      }
+
+      // ── Admin: eventos de email ───────────────────────────────────────────────
+
+      if (pathname === "/api/admin/email-events" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { fetchEmailEvents } = await import("./lib/beyond-db");
+        const events = await fetchEmailEvents(200);
+        return new Response(JSON.stringify(events), { headers: { "content-type": "application/json" } });
+      }
+
       // Registrar visualização de obra
       const workViewMatch = pathname.match(/^\/api\/works\/([^/]+)\/view$/);
       if (workViewMatch && request.method === "POST") {
@@ -757,6 +983,8 @@ export default {
             author: author?.trim() || session?.user?.name || "Anônimo",
             text: text.trim(),
           });
+          const { pushEvent: pushComment } = await import("./lib/pusher");
+          void pushComment({ event: "new-comment", data: { workSlug: slug, author: comment.author } });
           return new Response(JSON.stringify(comment), { headers: { "content-type": "application/json" } });
         }
       }
@@ -783,6 +1011,61 @@ export default {
           const result = await toggleArtistFollow(session.user.id, artistSlug);
           return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
         }
+      }
+
+      // ── Biblioteca Standard Ebooks ───────────────────────────────────────────
+
+      if (pathname === "/api/biblioteca" && request.method === "GET") {
+        const books = await fetchStandardEbooksCatalog();
+        return new Response(JSON.stringify(books), {
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "public, max-age=14400", // 4h no CDN
+          },
+        });
+      }
+
+      // Proxy de download de EPUB (apenas domínio standardebooks.org)
+      if (pathname === "/api/biblioteca/epub" && request.method === "GET") {
+        const epubUrl = new URL(request.url).searchParams.get("url");
+        if (!epubUrl) {
+          return new Response(JSON.stringify({ error: "Parâmetro url obrigatório" }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        let parsed: URL;
+        try {
+          parsed = new URL(epubUrl);
+        } catch {
+          return new Response(JSON.stringify({ error: "URL inválida" }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (parsed.hostname !== "standardebooks.org") {
+          return new Response(JSON.stringify({ error: "Fonte não permitida" }), {
+            status: 403,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const upstream = await fetch(parsed.toString(), {
+          headers: { "User-Agent": "TheBeyond/1.0 (https://thebeyond.art)" },
+        });
+        if (!upstream.ok) {
+          return new Response(JSON.stringify({ error: "EPUB não encontrado" }), {
+            status: upstream.status,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const filename = parsed.pathname.split("/").pop() ?? "book.epub";
+        return new Response(upstream.body, {
+          headers: {
+            "content-type": "application/epub+zip",
+            "content-disposition": `attachment; filename="${filename}"`,
+            "cache-control": "public, max-age=86400",
+          },
+        });
       }
 
       // Atualizar perfil
