@@ -96,6 +96,12 @@ function Dashboard() {
   const displayName = profile?.name ?? user?.name ?? "Autor";
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  useEffect(() => {
+    if (displayName && displayName !== "Autor") {
+      setArtistNameInput((prev) => prev || displayName);
+    }
+  }, [displayName]);
+
   const { data: dashData, refetch: refetchDash } = useQuery<DashboardData>({
     queryKey: ["author-dashboard"],
     queryFn: () => fetch("/api/author/dashboard").then((r) => r.json() as Promise<DashboardData>),
@@ -144,6 +150,7 @@ function Dashboard() {
   const [editType, setEditType] = useState("");
 
   const [title, setTitle] = useState("");
+  const [artistNameInput, setArtistNameInput] = useState("");
   const [workType, setWorkType] = useState(WORK_TYPES[0]);
   const [synopsis, setSynopsis] = useState("");
   const [body, setBody] = useState("");
@@ -241,7 +248,7 @@ function Dashboard() {
         body: JSON.stringify({
           title: title.trim(),
           medium,
-          artistName: displayName,
+          artistName: artistNameInput.trim() || displayName,
           excerpt: synopsis.trim(),
           body,
           tags,
@@ -425,6 +432,17 @@ function Dashboard() {
                   placeholder="Ex.: Uma Taxonomia Silenciosa"
                   className="w-full border border-border bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
                 />
+              </Field>
+
+              <Field label="Nome do artista" htmlFor="obra-artista">
+                <input
+                  id="obra-artista"
+                  value={artistNameInput}
+                  onChange={(e) => setArtistNameInput(e.target.value)}
+                  placeholder={displayName}
+                  className="w-full border border-border bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
+                />
+                <p className="mt-1 text-xs text-muted-foreground/50">Preenchido com seu nome de perfil. Edite se quiser usar um nome artístico diferente.</p>
               </Field>
 
               <Field label="Tipo de obra" htmlFor="obra-tipo">
