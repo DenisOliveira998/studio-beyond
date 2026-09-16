@@ -408,6 +408,83 @@ export default {
         });
       }
 
+      // Perfil do leitor: stats consolidadas
+      if (pathname === "/api/profile/stats" && request.method === "GET") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { getReaderProfileStats } = await import("./lib/beyond-db");
+        const stats = await getReaderProfileStats(session.user.id);
+        return new Response(JSON.stringify(stats), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Favoritos: toggle
+      if (pathname === "/api/favorites" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { workSlug, artistSlug } = (await request.json()) as {
+          workSlug: string;
+          artistSlug: string;
+        };
+        const { toggleFavorite } = await import("./lib/beyond-db");
+        const result = await toggleFavorite(session.user.id, workSlug, artistSlug);
+        return new Response(JSON.stringify(result), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Favoritos: checar se obra específica é favoritada
+      if (pathname.startsWith("/api/favorites/") && request.method === "GET") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ favorited: false }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const workSlug = pathname.replace("/api/favorites/", "");
+        const { isFavorited } = await import("./lib/beyond-db");
+        const favorited = await isFavorited(session.user.id, workSlug);
+        return new Response(JSON.stringify({ favorited }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      // Progresso de leitura: upsert
+      if (pathname === "/api/reading-progress" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { workSlug, pagesRead, finished } = (await request.json()) as {
+          workSlug: string;
+          pagesRead: number;
+          finished: boolean;
+        };
+        const { upsertReadingProgress } = await import("./lib/beyond-db");
+        await upsertReadingProgress(session.user.id, workSlug, pagesRead, finished);
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
       // Atualizar PDF de uma obra (autor/admin)
       if (pathname.startsWith("/api/works/") && pathname.endsWith("/pdf") && request.method === "PATCH") {
         const { auth } = await import("./lib/auth-server");

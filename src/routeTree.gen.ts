@@ -19,6 +19,7 @@ import { Route as CriarRouteImport } from './routes/criar'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as ExplorarRouteImport } from './routes/explorar'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SobreRouteImport } from './routes/sobre'
@@ -76,6 +77,11 @@ const ExplorarRoute = ExplorarRouteImport.update({
   path: '/explorar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanosRoute = PlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sobre': typeof SobreRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/perfil'
     | '/planos'
     | '/privacidade'
     | '/sobre'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/perfil'
     | '/planos'
     | '/privacidade'
     | '/sobre'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/perfil'
     | '/planos'
     | '/privacidade'
     | '/sobre'
@@ -230,6 +242,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EntrarRoute: typeof EntrarRoute
   ExplorarRoute: typeof ExplorarRoute
+  PerfilRoute: typeof PerfilRoute
   PlanosRoute: typeof PlanosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   SobreRoute: typeof SobreRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/planos': {
       id: '/planos'
       path: '/planos'
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EntrarRoute: EntrarRoute,
   ExplorarRoute: ExplorarRoute,
+  PerfilRoute: PerfilRoute,
   PlanosRoute: PlanosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   SobreRoute: SobreRoute,

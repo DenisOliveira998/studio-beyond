@@ -407,6 +407,121 @@ export async function reorderCarouselItems(ids: string[]): Promise<void> {
   );
 }
 
+/* ---------- favoritos ---------- */
+
+export type FavoriteData = {
+  id: string;
+  workSlug: string;
+  artistSlug: string;
+  createdAt: string;
+};
+
+export async function getUserFavorites(userId: string): Promise<FavoriteData[]> {
+  const rows = await prisma.userFavorite.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    workSlug: r.workSlug,
+    artistSlug: r.artistSlug,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+export async function toggleFavorite(
+  userId: string,
+  workSlug: string,
+  artistSlug: string,
+): Promise<{ favorited: boolean }> {
+  const existing = await prisma.userFavorite.findUnique({
+    where: { userId_workSlug: { userId, workSlug } },
+  });
+  if (existing) {
+    await prisma.userFavorite.delete({ where: { id: existing.id } });
+    return { favorited: false };
+  }
+  await prisma.userFavorite.create({ data: { userId, workSlug, artistSlug } });
+  return { favorited: true };
+}
+
+export async function isFavorited(userId: string, workSlug: string): Promise<boolean> {
+  const row = await prisma.userFavorite.findUnique({
+    where: { userId_workSlug: { userId, workSlug } },
+  });
+  return !!row;
+}
+
+/* ---------- progresso de leitura ---------- */
+
+export type ReadingProgressData = {
+  workSlug: string;
+  pagesRead: number;
+  finished: boolean;
+  updatedAt: string;
+};
+
+export async function getUserReadingStats(userId: string): Promise<{
+  totalPagesRead: number;
+  finishedCount: number;
+  progress: ReadingProgressData[];
+}> {
+  const rows = await prisma.readingProgress.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+  });
+  const totalPagesRead = rows.reduce((s, r) => s + r.pagesRead, 0);
+  const finishedCount = rows.filter((r) => r.finished).length;
+  return {
+    totalPagesRead,
+    finishedCount,
+    progress: rows.map((r) => ({
+      workSlug: r.workSlug,
+      pagesRead: r.pagesRead,
+      finished: r.finished,
+      updatedAt: r.updatedAt.toISOString(),
+    })),
+  };
+}
+
+export async function upsertReadingProgress(
+  userId: string,
+  workSlug: string,
+  pagesRead: number,
+  finished: boolean,
+): Promise<void> {
+  await prisma.readingProgress.upsert({
+    where: { userId_workSlug: { userId, workSlug } },
+    update: { pagesRead, finished },
+    create: { userId, workSlug, pagesRead, finished },
+  });
+}
+
+/* ---------- perfil do leitor (stats consolidadas) ---------- */
+
+export type ReaderProfileStats = {
+  favoritedCount: number;
+  totalPagesRead: number;
+  finishedCount: number;
+  favoriteAuthorsCount: number;
+  favorites: FavoriteData[];
+};
+
+export async function getReaderProfileStats(userId: string): Promise<ReaderProfileStats> {
+  const [favorites, { totalPagesRead, finishedCount }] = await Promise.all([
+    getUserFavorites(userId),
+    getUserReadingStats(userId),
+  ]);
+  const uniqueAuthors = new Set(favorites.map((f) => f.artistSlug).filter(Boolean));
+  return {
+    favoritedCount: favorites.length,
+    totalPagesRead,
+    finishedCount,
+    favoriteAuthorsCount: uniqueAuthors.size,
+    favorites,
+  };
+}
+
 /* ---------- utilidades ---------- */
 
 export function slugify(value: string) {

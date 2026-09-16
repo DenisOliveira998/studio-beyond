@@ -77,12 +77,12 @@ function UserMenu() {
           </div>
           <div className="py-1">
             <Link
-              to="/dashboard"
+              to={isStaff || profile?.role === "author" ? "/dashboard" : "/perfil"}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
             >
               <LayoutDashboard className="size-3.5" strokeWidth={1.5} />
-              Minha conta
+              {isStaff || profile?.role === "author" ? "Painel do autor" : "Meu perfil"}
             </Link>
             {isStaff && (
               <Link

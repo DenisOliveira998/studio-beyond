@@ -239,3 +239,30 @@ model CarouselItem {
 
   @@map("carousel_item")
 }
+
+// ---------------------------------------------------------- Favoritos / Leitura
+
+model UserFavorite {
+  id          String   @id @default(cuid())
+  userId      String
+  workSlug    String
+  artistSlug  String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, workSlug])
+  @@index([userId])
+  @@map("user_favorites")
+}
+
+model ReadingProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  workSlug  String
+  pagesRead Int      @default(0)
+  finished  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, workSlug])
+  @@index([userId])
+  @@map("reading_progress")
+}
