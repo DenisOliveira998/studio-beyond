@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
@@ -42,7 +42,6 @@ function PasswordRules({ password }: { password: string }) {
 }
 
 function EntrarPage() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
 
   // login
@@ -78,7 +77,7 @@ function EntrarPage() {
           toast.error("E-mail ou senha incorretos.");
         }
       } else {
-        void navigate({ to: "/" });
+        window.location.href = "/";
       }
     } catch {
       toast.error("Erro ao entrar. Verifique suas credenciais.");
@@ -91,7 +90,7 @@ function EntrarPage() {
   async function handleGoogle() {
     setSigningGoogle(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/auth/callback" });
       if (result?.error) {
         toast.error(result.error.message ?? "Erro ao entrar com Google.");
         setSigningGoogle(false);
@@ -171,7 +170,7 @@ function EntrarPage() {
         return;
       }
       toast.success("Senha definida com sucesso!");
-      void navigate({ to: "/" });
+      window.location.href = "/";
     } catch {
       toast.error("Erro de rede. Tente novamente.");
     } finally {

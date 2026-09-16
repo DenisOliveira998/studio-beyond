@@ -36,7 +36,7 @@ export const auth = betterAuth({
 
   baseURL:
     process.env.BETTER_AUTH_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:8080"),
 
   advanced: {
     disableCSRFCheck: true,
@@ -50,6 +50,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:8080",
     "https://studio-beyond-phi.vercel.app",
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
     ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
@@ -40,8 +40,6 @@ function PasswordRules({ password }: { password: string }) {
 }
 
 function CriarPage() {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -82,7 +80,7 @@ function CriarPage() {
         }
       } else {
         toast.success("Conta criada! Bem-vindo ao The Beyond.");
-        void navigate({ to: "/" });
+        window.location.href = "/";
       }
     } catch {
       toast.error("Erro ao criar conta. Tente novamente.");
@@ -94,7 +92,7 @@ function CriarPage() {
   async function handleGoogle() {
     setSigningGoogle(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/auth/callback" });
       if (result?.error) {
         toast.error(result.error.message ?? "Erro ao entrar com Google.");
         setSigningGoogle(false);

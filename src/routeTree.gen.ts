@@ -25,6 +25,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as WorkSlugRouteImport } from './routes/work.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -107,6 +108,11 @@ const ArtistSlugRoute = ArtistSlugRouteImport.update({
   path: '/artist/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
 const WorkSlugRoute = WorkSlugRouteImport.update({
   id: '/work/$slug',
   path: '/work/$slug',
@@ -117,7 +123,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -130,13 +136,14 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesById {
@@ -156,7 +164,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/artists': typeof ArtistsRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
+    | '/auth/callback'
     | '/work/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
+    | '/auth/callback'
     | '/work/$slug'
   id:
     | '__root__'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
+    | '/auth/callback'
     | '/work/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -235,7 +247,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ArtistsRoute: typeof ArtistsRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
   ContatoRoute: typeof ContatoRoute
   CriarRoute: typeof CriarRoute
@@ -365,6 +377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/work/$slug': {
       id: '/work/$slug'
       path: '/work/$slug'
@@ -375,11 +394,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ArtistsRoute: ArtistsRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   CandidaturaAutorRoute: CandidaturaAutorRoute,
   ContatoRoute: ContatoRoute,
   CriarRoute: CriarRoute,
