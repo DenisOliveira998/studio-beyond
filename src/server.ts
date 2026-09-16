@@ -382,7 +382,7 @@ export default {
           }
           const { put } = await import("@vercel/blob");
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-          const blob = await put(safeName, file, { access: "private" });
+          const blob = await put(safeName, file, { access: "private", addRandomSuffix: true });
           return new Response(JSON.stringify({ url: blob.url }), {
             headers: { "content-type": "application/json" },
           });
