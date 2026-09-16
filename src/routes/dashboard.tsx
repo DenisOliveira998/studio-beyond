@@ -26,6 +26,18 @@ import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
+  loader: async () => {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const { auth } = await import("@/lib/auth-server");
+    const { redirect } = await import("@tanstack/react-router");
+    try {
+      const request = getRequest();
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user) throw redirect({ to: "/entrar" });
+    } catch (err) {
+      if (err && typeof err === "object" && "to" in err) throw err;
+    }
+  },
   head: () => ({
     meta: [
       { title: "Painel do autor — The Beyond" },
@@ -57,22 +69,6 @@ const NAV = [
 ];
 
 type LogType = "submit" | "donation" | "edit" | "publish" | "unpublish" | "review";
-
-const CHANGELOG: Array<{
-  date: string;
-  work: string;
-  action: string;
-  type: LogType;
-}> = [
-  { date: "30 ago 2026", work: "O Barulho das Coisas Quietas — Cap. 13", action: "Enviado para revisão da curadoria", type: "submit" },
-  { date: "28 ago 2026", work: "Antes que a Maré Mude", action: "Doação recebida: R$ 15,00 — Anônimo", type: "donation" },
-  { date: "22 ago 2026", work: "O Barulho das Coisas Quietas — Cap. 12", action: "Curadoria solicitou ajustes: revisar consistência de voz no 2º parágrafo", type: "review" },
-  { date: "14 ago 2026", work: "Antes que a Maré Mude", action: "Título atualizado para a versão atual", type: "edit" },
-  { date: "10 ago 2026", work: "Antes que a Maré Mude", action: "Publicada no feed após aprovação da curadoria", type: "publish" },
-  { date: "05 ago 2026", work: "O Barulho das Coisas Quietas", action: "Imagem de capa substituída", type: "edit" },
-  { date: "21 jul 2026", work: "Antes que a Maré Mude", action: "Enviado para revisão da curadoria", type: "submit" },
-  { date: "15 jul 2026", work: "O Barulho das Coisas Quietas", action: "Publicada no feed após aprovação da curadoria", type: "publish" },
-];
 
 const LOG_DOT: Record<LogType, string> = {
   submit:   "bg-gilt/70 border-gilt/50",
@@ -119,6 +115,7 @@ function Dashboard() {
   const stats: WorkStats = dashData?.stats ?? { views: {}, donations: {}, supporters: {} };
 
   const [published, setPublished] = useState<Record<string, boolean>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const totalViews = Object.entries(stats.views)
     .filter(([slug]) => initialWorks.some((w) => w.slug === slug))
@@ -155,6 +152,7 @@ function Dashboard() {
   const [showPreview, setShowPreview] = useState(false);
   const [tags, setTags] = useState("");
   const [coverName, setCoverName] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -162,12 +160,23 @@ function Dashboard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
-  function togglePublish(id: string, workTitle: string) {
-    setPublished((prev) => {
-      const next = !prev[id];
-      toast.success(next ? `"${workTitle}" republicada.` : `"${workTitle}" despublicada.`);
-      return { ...prev, [id]: next };
-    });
+  async function togglePublish(id: string, workTitle: string) {
+    const isLive = published[id];
+    const newStatus = isLive ? "draft" : "pending";
+    try {
+      const res = await fetch(`/api/works/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error();
+      setPublished((prev) => ({ ...prev, [id]: !isLive }));
+      void queryClient.invalidateQueries({ queryKey: ["works-mine"] });
+      void refetchDash();
+      toast.success(isLive ? `"${workTitle}" despublicada.` : `"${workTitle}" enviada para revisão.`);
+    } catch {
+      toast.error("Erro ao alterar status da obra.");
+    }
   }
 
   async function submit(kind: "publish" | "draft") {
@@ -178,8 +187,24 @@ function Dashboard() {
     setUploading(true);
     setUploadStep("idle");
     let pdfUrl: string | null = null;
+    let coverUrl: string | null = null;
     try {
-      // Se tiver PDF selecionado, faz upload primeiro
+      // Se tiver capa selecionada, faz upload primeiro
+      if (coverFile) {
+        setUploadStep("pdf");
+        const fd = new FormData();
+        fd.append("file", coverFile);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok || !data.url) {
+          toast.error(data.error ?? "Erro ao enviar a capa.");
+          setUploading(false);
+          setUploadStep("idle");
+          return;
+        }
+        coverUrl = data.url;
+      }
+      // Se tiver PDF selecionado, faz upload
       if (pdfFile) {
         setUploadStep("pdf");
         const fd = new FormData();
@@ -211,6 +236,7 @@ function Dashboard() {
           body,
           tags,
           pdfUrl,
+          coverUrl,
           status: kind === "publish" ? "pending" : "draft",
         }),
       });
@@ -228,6 +254,7 @@ function Dashboard() {
       setBody("");
       setTags("");
       setCoverName(null);
+      setCoverFile(null);
       setPdfName(null);
       setPdfFile(null);
     } catch {
@@ -354,7 +381,7 @@ function Dashboard() {
                           >
                             <Pencil className="size-3.5" /> Editar
                           </ActionButton>
-                          <ActionButton danger onClick={() => togglePublish(w.id, w.title)}>
+                          <ActionButton danger onClick={() => void togglePublish(w.id, w.title)}>
                             {live ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                             {live ? "Despublicar" : "Republicar"}
                           </ActionButton>
@@ -419,7 +446,11 @@ function Dashboard() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => setCoverName(e.target.files?.[0]?.name ?? null)}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setCoverName(f?.name ?? null);
+                    setCoverFile(f);
+                  }}
                 />
                 <button
                   type="button"
@@ -611,37 +642,64 @@ function Dashboard() {
             Todas as ações realizadas nas suas obras, por ordem cronológica.
           </p>
 
-          <div className="relative ml-3 mt-8">
-            {/* Linha vertical */}
-            <div className="absolute bottom-2 left-2 top-2 w-px bg-border" />
-
-            <div className="space-y-0">
-              {CHANGELOG.map((entry, i) => (
-                <div key={i} className="relative flex gap-6 pb-8 pl-9">
-                  {/* Dot */}
-                  <div
-                    className={`absolute left-0 top-1 size-4 shrink-0 rounded-[2px] border ${LOG_DOT[entry.type]}`}
-                  />
-
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-3">
-                      <span className="caption whitespace-nowrap">{entry.date}</span>
-                      <span
-                        className={`inline-block border px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] ${LOG_DOT[entry.type]} opacity-80`}
-                      >
-                        {LOG_LABEL[entry.type]}
-                      </span>
-                    </div>
-                    <p className="mt-1 font-display text-lg leading-snug">{entry.work}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {entry.action}
-                    </p>
-                  </div>
+          {(() => {
+            type LogEntry = { date: string; work: string; action: string; type: LogType };
+            const entries: LogEntry[] = [];
+            for (const w of myDbWorks) {
+              entries.push({
+                date: new Date(w.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
+                work: w.title,
+                action: "Enviado para revisão da curadoria.",
+                type: "submit",
+              });
+              if (w.status === "approved" && w.publishedAt) {
+                entries.push({
+                  date: new Date(w.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
+                  work: w.title,
+                  action: "Publicada no feed após aprovação da curadoria.",
+                  type: "publish",
+                });
+              }
+              if ((w.status === "changes" || w.status === "rejected") && w.curatorNote) {
+                entries.push({
+                  date: new Date(w.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
+                  work: w.title,
+                  action: `Curadoria: ${w.curatorNote}`,
+                  type: "review",
+                });
+              }
+            }
+            entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            if (!entries.length) {
+              return (
+                <div className="mt-8 border border-border bg-surface/40 px-6 py-10 text-center">
+                  <p className="text-sm text-muted-foreground">Nenhuma atividade ainda. Publique sua primeira obra!</p>
                 </div>
-              ))}
-            </div>
-          </div>
+              );
+            }
+            return (
+              <div className="relative ml-3 mt-8">
+                <div className="absolute bottom-2 left-2 top-2 w-px bg-border" />
+                <div className="space-y-0">
+                  {entries.map((entry, i) => (
+                    <div key={i} className="relative flex gap-6 pb-8 pl-9">
+                      <div className={`absolute left-0 top-1 size-4 shrink-0 rounded-[2px] border ${LOG_DOT[entry.type]}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-3">
+                          <span className="caption whitespace-nowrap">{entry.date}</span>
+                          <span className={`inline-block border px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] ${LOG_DOT[entry.type]} opacity-80`}>
+                            {LOG_LABEL[entry.type]}
+                          </span>
+                        </div>
+                        <p className="mt-1 font-display text-lg leading-snug">{entry.work}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{entry.action}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* Ganhos */}
@@ -698,7 +756,7 @@ function Dashboard() {
               <tbody className="divide-y divide-border">
                 {donations.length === 0 ? (
                   <tr>
-                    <Td className="text-muted-foreground" colSpan={5}>Nenhuma doação recebida ainda.</Td>
+                    <td colSpan={5} className="px-4 py-4 text-muted-foreground">Nenhuma doação recebida ainda.</td>
                   </tr>
                 ) : donations.map((d) => (
                   <tr key={d.id} className="transition-colors hover:bg-surface/60">
@@ -761,13 +819,30 @@ function Dashboard() {
 
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => {
-                    toast.success(`Alterações em "${editTitle}" salvas.`);
-                    setEditingWork(null);
-                  }}
-                  className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90"
+                  disabled={savingEdit}
+                  onClick={() => void (async () => {
+                    if (!editingWork) return;
+                    setSavingEdit(true);
+                    try {
+                      const mediumMap: Record<string, string> = { Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto" };
+                      const res = await fetch(`/api/works/${editingWork.id}`, {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ title: editTitle, medium: mediumMap[editType] ?? "livro" }),
+                      });
+                      if (!res.ok) throw new Error();
+                      void refetchDash();
+                      toast.success(`Alterações em "${editTitle}" salvas.`);
+                      setEditingWork(null);
+                    } catch {
+                      toast.error("Erro ao salvar alterações.");
+                    } finally {
+                      setSavingEdit(false);
+                    }
+                  })()}
+                  className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  Salvar alterações
+                  {savingEdit ? "Salvando…" : "Salvar alterações"}
                 </button>
                 <button
                   onClick={() => setEditingWork(null)}

@@ -42,6 +42,22 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+const ADMIN_ROLES = ["owner", "admin", "gerente"] as const;
+
+async function requireAdmin(request: Request): Promise<{ error?: Response }> {
+  const { auth } = await import("./lib/auth-server");
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) {
+    return { error: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } }) };
+  }
+  const { prisma } = await import("./lib/prisma");
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id } });
+  if (!profile || !ADMIN_ROLES.includes(profile.role as typeof ADMIN_ROLES[number])) {
+    return { error: new Response(JSON.stringify({ error: "Acesso negado" }), { status: 403, headers: { "content-type": "application/json" } }) };
+  }
+  return {};
+}
+
 // Endpoint para buscar o perfil do usuário autenticado
 async function handleMe(request: Request): Promise<Response> {
   const { auth } = await import("./lib/auth-server");
@@ -182,14 +198,8 @@ export default {
           });
         }
         if (request.method === "POST") {
-          const { auth } = await import("./lib/auth-server");
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session?.user) {
-            return new Response(JSON.stringify({ error: "Não autorizado" }), {
-              status: 401,
-              headers: { "content-type": "application/json" },
-            });
-          }
+          const { error } = await requireAdmin(request);
+          if (error) return error;
           const { saveSiteConfig } = await import("./lib/beyond-db");
           const body = (await request.json()) as Record<string, string>;
           await saveSiteConfig(body);
@@ -207,9 +217,8 @@ export default {
           return new Response(JSON.stringify(items), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "POST") {
-          const { auth } = await import("./lib/auth-server");
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const { error } = await requireAdmin(request);
+          if (error) return error;
           const { createCarouselItem } = await import("./lib/beyond-db");
           const body = (await request.json()) as Parameters<typeof createCarouselItem>[0];
           const item = await createCarouselItem(body);
@@ -218,9 +227,8 @@ export default {
       }
 
       if (pathname.startsWith("/api/carousel/reorder") && request.method === "POST") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const { ids } = (await request.json()) as { ids: string[] };
         const { reorderCarouselItems } = await import("./lib/beyond-db");
         await reorderCarouselItems(ids);
@@ -231,18 +239,16 @@ export default {
       if (carouselItemMatch) {
         const id = carouselItemMatch[1];
         if (request.method === "PATCH") {
-          const { auth } = await import("./lib/auth-server");
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const { error } = await requireAdmin(request);
+          if (error) return error;
           const body = (await request.json()) as Record<string, unknown>;
           const { updateCarouselItem } = await import("./lib/beyond-db");
           await updateCarouselItem(id, body as Parameters<typeof updateCarouselItem>[1]);
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "DELETE") {
-          const { auth } = await import("./lib/auth-server");
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+          const { error } = await requireAdmin(request);
+          if (error) return error;
           const { deleteCarouselItem } = await import("./lib/beyond-db");
           await deleteCarouselItem(id);
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
@@ -297,7 +303,7 @@ export default {
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
           excerpt?: string; body?: string; tags?: string;
-          pdfUrl?: string | null; status?: "pending" | "draft";
+          pdfUrl?: string | null; coverUrl?: string | null; status?: "pending" | "draft";
         };
         await submitWork({
           authorId: session.user.id,
@@ -308,11 +314,31 @@ export default {
           body: body.body ?? "",
           tags: body.tags ?? "",
           pdfUrl: body.pdfUrl ?? null,
+          coverUrl: body.coverUrl ?? null,
           status: body.status ?? "pending",
         });
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json" },
         });
+      }
+
+      // Autor: atualizar obra própria (título, tipo, despublicar/republicar)
+      const authorWorkMatch = pathname.match(/^\/api\/works\/([^/]+)$/);
+      if (authorWorkMatch && request.method === "PATCH") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        const workId = authorWorkMatch[1]!;
+        const body = (await request.json()) as { title?: string; medium?: string; status?: "pending" | "draft" };
+        const { updateAuthorWork } = await import("./lib/beyond-db");
+        try {
+          await updateAuthorWork(workId, session.user.id, body);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        } catch {
+          return new Response(JSON.stringify({ error: "Obra não encontrada ou sem permissão" }), { status: 403, headers: { "content-type": "application/json" } });
+        }
       }
 
       // Formulário de contato → Resend
@@ -321,6 +347,12 @@ export default {
           name: string; email: string; subject?: string; message: string;
         };
         const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+          return new Response(JSON.stringify({ error: "Serviço de e-mail não configurado. Escreva diretamente para contato@thebeyond.art" }), {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          });
+        }
         if (apiKey) {
           // Notifica equipe
           await fetch("https://api.resend.com/emails", {
@@ -562,11 +594,8 @@ export default {
 
       // Admin: contas
       if (pathname === "/api/accounts" && request.method === "GET") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const { fetchAccounts } = await import("./lib/beyond-db");
         const accounts = await fetchAccounts();
         return new Response(JSON.stringify(accounts), { headers: { "content-type": "application/json" } });
@@ -574,11 +603,8 @@ export default {
 
       const accountMatch = pathname.match(/^\/api\/accounts\/([^/]+)$/);
       if (accountMatch && request.method === "PATCH") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const userId = accountMatch[1]!;
         const body = (await request.json()) as { role?: string; suspended?: boolean };
         const { setUserRole, setSuspended } = await import("./lib/beyond-db");
@@ -593,11 +619,8 @@ export default {
 
       // Admin: candidaturas
       if (pathname === "/api/applications" && request.method === "GET") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const { fetchApplications } = await import("./lib/beyond-db");
         const apps = await fetchApplications();
         return new Response(JSON.stringify(apps), { headers: { "content-type": "application/json" } });
@@ -605,11 +628,8 @@ export default {
 
       const appMatch = pathname.match(/^\/api\/applications\/([^/]+)$/);
       if (appMatch) {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const appId = appMatch[1]!;
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
@@ -626,11 +646,8 @@ export default {
 
       // Admin: obras (todas, para revisão)
       if (pathname === "/api/admin/works" && request.method === "GET") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const { fetchAllWorks } = await import("./lib/beyond-db");
         const rows = await fetchAllWorks();
         return new Response(JSON.stringify(rows), { headers: { "content-type": "application/json" } });
@@ -638,11 +655,8 @@ export default {
 
       const adminWorkMatch = pathname.match(/^\/api\/admin\/works\/([^/]+)$/);
       if (adminWorkMatch) {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const workId = adminWorkMatch[1]!;
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
@@ -659,11 +673,8 @@ export default {
 
       // Admin: estatísticas de receita (views + doações)
       if (pathname === "/api/admin/stats" && request.method === "GET") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
-        }
+        const { error } = await requireAdmin(request);
+        if (error) return error;
         const { fetchWorkStats } = await import("./lib/beyond-db");
         const stats = await fetchWorkStats();
         return new Response(JSON.stringify(stats), { headers: { "content-type": "application/json" } });

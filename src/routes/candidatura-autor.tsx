@@ -98,7 +98,7 @@ function ApplicationPage() {
     }
     setSending(true);
     try {
-      await fetch("/api/candidatura", {
+      const res = await fetch("/api/candidatura", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -110,9 +110,13 @@ function ApplicationPage() {
           portfolioCitations: portfolioCitations.trim(),
         }),
       });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Erro ${res.status}`);
+      }
       setSent(true);
-    } catch {
-      toast.error("Erro ao enviar. Tente novamente.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar. Tente novamente.");
     } finally {
       setSending(false);
     }

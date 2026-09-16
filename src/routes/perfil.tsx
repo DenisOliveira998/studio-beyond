@@ -5,6 +5,18 @@ import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import type { ReaderProfileStats } from "@/lib/beyond-db";
 
 export const Route = createFileRoute("/perfil")({
+  loader: async () => {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const { auth } = await import("@/lib/auth-server");
+    const { redirect } = await import("@tanstack/react-router");
+    try {
+      const request = getRequest();
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user) throw redirect({ to: "/entrar" });
+    } catch (err) {
+      if (err && typeof err === "object" && "to" in err) throw err;
+    }
+  },
   head: () => ({
     meta: [
       { title: "Meu Perfil — The Beyond" },
@@ -154,9 +166,9 @@ function PerfilPage() {
                 >
                   <Heart className="size-4 shrink-0 text-gilt" strokeWidth={1.5} />
                   <div className="min-w-0">
-                    <p className="font-display text-lg leading-tight">{fav.workSlug}</p>
-                    {fav.artistSlug && (
-                      <p className="caption mt-0.5">{fav.artistSlug}</p>
+                    <p className="font-display text-lg leading-tight">{fav.workTitle}</p>
+                    {fav.artistName && (
+                      <p className="caption mt-0.5">{fav.artistName}</p>
                     )}
                   </div>
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">

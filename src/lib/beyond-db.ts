@@ -91,6 +91,7 @@ export async function submitWork(input: {
   body: string;
   tags: string;
   pdfUrl?: string | null;
+  coverUrl?: string | null;
   status: "pending" | "draft";
 }) {
   // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
@@ -107,9 +108,24 @@ export async function submitWork(input: {
       body: input.body,
       tags: input.tags,
       pdfUrl: input.pdfUrl ?? null,
+      coverUrl: input.coverUrl ?? null,
       status: input.status,
     },
   });
+}
+
+export async function updateAuthorWork(
+  id: string,
+  authorId: string,
+  data: { title?: string; medium?: string; status?: "pending" | "draft" },
+) {
+  const work = await prisma.work.findFirst({ where: { id, authorId } });
+  if (!work) throw new Error("Obra não encontrada ou sem permissão");
+  const patch: Parameters<typeof prisma.work.update>[0]["data"] = {};
+  if (data.title !== undefined) patch["title"] = data.title;
+  if (data.medium !== undefined) patch["medium"] = data.medium as import("@prisma/client").WorkMedium;
+  if (data.status !== undefined) patch["status"] = data.status as import("@prisma/client").ReviewStatus;
+  await prisma.work.update({ where: { id }, data: patch });
 }
 
 export async function decideWork(
@@ -421,7 +437,9 @@ export async function reorderCarouselItems(ids: string[]): Promise<void> {
 export type FavoriteData = {
   id: string;
   workSlug: string;
+  workTitle: string;
   artistSlug: string;
+  artistName: string;
   createdAt: string;
 };
 
@@ -430,10 +448,19 @@ export async function getUserFavorites(userId: string): Promise<FavoriteData[]> 
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+  if (!rows.length) return [];
+  const slugs = rows.map((r) => r.workSlug);
+  const works = await prisma.work.findMany({
+    where: { slug: { in: slugs } },
+    select: { slug: true, title: true, artistName: true },
+  });
+  const titleMap = new Map(works.map((w) => [w.slug, { title: w.title, artistName: w.artistName }]));
   return rows.map((r) => ({
     id: r.id,
     workSlug: r.workSlug,
+    workTitle: titleMap.get(r.workSlug)?.title ?? r.workSlug,
     artistSlug: r.artistSlug,
+    artistName: titleMap.get(r.workSlug)?.artistName ?? r.artistSlug,
     createdAt: r.createdAt.toISOString(),
   }));
 }

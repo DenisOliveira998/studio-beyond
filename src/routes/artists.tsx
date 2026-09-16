@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ArtistSummary } from "@/lib/beyond-db";
 
@@ -36,10 +35,6 @@ function ArtistsPage() {
     staleTime: 60_000,
   });
 
-  const [filter, setFilter] = useState("Todos");
-
-  const list = filter === "Todos" ? artists : artists;
-
   return (
     <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
       <p className="eyebrow">O elenco</p>
@@ -48,9 +43,9 @@ function ArtistsPage() {
       </h1>
 
       <div className="mt-10 divide-y divide-border border-y border-border">
-        {list.length === 0 ? (
+        {artists.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Nenhum artista publicou obras ainda.</p>
-        ) : list.map((a) => (
+        ) : artists.map((a) => (
           <Link
             key={a.slug}
             to="/artist/$slug"
