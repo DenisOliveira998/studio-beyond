@@ -148,6 +148,11 @@ export async function updateWorkPdf(id: string, pdfUrl: string | null) {
 }
 
 export async function deleteWork(id: string) {
+  const work = await prisma.work.findUnique({ where: { id }, select: { slug: true } });
+  if (!work) return;
+  // Com relationMode="prisma", apagar filhos antes da obra
+  await prisma.donation.deleteMany({ where: { workSlug: work.slug } });
+  await prisma.workView.deleteMany({ where: { workSlug: work.slug } });
   await prisma.work.delete({ where: { id } });
 }
 
