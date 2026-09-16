@@ -113,27 +113,40 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-5 sm:px-8">
-        <Link to="/" className="flex items-baseline gap-2">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5 sm:gap-6 sm:px-8">
+
+        {/* ── Esquerda: logo ── */}
+        <Link to="/" className="flex shrink-0 items-baseline gap-2">
           <span className="hero-type text-2xl leading-none text-white">
             The <span className="text-gilt">Beyond</span>
           </span>
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
 
-        <nav className="flex items-center gap-5 text-sm text-white/85 sm:gap-7">
+        {/* ── Centro: busca exposta ── */}
+        <div className="hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">
+          <SiteSearch inline />
+        </div>
+
+        {/* ── Direita: links de nav + controles ── */}
+        <div className="ml-auto flex items-center gap-4 text-sm text-white/85 sm:gap-5">
           {nav.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="rule-hover hidden transition-colors hover:text-gilt lg:inline"
+              className="rule-hover hidden transition-colors hover:text-gilt xl:inline"
               activeProps={{ className: "text-gilt" }}
               activeOptions={{ exact: item.to === "/" }}
             >
               {item.label}
             </Link>
           ))}
-          <SiteSearch />
+
+          {/* Ícone de busca no mobile (quando o campo central não aparece) */}
+          <span className="lg:hidden">
+            <SiteSearch />
+          </span>
+
           {!loading && (
             user ? (
               <UserMenu />
@@ -148,7 +161,7 @@ export function SiteHeader() {
           )}
           <LanguageSelector />
           <ThemeToggle />
-        </nav>
+        </div>
       </div>
     </header>
   );

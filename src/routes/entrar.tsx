@@ -1,22 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/entrar")({
-  loader: async () => {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { auth } = await import("@/lib/auth-server");
-    const { redirect } = await import("@tanstack/react-router");
-    try {
-      const request = getRequest();
-      const session = await auth.api.getSession({ headers: request.headers });
-      if (session?.user) throw redirect({ to: "/" });
-    } catch (err) {
-      if (err && typeof err === "object" && "to" in err) throw err;
-    }
-  },
   head: () => ({
     meta: [
       { title: "Entrar — The Beyond" },
@@ -54,7 +43,13 @@ function PasswordRules({ password }: { password: string }) {
 }
 
 function EntrarPage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
+
+  useEffect(() => {
+    if (!loading && user) void navigate({ to: "/" });
+  }, [user, loading, navigate]);
 
   // login
   const [email, setEmail] = useState("");

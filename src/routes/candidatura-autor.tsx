@@ -1,24 +1,11 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, Paperclip, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/candidatura-autor")({
-  loader: async () => {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { auth } = await import("@/lib/auth-server");
-    try {
-      const request = getRequest();
-      const session = await auth.api.getSession({ headers: request.headers });
-      if (!session?.user) throw redirect({ to: "/entrar" });
-      return { userName: session.user.name ?? "", userEmail: session.user.email ?? "" };
-    } catch (err) {
-      if (err && typeof err === "object" && "to" in err) throw err;
-      return { userName: "", userEmail: "" };
-    }
-  },
   head: () => ({
     meta: [
       { title: "Candidatura de Autor | The Beyond — Publique sua Obra" },
@@ -39,14 +26,25 @@ export const Route = createFileRoute("/candidatura-autor")({
 });
 
 function ApplicationPage() {
-  const loaderData = Route.useLoaderData();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const [realName, setRealName] = useState(loaderData?.userName ?? user?.name ?? "");
-  const [email, setEmail] = useState(loaderData?.userEmail ?? user?.email ?? "");
+  const [realName, setRealName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+
+  useEffect(() => {
+    if (!loading && !user) void navigate({ to: "/entrar" });
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      setRealName((prev) => prev || (user.name ?? ""));
+      setEmail((prev) => prev || (user.email ?? ""));
+    }
+  }, [user]);
   const [phone, setPhone] = useState("");
   const [portfolioLink, setPortfolioLink] = useState("");
   const [portfolioCitations, setPortfolioCitations] = useState("");
@@ -54,21 +52,16 @@ function ApplicationPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!user && !loaderData?.userEmail) {
+  if (loading) {
     return (
-      <div className="mx-auto max-w-lg px-5 py-24 text-center">
-        <p className="font-display text-2xl tracking-tight">Acesso restrito</p>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Você precisa estar logado para enviar uma candidatura.
-        </p>
-        <Link
-          to="/entrar"
-          className="mt-6 inline-block border border-gilt px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-gilt transition-colors hover:bg-gilt/10"
-        >
-          Entrar
-        </Link>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {

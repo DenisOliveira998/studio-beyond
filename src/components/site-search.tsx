@@ -3,47 +3,61 @@ import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { searchAll, type SearchHit } from "@/lib/beyond-data";
 
-export function SiteSearch() {
-  const [open, setOpen] = useState(false);
+type SiteSearchProps = {
+  /** Quando true, o campo de busca fica sempre visível (modo header inline) */
+  inline?: boolean;
+};
+
+export function SiteSearch({ inline = false }: SiteSearchProps) {
+  const [open, setOpen] = useState(inline);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const results = useMemo(() => searchAll(query), [query]);
   const empty = query.trim().length > 0 && !results.works.length && !results.artists.length;
+  const showDropdown = (inline ? true : open) && query.trim().length > 0;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen(true);
+        if (!inline) setOpen(true);
+        inputRef.current?.focus();
       }
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        if (!inline) setOpen(false);
+        setQuery("");
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [inline]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open && !inline) inputRef.current?.focus();
+  }, [open, inline]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        if (!inline) setOpen(false);
+        setQuery("");
+      }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+  }, [inline]);
 
   function close() {
-    setOpen(false);
+    if (!inline) setOpen(false);
     setQuery("");
   }
 
   return (
     <div ref={boxRef} className="relative">
-      {!open ? (
+      {/* Modo ícone (compact) — só quando não é inline */}
+      {!inline && !open && (
         <button
           onClick={() => setOpen(true)}
           aria-label="Buscar obras e artistas"
@@ -52,24 +66,42 @@ export function SiteSearch() {
         >
           <Search className="size-4" strokeWidth={1.5} />
         </button>
-      ) : (
-        <div className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5 focus-within:border-gilt">
+      )}
+
+      {/* Campo de busca — sempre visível quando inline, ou quando open no modo compact */}
+      {(inline || open) && (
+        <div
+          className={`flex items-center gap-2 border bg-surface px-3 py-1.5 focus-within:border-gilt ${
+            inline
+              ? "w-full border-white/20 bg-white/5"
+              : "border-border"
+          }`}
+        >
           <Search className="size-3.5 shrink-0 text-gilt" strokeWidth={1.5} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Obras, artistas, categorias…"
-            className="w-40 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-56"
+            className={`bg-transparent text-sm outline-none placeholder:text-white/40 ${
+              inline ? "w-full text-white" : "w-40 sm:w-56 placeholder:text-muted-foreground"
+            }`}
           />
-          <button onClick={close} aria-label="Fechar busca" className="text-muted-foreground hover:text-foreground">
-            <X className="size-3.5" strokeWidth={1.5} />
-          </button>
+          {query && (
+            <button onClick={close} aria-label="Limpar busca" className="text-muted-foreground hover:text-foreground">
+              <X className="size-3.5" strokeWidth={1.5} />
+            </button>
+          )}
+          {!inline && (
+            <button onClick={close} aria-label="Fechar busca" className="text-muted-foreground hover:text-foreground">
+              <X className="size-3.5" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       )}
 
-      {open && query.trim().length > 0 && (
-        <div className="absolute right-0 top-[calc(100%+0.6rem)] z-50 w-[min(22rem,calc(100vw-2.5rem))] border border-border bg-surface shadow-[var(--shadow-gallery)]">
+      {showDropdown && (
+        <div className="absolute left-0 top-[calc(100%+0.6rem)] z-50 w-[min(22rem,calc(100vw-2.5rem))] border border-border bg-surface shadow-[var(--shadow-gallery)]">
           {results.works.length > 0 && (
             <ResultGroup label="Obras">
               {results.works.map((hit) => (
@@ -116,7 +148,7 @@ export function SiteSearch() {
 
           {empty && (
             <p className="px-4 py-5 text-sm text-muted-foreground">
-              Nada encontrado para “{query}”.
+              Nada encontrado para "{query}".
             </p>
           )}
         </div>

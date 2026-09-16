@@ -1,22 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/criar")({
-  loader: async () => {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { auth } = await import("@/lib/auth-server");
-    const { redirect } = await import("@tanstack/react-router");
-    try {
-      const request = getRequest();
-      const session = await auth.api.getSession({ headers: request.headers });
-      if (session?.user) throw redirect({ to: "/" });
-    } catch (err) {
-      if (err && typeof err === "object" && "to" in err) throw err;
-    }
-  },
   head: () => ({
     meta: [
       { title: "Criar conta — The Beyond" },
@@ -52,9 +41,15 @@ function PasswordRules({ password }: { password: string }) {
 }
 
 function CriarPage() {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+
+  useEffect(() => {
+    if (!authLoading && user) void navigate({ to: "/" });
+  }, [user, authLoading, navigate]);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [signingGoogle, setSigningGoogle] = useState(false);

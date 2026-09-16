@@ -1,22 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, BookMarked, Heart, Users, User, Bookmark } from "lucide-react";
 import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import type { ReaderProfileStats } from "@/lib/beyond-db";
 
 export const Route = createFileRoute("/perfil")({
-  loader: async () => {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { auth } = await import("@/lib/auth-server");
-    const { redirect } = await import("@tanstack/react-router");
-    try {
-      const request = getRequest();
-      const session = await auth.api.getSession({ headers: request.headers });
-      if (!session?.user) throw redirect({ to: "/entrar" });
-    } catch (err) {
-      if (err && typeof err === "object" && "to" in err) throw err;
-    }
-  },
   head: () => ({
     meta: [
       { title: "Meu Perfil — The Beyond" },
@@ -36,6 +25,11 @@ async function fetchProfileStats(): Promise<ReaderProfileStats> {
 
 function PerfilPage() {
   const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) void navigate({ to: "/entrar" });
+  }, [user, loading, navigate]);
 
   const { data: stats, isLoading: statsLoading } = useQuery<ReaderProfileStats>({
     queryKey: ["profile-stats"],

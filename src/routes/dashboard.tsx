@@ -1,5 +1,5 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { RichEditor } from "@/components/RichEditor";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,18 +26,6 @@ import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
-  loader: async () => {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { auth } = await import("@/lib/auth-server");
-    const { redirect } = await import("@tanstack/react-router");
-    try {
-      const request = getRequest();
-      const session = await auth.api.getSession({ headers: request.headers });
-      if (!session?.user) throw redirect({ to: "/entrar" });
-    } catch (err) {
-      if (err && typeof err === "object" && "to" in err) throw err;
-    }
-  },
   head: () => ({
     meta: [
       { title: "Painel do autor — The Beyond" },
@@ -98,8 +86,13 @@ type DashboardData = {
 };
 
 function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!loading && !user) void navigate({ to: "/entrar" });
+  }, [user, loading, navigate]);
   const displayName = profile?.name ?? user?.name ?? "Autor";
   const initials = displayName.slice(0, 2).toUpperCase();
 
