@@ -184,20 +184,23 @@ model Donation {
 // -------------------------------------------------- Candidaturas de autor
 
 model AuthorApplication {
-  id          String       @id @default(cuid())
-  userId      String?
-  user        Profile?     @relation(fields: [userId], references: [id])
-  artistName  String
-  email       String
-  field       String       // "Livro", "Mangá", "HQ", "Conto", "Outro"
-  bio         String       @db.Text
-  portfolio   String       @default("")
-  samples     Int          @default(0)
-  message     String?      @db.Text
-  status      ReviewStatus @default(pending)
-  curatorNote String?      @db.Text
-  decidedAt   DateTime?
-  createdAt   DateTime     @default(now())
+  id                 String       @id @default(cuid())
+  userId             String?
+  user               Profile?     @relation(fields: [userId], references: [id])
+  artistName         String       // nome real do candidato
+  email              String
+  phone              String       @default("")
+  field              String       @default("") // mantido por compatibilidade
+  bio                String       @db.Text
+  portfolio          String       @default("") // link externo
+  portfolioFiles     String?      @db.Text // JSON: string[]
+  portfolioCitations String?      @db.Text
+  samples            Int          @default(0)
+  message            String?      @db.Text
+  status             ReviewStatus @default(pending)
+  curatorNote        String?      @db.Text
+  decidedAt          DateTime?
+  createdAt          DateTime     @default(now())
 
   @@index([userId])
   @@index([status])

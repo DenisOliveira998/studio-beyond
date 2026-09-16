@@ -364,8 +364,15 @@ export default {
       // Candidatura de autor → salva no DB + Resend
       if (pathname === "/api/candidatura" && request.method === "POST") {
         const body = (await request.json()) as {
-          artistName: string; email: string; field: string;
-          bio: string; portfolio: string; message?: string;
+          artistName: string;
+          email: string;
+          phone?: string;
+          field?: string;
+          bio?: string;
+          portfolio?: string;
+          portfolioFiles?: string;
+          portfolioCitations?: string;
+          message?: string;
         };
         // Persiste no banco independente do e-mail
         const { createApplication } = await import("./lib/beyond-db");
@@ -374,9 +381,12 @@ export default {
           userId: session?.user?.id ?? null,
           artistName: body.artistName,
           email: body.email,
-          field: body.field,
-          bio: body.bio,
-          portfolio: body.portfolio,
+          phone: body.phone ?? "",
+          field: body.field ?? "",
+          bio: body.bio ?? "",
+          portfolio: body.portfolio ?? "",
+          portfolioFiles: body.portfolioFiles ?? "[]",
+          portfolioCitations: body.portfolioCitations ?? "",
           samples: 0,
           message: body.message ?? "",
         });

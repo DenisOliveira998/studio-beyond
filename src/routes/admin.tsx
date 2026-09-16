@@ -446,40 +446,62 @@ function AdminPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
                     <div>
                       <p className="eyebrow">
-                        {a.field} · enviada em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
+                        enviada em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{a.artistName}</h3>
-                      <p className="caption mt-1">{a.email}</p>
+                      <p className="caption mt-0.5">{a.email}{a.phone ? ` · ${a.phone}` : ""}</p>
                     </div>
                     <ReviewBadge status={a.status} />
                   </div>
 
-                  <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                    {a.bio}
-                  </p>
-                  {a.message && (
-                    <p className="title-italic mt-3 max-w-2xl text-base text-muted-foreground">
-                      "{a.message}"
-                    </p>
+                  {a.portfolioCitations && (
+                    <blockquote className="mt-4 max-w-2xl border-l-2 border-gilt/40 pl-4 text-sm italic leading-relaxed text-muted-foreground">
+                      {a.portfolioCitations}
+                    </blockquote>
                   )}
 
+                  {/* Arquivos do portfólio */}
+                  {(() => {
+                    try {
+                      const files: string[] = JSON.parse(a.portfolioFiles || "[]");
+                      if (!files.length) return null;
+                      return (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {files.map((url, i) => (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                            >
+                              <FileDown className="size-3.5" strokeWidth={1.5} />
+                              Arquivo {i + 1}
+                            </a>
+                          ))}
+                        </div>
+                      );
+                    } catch { return null; }
+                  })()}
+
                   <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <a
-                      href={a.portfolio}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-type inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-                    >
-                      <Eye className="size-3.5" strokeWidth={1.5} /> Ver portfólio
-                    </a>
-                    <span className="caption">{a.samples} obra(s) enviada(s)</span>
+                    {a.portfolio && (
+                      <a
+                        href={a.portfolio}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-type inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+                      >
+                        <Eye className="size-3.5" strokeWidth={1.5} /> Ver portfólio
+                      </a>
+                    )}
                     {a.status === "pending" && (
                       <div className="ml-auto flex flex-wrap gap-2">
                         <ActionButton onClick={() => decideApplication(a.id, "approved")}>
                           Aprovar
                         </ActionButton>
                         <ActionButton danger onClick={() => decideApplication(a.id, "rejected")}>
-                          Recusar com mensagem
+                          Recusar
                         </ActionButton>
                       </div>
                     )}

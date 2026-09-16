@@ -34,9 +34,12 @@ export type DbApplication = {
   userId: string | null;
   artistName: string;
   email: string;
+  phone: string;
   field: string;
   bio: string;
   portfolio: string;
+  portfolioFiles: string;
+  portfolioCitations: string;
   samples: number;
   message: string | null;
   status: ReviewStatusDb;
@@ -145,9 +148,12 @@ export async function createApplication(input: {
   userId: string | null;
   artistName: string;
   email: string;
+  phone: string;
   field: string;
   bio: string;
   portfolio: string;
+  portfolioFiles: string;
+  portfolioCitations: string;
   samples: number;
   message: string;
 }) {
@@ -156,9 +162,12 @@ export async function createApplication(input: {
       userId: input.userId,
       artistName: input.artistName,
       email: input.email,
+      phone: input.phone,
       field: input.field,
       bio: input.bio,
       portfolio: input.portfolio,
+      portfolioFiles: input.portfolioFiles,
+      portfolioCitations: input.portfolioCitations,
       samples: input.samples,
       message: input.message || null,
     },
@@ -615,10 +624,13 @@ function appToDb(a: any): DbApplication {
     userId: a.userId,
     artistName: a.artistName,
     email: a.email,
-    field: a.field,
-    bio: a.bio,
-    portfolio: a.portfolio,
-    samples: a.samples,
+    phone: a.phone ?? "",
+    field: a.field ?? "",
+    bio: a.bio ?? "",
+    portfolio: a.portfolio ?? "",
+    portfolioFiles: (a.portfolioFiles as string | null) ?? "[]",
+    portfolioCitations: (a.portfolioCitations as string | null) ?? "",
+    samples: a.samples ?? 0,
     message: a.message,
     status: a.status as ReviewStatusDb,
     curatorNote: a.curatorNote,
