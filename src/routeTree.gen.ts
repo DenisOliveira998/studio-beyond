@@ -27,6 +27,7 @@ import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as LerSlugRouteImport } from './routes/ler.$slug'
 import { Route as WorkSlugRouteImport } from './routes/work.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -119,6 +120,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const LerSlugRoute = LerSlugRouteImport.update({
+  id: '/ler/$slug',
+  path: '/ler/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkSlugRoute = WorkSlugRouteImport.update({
   id: '/work/$slug',
   path: '/work/$slug',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/ler/$slug': typeof LerSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesByTo {
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/ler/$slug': typeof LerSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesById {
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/ler/$slug': typeof LerSlugRoute
   '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRouteTypes {
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/artist/$slug'
     | '/auth/callback'
+    | '/ler/$slug'
     | '/work/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/artist/$slug'
     | '/auth/callback'
+    | '/ler/$slug'
     | '/work/$slug'
   id:
     | '__root__'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/artist/$slug'
     | '/auth/callback'
+    | '/ler/$slug'
     | '/work/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
+  LerSlugRoute: typeof LerSlugRoute
   WorkSlugRoute: typeof WorkSlugRoute
 }
 
@@ -397,6 +410,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ler/$slug': {
+      id: '/ler/$slug'
+      path: '/ler/$slug'
+      fullPath: '/ler/$slug'
+      preLoaderRoute: typeof LerSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/callback'
@@ -442,6 +462,7 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
   ArtistSlugRoute: ArtistSlugRoute,
+  LerSlugRoute: LerSlugRoute,
   WorkSlugRoute: WorkSlugRoute,
 }
 export const routeTree = rootRouteImport

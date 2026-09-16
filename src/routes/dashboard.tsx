@@ -475,12 +475,16 @@ function Dashboard() {
                 <p className="mt-1 text-right text-xs text-muted-foreground/50">{synopsis.length}/500</p>
               </Field>
 
-              <Field label="Descrição / conteúdo completo" htmlFor="obra-conteudo">
+              <Field label="Conteúdo para leitura web" htmlFor="obra-conteudo">
                 <RichEditor
                   value={body}
                   onChange={setBody}
-                  placeholder="Escreva ou descreva sua obra aqui… (opcional — complementa a sinopse)"
+                  placeholder={'Cole ou escreva o texto completo da obra aqui. Quando preenchido, habilita o botão "Ler online" na página pública.'}
+                  maxChars={300000}
                 />
+                <p className="mt-1 text-xs text-muted-foreground/60">
+                  Opcional — sem isso, a obra fica disponível apenas via arquivo. Com isso, os leitores podem ler diretamente no site.
+                </p>
               </Field>
 
               <Field label="Imagem de capa *" htmlFor="obra-capa">

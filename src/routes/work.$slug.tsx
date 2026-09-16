@@ -1,7 +1,7 @@
 ﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, Bookmark, Download, Heart, Link2, Play } from "lucide-react";
+import { ArrowUp, BookOpen, Bookmark, Download, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
@@ -528,6 +528,17 @@ function WorkPage() {
               </button>
             }
           />
+        )}
+
+        {work.body.length > 0 && (
+          <Link
+            to="/ler/$slug"
+            params={{ slug: work.slug }}
+            className="flex items-center gap-2 border border-gilt/50 bg-gilt/10 px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-gilt transition-colors hover:bg-gilt hover:text-ink"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Ler online
+          </Link>
         )}
 
         {work.pdfUrl && (
