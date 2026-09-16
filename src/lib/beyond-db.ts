@@ -194,7 +194,7 @@ export async function decideApplication(
   id: string,
   status: "approved" | "rejected" | "changes",
   note?: string,
-) {
+): Promise<{ email: string; artistName: string }> {
   const app = await prisma.authorApplication.update({
     where: { id },
     data: {
@@ -215,6 +215,8 @@ export async function decideApplication(
       });
     }
   }
+
+  return { email: app.email, artistName: app.artistName };
 }
 
 export async function deleteApplication(id: string) {

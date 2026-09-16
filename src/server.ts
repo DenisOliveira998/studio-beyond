@@ -746,7 +746,30 @@ export default {
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
           const { decideApplication } = await import("./lib/beyond-db");
-          await decideApplication(appId, status as "approved" | "rejected" | "changes", note);
+          const { email, artistName } = await decideApplication(appId, status as "approved" | "rejected" | "changes", note);
+          const apiKey = process.env["RESEND_API_KEY"];
+          if (apiKey && email) {
+            const subjects: Record<string, string> = {
+              approved: "Candidatura aprovada — The Beyond",
+              rejected: "Resposta à sua candidatura — The Beyond",
+              changes: "Ajustes solicitados — The Beyond",
+            };
+            const bodies: Record<string, string> = {
+              approved: `Olá, ${artistName}!<br><br>Sua candidatura ao <strong>The Beyond</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe The Beyond</em>`,
+              rejected: `Olá, ${artistName}.<br><br>Agradecemos o interesse em fazer parte do <strong>The Beyond</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${note ? `<br><br><em>Nota da curadoria: ${note}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe The Beyond</em>`,
+              changes: `Olá, ${artistName}.<br><br>Sua candidatura ao <strong>The Beyond</strong> precisa de alguns ajustes antes de ser aprovada.${note ? `<br><br><em>Nota da curadoria: ${note}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
+            };
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: "The Beyond <noreply@thebeyond.art>",
+                to: [email],
+                subject: subjects[status] ?? "Atualização da sua candidatura — The Beyond",
+                html: bodies[status] ?? "",
+              }),
+            }).catch(() => {});
+          }
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "DELETE") {

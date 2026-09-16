@@ -323,6 +323,15 @@ function AdminPage() {
     onError: () => toast.error("Erro ao atualizar obra."),
   });
 
+  const deleteWorkMutation = useMutation({
+    mutationFn: (id: string) => fetch(`/api/admin/works/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-works"] });
+      void queryClient.invalidateQueries({ queryKey: ["works"] });
+    },
+    onError: () => toast.error("Erro ao excluir obra."),
+  });
+
   const patchAccount = useMutation({
     mutationFn: ({ id, role, suspended }: { id: string; role?: AppRole; suspended?: boolean }) =>
       fetch(`/api/accounts/${id}`, {
@@ -337,11 +346,8 @@ function AdminPage() {
   function decideApplication(id: string, status: ReviewStatus) {
     const app = applications.find((a) => a.id === id);
     if (!app) return;
-    toast.success(
-      status === "approved"
-        ? `${app.artistName} aprovado — e-mail de acesso ao Painel do Autor enviado.`
-        : `${app.artistName} recusado — mensagem da curadoria enviada.`,
-    );
+    const label = status === "approved" ? "aprovado" : status === "rejected" ? "recusado" : "ajuste solicitado";
+    toast.success(`${app.artistName} — ${label}. E-mail enviado.`);
     patchApplication.mutate({ id, status });
   }
 
@@ -663,6 +669,17 @@ function AdminPage() {
                             Recusar
                           </ActionButton>
                         )}
+                        <ActionButton
+                          danger
+                          onClick={() => {
+                            if (window.confirm(`Excluir permanentemente "${w.title}"? Esta ação não pode ser desfeita.`)) {
+                              toast.success(`"${w.title}" excluída.`);
+                              deleteWorkMutation.mutate(w.id);
+                            }
+                          }}
+                        >
+                          Excluir
+                        </ActionButton>
                       </div>
                     </Td>
                   </tr>
