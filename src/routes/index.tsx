@@ -196,7 +196,10 @@ function CatalogCard({
         )}
         {pagesRead !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-border/50">
-            <div className="h-full bg-gilt transition-all" style={{ width: `${Math.min(pagesRead, 100)}%` }} />
+            <div
+              className="h-full bg-gilt transition-all"
+              style={{ width: `${work.pages ? Math.min(Math.round((pagesRead / work.pages) * 100), 100) : Math.min(pagesRead, 100)}%` }}
+            />
           </div>
         )}
       </div>
@@ -315,7 +318,9 @@ function ContinueReading({ works }: { works: Work[] }) {
               ) : (
                 <CatalogCard work={work} pagesRead={pagesRead} />
               )}
-              <p className="mt-1 text-[10px] text-muted-foreground">{pagesRead}% lido</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {work.pages ? `${Math.min(Math.round((pagesRead / work.pages) * 100), 100)}% lido` : `${pagesRead} p. lidas`}
+              </p>
             </div>
           ))}
         </div>
@@ -327,7 +332,7 @@ function ContinueReading({ works }: { works: Work[] }) {
 // ── Home ─────────────────────────────────────────────────────────
 
 function Home() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
     queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
@@ -393,7 +398,13 @@ function Home() {
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link
-                to={user ? "/candidatura-autor" : "/entrar"}
+                to={
+                  !user
+                    ? "/entrar"
+                    : (["author", "admin", "gerente", "owner"] as const).includes(role as "author" | "admin" | "gerente" | "owner")
+                    ? "/dashboard"
+                    : "/candidatura-autor"
+                }
                 className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Publique sua obra

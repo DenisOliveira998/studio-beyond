@@ -104,19 +104,15 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
 
   return (
     <div className="pt-6">
-      <form onSubmit={handleSend} className="border border-border bg-surface p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="eyebrow">Seu nome (opcional)</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Como quer ser chamado?"
-              className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
-            />
-          </label>
+      {!user ? (
+        <div className="border border-border bg-surface p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            <a href="/entrar" className="text-gilt underline-offset-2 hover:underline">Faça login</a> para deixar um comentário.
+          </p>
         </div>
-        <label className="mt-4 block">
+      ) : (
+      <form onSubmit={handleSend} className="border border-border bg-surface p-6">
+        <label className="block">
           <span className="eyebrow">Seu comentário</span>
           <textarea
             required
@@ -135,6 +131,7 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
           {addComment.isPending ? "Publicando…" : "Publicar comentário"}
         </button>
       </form>
+      )}
 
       <div className="mt-6 divide-y divide-border">
         {commentsLoading && (
@@ -275,7 +272,7 @@ function WorkPage() {
       qc.setQueryData(["follow", artistSlug], data);
       toast.success(
         data.followed
-          ? `Você está seguindo ${artistName}. Novidades chegarão por e-mail.`
+          ? `Seguindo ${artistName}.`
           : `Você deixou de seguir ${artistName}.`,
       );
     },
@@ -360,7 +357,7 @@ function WorkPage() {
                 </button>
               </div>
             )}
-            <StatusBadge status="finalizado" />
+            <StatusBadge status={work.workStatus ?? "andamento"} />
           </div>
 
           {/* Desktop sidebar content */}
@@ -428,7 +425,7 @@ function WorkPage() {
             <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-xs">
               <div className="flex flex-col gap-1">
                 <span className="text-muted-foreground uppercase tracking-[0.12em] text-[10px]">Status</span>
-                <StatusBadge status="finalizado" />
+                <StatusBadge status={work.workStatus ?? "andamento"} />
               </div>
               <div className="h-px bg-border" />
               <div className="flex items-center justify-between">

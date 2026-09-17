@@ -115,6 +115,12 @@ enum WorkMedium {
   conto
 }
 
+enum WorkStatus {
+  andamento
+  finalizado
+  paralisado
+}
+
 enum ReviewStatus {
   pending
   approved
@@ -139,6 +145,7 @@ model Work {
   genre       String?
   tags        String?
   status      ReviewStatus @default(pending)
+  workStatus  WorkStatus   @default(andamento)
   curatorNote String?      @db.Text
   publishedAt DateTime?
   createdAt   DateTime     @default(now())
@@ -329,4 +336,20 @@ model EmailEvent {
   @@index([recipient])
   @@index([eventType])
   @@map("email_events")
+}
+
+// Log imutável de alterações e decisões de curadoria — visível apenas a staff
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // work_created | work_edited | work_approved | work_rejected | work_changes | work_status_changed
+  workSlug    String
+  workTitle   String
+  actorId     String
+  actorEmail  String
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([workSlug])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

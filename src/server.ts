@@ -150,7 +150,7 @@ async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
 
 const ADMIN_ROLES = ["owner", "admin", "gerente"] as const;
 
-async function requireAdmin(request: Request): Promise<{ error?: Response }> {
+async function requireAdmin(request: Request): Promise<{ error?: Response; actorId?: string; actorEmail?: string }> {
   const { auth } = await import("./lib/auth-server");
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user) {
@@ -161,7 +161,7 @@ async function requireAdmin(request: Request): Promise<{ error?: Response }> {
   if (!profile || !ADMIN_ROLES.includes(profile.role as typeof ADMIN_ROLES[number])) {
     return { error: new Response(JSON.stringify({ error: "Acesso negado" }), { status: 403, headers: { "content-type": "application/json" } }) };
   }
-  return {};
+  return { actorId: session.user.id, actorEmail: session.user.email };
 }
 
 // Endpoint para buscar o perfil do usuário autenticado
@@ -411,7 +411,7 @@ export default {
           excerpt?: string; body?: string; tags?: string;
           pdfUrl?: string | null; coverUrl?: string | null; status?: "pending" | "draft";
         };
-        await submitWork({
+        const submitted = await submitWork({
           authorId: session.user.id,
           title: body.title ?? "",
           medium: (body.medium ?? "livro") as import("./lib/beyond-data").Medium,
@@ -423,6 +423,15 @@ export default {
           coverUrl: body.coverUrl ?? null,
           status: body.status ?? "pending",
         });
+        const { insertAuditLog } = await import("./lib/beyond-db");
+        await insertAuditLog({
+          action: "work_created",
+          workSlug: submitted.slug,
+          workTitle: body.title ?? "",
+          actorId: session.user.id,
+          actorEmail: session.user.email,
+          note: null,
+        }).catch(() => {});
         if ((body.status ?? "pending") === "pending") {
           const { pushEvent: pushWork } = await import("./lib/pusher");
           void pushWork({ event: "work-submitted", data: { title: body.title ?? "", artistName: body.artistName ?? "" } });
@@ -442,9 +451,19 @@ export default {
         }
         const workId = authorWorkMatch[1]!;
         const body = (await request.json()) as { title?: string; medium?: string; status?: "pending" | "draft" };
-        const { updateAuthorWork } = await import("./lib/beyond-db");
+        const { updateAuthorWork, insertAuditLog } = await import("./lib/beyond-db");
         try {
-          await updateAuthorWork(workId, session.user.id, body);
+          const updated = await updateAuthorWork(workId, session.user.id, body);
+          if (updated && body.title) {
+            await insertAuditLog({
+              action: "work_edited",
+              workSlug: updated.slug,
+              workTitle: updated.title,
+              actorId: session.user.id,
+              actorEmail: session.user.email,
+              note: null,
+            }).catch(() => {});
+          }
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         } catch {
           return new Response(JSON.stringify({ error: "Obra não encontrada ou sem permissão" }), { status: 403, headers: { "content-type": "application/json" } });
@@ -793,13 +812,21 @@ export default {
 
       const adminWorkMatch = pathname.match(/^\/api\/admin\/works\/([^/]+)$/);
       if (adminWorkMatch) {
-        const { error } = await requireAdmin(request);
+        const { error, actorId, actorEmail } = await requireAdmin(request);
         if (error) return error;
         const workId = adminWorkMatch[1]!;
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
-          const { decideWork } = await import("./lib/beyond-db");
-          const { authorEmail, authorName, title } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
+          const { decideWork, insertAuditLog } = await import("./lib/beyond-db");
+          const { authorEmail, authorName, title, slug } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
+          await insertAuditLog({
+            action: status === "approved" ? "work_approved" : status === "rejected" ? "work_rejected" : "work_changes",
+            workSlug: slug,
+            workTitle: title,
+            actorId: actorId!,
+            actorEmail: actorEmail!,
+            note: note ?? null,
+          }).catch(() => {});
           const apiKey = process.env["RESEND_API_KEY"];
           if (apiKey && authorEmail) {
             const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -986,6 +1013,15 @@ export default {
         const { fetchEmailEvents } = await import("./lib/beyond-db");
         const events = await fetchEmailEvents(200);
         return new Response(JSON.stringify(events), { headers: { "content-type": "application/json" } });
+      }
+
+      // Admin: log de auditoria (imutável, somente leitura)
+      if (pathname === "/api/admin/audit-logs" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { fetchAuditLogs } = await import("./lib/beyond-db");
+        const logs = await fetchAuditLogs(300);
+        return new Response(JSON.stringify(logs), { headers: { "content-type": "application/json" } });
       }
 
       // Registrar visualização de obra

@@ -9,6 +9,7 @@ import type {
   DbApplication,
   DbWork,
   WorkStats,
+  AuditLogEntry,
 } from "@/lib/beyond-db";
 import type { AppRole } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/auth";
@@ -28,6 +29,7 @@ import {
   Plus,
   Save,
   Settings,
+  ShieldCheck,
   Trash2,
   Trophy,
   Users,
@@ -86,6 +88,7 @@ const NAV = [
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
   { id: "configuracoes", label: "Configurações", icon: Settings },
+  { id: "audit-log", label: "Log de Auditoria", icon: ShieldCheck },
 ];
 
 const TYPE_BADGE: Record<AppRole, string> = {
@@ -112,6 +115,10 @@ function AdminPage() {
   const [filter, setFilter] = useState<AppRole | "all">("all");
   const [appTab, setAppTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [workTab, setWorkTab] = useState<"pending" | "approved" | "changes" | "rejected" | "all">("pending");
+  const [noteModal, setNoteModal] = useState<{
+    id: string; status: ReviewStatus; type: "application" | "submission"; name: string;
+  } | null>(null);
+  const [noteInput, setNoteInput] = useState("");
 
   const ADMIN_ROLES_CLIENT = ["owner", "admin", "gerente"] as const;
   const isStaff = !loading && profile && ADMIN_ROLES_CLIENT.includes(profile.role as typeof ADMIN_ROLES_CLIENT[number]);
@@ -155,6 +162,14 @@ function AdminPage() {
     queryFn: () => fetch("/api/admin/email-events").then((r) => r.json() as Promise<EmailEventData[]>),
     staleTime: 60_000,
     refetchInterval: 60_000,
+  });
+
+  // Log de auditoria
+  const { data: auditLogs = [] } = useQuery<AuditLogEntry[]>({
+    queryKey: ["audit-logs"],
+    queryFn: () => fetch("/api/admin/audit-logs").then((r) => r.json() as Promise<AuditLogEntry[]>),
+    enabled: !!isStaff,
+    staleTime: 30_000,
   });
 
   // Pusher — notificações em tempo real para staff
@@ -305,7 +320,11 @@ function AdminPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status, note }),
       }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["applications"] }),
+    onSuccess: (_, { status, note: _n }) => {
+      void queryClient.invalidateQueries({ queryKey: ["applications"] });
+      const label = status === "approved" ? "aprovada" : status === "rejected" ? "recusada" : "ajuste solicitado";
+      toast.success(`Candidatura ${label}.`);
+    },
     onError: () => toast.error("Erro ao atualizar candidatura."),
   });
 
@@ -316,9 +335,12 @@ function AdminPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status, note }),
       }),
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-works"] });
       void queryClient.invalidateQueries({ queryKey: ["works"] });
+      void queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      const label = status === "approved" ? "aprovada e publicada" : status === "rejected" ? "recusada" : "ajuste solicitado";
+      toast.success(`Obra ${label}.`);
     },
     onError: () => toast.error("Erro ao atualizar obra."),
   });
@@ -346,34 +368,35 @@ function AdminPage() {
   function decideApplication(id: string, status: ReviewStatus) {
     const app = applications.find((a) => a.id === id);
     if (!app) return;
-    let note: string | undefined;
     if (status === "rejected" || status === "changes") {
-      const input = window.prompt(`Nota para ${app.artistName} (opcional, será enviada por e-mail):`);
-      if (input === null) return; // cancelado
-      note = input.trim() || undefined;
+      setNoteInput("");
+      setNoteModal({ id, status, type: "application", name: app.artistName });
+    } else {
+      patchApplication.mutate({ id, status });
     }
-    const label = status === "approved" ? "aprovado" : status === "rejected" ? "recusado" : "ajuste solicitado";
-    toast.success(`${app.artistName} — ${label}. E-mail enviado.`);
-    patchApplication.mutate(note ? { id, status, note } : { id, status });
   }
 
   function decideSubmission(id: string, status: ReviewStatus) {
     const sub = submissions.find((w) => w.id === id);
     if (!sub) return;
-    let note: string | undefined;
     if (status === "rejected" || status === "changes") {
-      const input = window.prompt(`Nota para o autor de "${sub.title}" (opcional, será enviada por e-mail):`);
-      if (input === null) return; // cancelado
-      note = input.trim() || undefined;
+      setNoteInput("");
+      setNoteModal({ id, status, type: "submission", name: sub.title });
+    } else {
+      patchWork.mutate({ id, status });
     }
-    toast.success(
-      status === "approved"
-        ? `"${sub.title}" aprovada e publicada no feed. E-mail enviado.`
-        : status === "changes"
-          ? `Ajustes solicitados ao autor de "${sub.title}". E-mail enviado.`
-          : `"${sub.title}" recusada. E-mail enviado.`,
-    );
-    patchWork.mutate(note ? { id, status, note } : { id, status });
+  }
+
+  function confirmNoteModal() {
+    if (!noteModal) return;
+    const note = noteInput.trim() || undefined;
+    if (noteModal.type === "application") {
+      patchApplication.mutate({ id: noteModal.id, status: noteModal.status, note });
+    } else {
+      patchWork.mutate({ id: noteModal.id, status: noteModal.status, note });
+    }
+    setNoteModal(null);
+    setNoteInput("");
   }
 
   function changeRole(id: string, role: AppRole) {
@@ -1055,7 +1078,101 @@ function AdminPage() {
             </div>
           </div>
         </section>
+
+        {/* Log de Auditoria */}
+        <section id="audit-log" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={ShieldCheck}>Log de Auditoria</SectionTitle>
+          <div className="mt-8">
+            {auditLogs.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">Nenhum evento registrado ainda.</p>
+            ) : (
+              <div className="relative border-l border-gilt/30 pl-6 space-y-6">
+                {auditLogs.map((entry) => {
+                  const ACTION_LABEL: Record<string, string> = {
+                    work_created: "Obra publicada",
+                    work_edited: "Obra editada",
+                    work_approved: "Obra aprovada",
+                    work_rejected: "Obra recusada",
+                    work_changes: "Ajustes solicitados",
+                    work_status_changed: "Status da obra alterado",
+                  };
+                  const ACTION_COLOR: Record<string, string> = {
+                    work_created: "text-[color:var(--chart-2)]",
+                    work_edited: "text-gilt",
+                    work_approved: "text-[color:var(--chart-2)]",
+                    work_rejected: "text-destructive",
+                    work_changes: "text-muted-foreground",
+                    work_status_changed: "text-gilt",
+                  };
+                  const label = ACTION_LABEL[entry.action] ?? entry.action;
+                  const color = ACTION_COLOR[entry.action] ?? "text-foreground";
+                  const date = new Date(entry.createdAt);
+                  const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+                  const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={entry.id} className="relative">
+                      <div className="absolute -left-[1.625rem] top-1 size-3 rounded-full border-2 border-gilt/50 bg-background" />
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-sm font-medium ${color}`}>{label}</span>
+                          <span className="text-xs text-muted-foreground">·</span>
+                          <Link to="/work/$slug" params={{ slug: entry.workSlug }} className="text-sm text-foreground hover:text-gilt transition-colors">
+                            {entry.workTitle}
+                          </Link>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{entry.actorEmail}</span>
+                          <span>·</span>
+                          <span>{dateStr} às {timeStr}</span>
+                        </div>
+                        {entry.note && (
+                          <p className="mt-1 text-xs text-muted-foreground italic">"{entry.note}"</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
       </main>
+
+      {/* Modal de nota para decisões */}
+      {noteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md border border-gilt/30 bg-background p-6 shadow-xl">
+            <h3 className="font-display text-lg tracking-tight">
+              {noteModal.status === "rejected" ? "Recusar" : "Solicitar ajustes"} — {noteModal.name}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Adicione uma nota explicativa (opcional). Ela será visível apenas internamente no log de auditoria.
+            </p>
+            <textarea
+              className="mt-4 w-full resize-none border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
+              rows={4}
+              placeholder="Motivo da decisão…"
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => { setNoteModal(null); setNoteInput(""); }}
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmNoteModal}
+                className="bg-gilt px-5 py-2 text-sm font-medium text-ink hover:opacity-90 transition-opacity"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -122,6 +122,13 @@ function Dashboard() {
   const stats: WorkStats = dashData?.stats ?? { views: {}, donations: {}, supporters: {} };
 
   const [published, setPublished] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (myDbWorks.length > 0) {
+      const state: Record<string, boolean> = {};
+      for (const w of myDbWorks) state[w.id] = w.status === "approved";
+      setPublished(state);
+    }
+  }, [myDbWorks]);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const totalViews = Object.entries(stats.views)
@@ -279,7 +286,7 @@ function Dashboard() {
       setTitle("");
       setSynopsis("");
       setBody("");
-      setTags("");
+      setTags([]);
       setCoverName(null);
       setCoverFile(null);
       setPdfName(null);
@@ -817,11 +824,11 @@ function Dashboard() {
               </div>
               <div className="mt-8 border-t border-border pt-6">
                 <div className="flex items-baseline justify-between">
-                  <p className="text-sm text-muted-foreground">Próximo pagamento</p>
+                  <p className="text-sm text-muted-foreground">Acumulado estimado</p>
                   <p className="font-display text-2xl tracking-tight text-gilt">{money(net)}</p>
                 </div>
                 <p className="mt-2 text-right text-xs text-muted-foreground">
-                  Pago na sexta-feira · contador simulado
+                  Repasse ativado quando o sistema de pagamentos for configurado.
                 </p>
               </div>
             </div>
@@ -848,7 +855,7 @@ function Dashboard() {
                     <Td className="whitespace-nowrap text-muted-foreground">
                       {new Date(d.createdAt).toLocaleDateString("pt-BR")}
                     </Td>
-                    <Td>{d.workSlug}</Td>
+                    <Td>{initialWorks.find((w) => w.slug === d.workSlug)?.title ?? d.workSlug}</Td>
                     <Td>
                       <span className="inline-flex items-center gap-1.5 border px-2 py-1 text-xs uppercase tracking-[0.14em] border-gilt/50 bg-gilt/10 text-gilt">
                         <Heart className="size-3" />
@@ -978,6 +985,7 @@ function Dashboard() {
                       });
                       if (!res.ok) throw new Error();
                       void queryClient.invalidateQueries({ queryKey: ["author-dashboard"] });
+                      void queryClient.invalidateQueries({ queryKey: ["me"] });
                       toast.success("Perfil atualizado.");
                       setShowEditProfile(false);
                     } catch {

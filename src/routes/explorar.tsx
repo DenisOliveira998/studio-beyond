@@ -144,9 +144,11 @@ function ExplorePage() {
         </div>
       )}
 
-      <p className="mt-12 text-sm text-muted-foreground">
-        {NOTE[filter === ALL ? "livro" : filter]}
-      </p>
+      {filter !== ALL && (
+        <p className="mt-12 text-sm text-muted-foreground">
+          {NOTE[filter as Medium]}
+        </p>
+      )}
     </div>
   );
 }

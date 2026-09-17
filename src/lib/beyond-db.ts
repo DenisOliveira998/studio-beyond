@@ -24,6 +24,7 @@ export type DbWork = {
   genre: string | null;
   tags: string | null;
   status: ReviewStatusDb;
+  workStatus: "andamento" | "finalizado" | "paralisado";
   curatorNote: string | null;
   createdAt: string;
   updatedAt: Date;
@@ -97,9 +98,10 @@ export async function submitWork(input: {
 }) {
   // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
   const base = slugify(stripHtml(input.title)) || `obra-${Date.now()}`;
+  const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
   await prisma.work.create({
     data: {
-      slug: `${base}-${Math.random().toString(36).slice(2, 6)}`,
+      slug,
       title: input.title,
       medium: input.medium,
       artistName: input.artistName,
@@ -113,6 +115,7 @@ export async function submitWork(input: {
       status: input.status,
     },
   });
+  return { slug };
 }
 
 export async function updateAuthorWork(
@@ -126,17 +129,18 @@ export async function updateAuthorWork(
   if (data.title !== undefined) patch["title"] = data.title;
   if (data.medium !== undefined) patch["medium"] = data.medium as import("@prisma/client").WorkMedium;
   if (data.status !== undefined) patch["status"] = data.status as import("@prisma/client").ReviewStatus;
-  await prisma.work.update({ where: { id }, data: patch });
+  const updated = await prisma.work.update({ where: { id }, data: patch, select: { slug: true, title: true } });
+  return updated;
 }
 
 export async function decideWork(
   id: string,
   status: "approved" | "rejected" | "changes",
   note?: string,
-): Promise<{ authorEmail: string; authorName: string; title: string }> {
+): Promise<{ authorEmail: string; authorName: string; title: string; slug: string }> {
   const work = await prisma.work.findUnique({
     where: { id },
-    select: { title: true, authorId: true },
+    select: { title: true, slug: true, authorId: true },
   });
   if (!work) throw new Error("Work not found");
   const author = work.authorId
@@ -150,7 +154,7 @@ export async function decideWork(
       ...(status === "approved" ? { publishedAt: new Date() } : {}),
     },
   });
-  return { authorEmail: author?.email ?? "", authorName: author?.name ?? "Autor", title: work.title };
+  return { authorEmail: author?.email ?? "", authorName: author?.name ?? "Autor", title: work.title, slug: work.slug };
 }
 
 export async function updateWorkPdf(id: string, pdfUrl: string | null) {
@@ -798,6 +802,7 @@ export function dbWorkToWork(w: DbWork): Work {
       year: "numeric",
     }),
     updatedAt: w.updatedAt.toISOString(),
+    workStatus: w.workStatus,
   };
 }
 
@@ -847,11 +852,40 @@ function workToDb(w: any): DbWork {
     genre: w.genre,
     tags: w.tags,
     status: w.status as ReviewStatusDb,
+    workStatus: (w.workStatus ?? "andamento") as "andamento" | "finalizado" | "paralisado",
     curatorNote: w.curatorNote,
     createdAt: (w.createdAt as Date).toISOString(),
     updatedAt: w.updatedAt as Date,
     publishedAt: w.publishedAt ? (w.publishedAt as Date).toISOString() : null,
   };
+}
+
+/* ---------- audit log ---------- */
+
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  workSlug: string;
+  workTitle: string;
+  actorId: string;
+  actorEmail: string;
+  note: string | null;
+  createdAt: string;
+};
+
+export async function insertAuditLog(entry: Omit<AuditLogEntry, "id" | "createdAt">) {
+  await prisma.auditLog.create({ data: entry });
+}
+
+export async function fetchAuditLogs(limit = 200): Promise<AuditLogEntry[]> {
+  const rows = await prisma.auditLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

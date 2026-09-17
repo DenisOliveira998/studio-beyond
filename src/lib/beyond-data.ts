@@ -24,6 +24,7 @@ export type Work = {
   pdfUrl?: string;
   chapters?: WorkChapter[];
   updatedAt?: string;
+  workStatus?: "andamento" | "finalizado" | "paralisado";
 };
 
 export type Artist = {
