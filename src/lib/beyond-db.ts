@@ -26,6 +26,7 @@ export type DbWork = {
   status: ReviewStatusDb;
   curatorNote: string | null;
   createdAt: string;
+  updatedAt: Date;
   publishedAt: string | null;
 };
 
@@ -561,10 +562,11 @@ export type ReaderProfileStats = {
   finishedCount: number;
   favoriteAuthorsCount: number;
   favorites: FavoriteData[];
+  progress: ReadingProgressData[];
 };
 
 export async function getReaderProfileStats(userId: string): Promise<ReaderProfileStats> {
-  const [favorites, { totalPagesRead, finishedCount }] = await Promise.all([
+  const [favorites, { totalPagesRead, finishedCount, progress }] = await Promise.all([
     getUserFavorites(userId),
     getUserReadingStats(userId),
   ]);
@@ -575,6 +577,7 @@ export async function getReaderProfileStats(userId: string): Promise<ReaderProfi
     finishedCount,
     favoriteAuthorsCount: uniqueAuthors.size,
     favorites,
+    progress,
   };
 }
 
@@ -782,8 +785,8 @@ export function dbWorkToWork(w: DbWork): Work {
     medium: w.medium,
     artistSlug: w.artistSlug,
     artistName: w.artistName,
-    ...(w.coverUrl ? { cover: blobProxy(w.coverUrl) } : {}),
-    ...(w.pdfUrl ? { pdfUrl: blobProxy(w.pdfUrl) } : {}),
+    ...(w.coverUrl ? { cover: blobProxy(w.coverUrl) as string } : {}),
+    ...(w.pdfUrl ? { pdfUrl: blobProxy(w.pdfUrl) as string } : {}),
     ...(w.genre ? { genre: w.genre } : {}),
     excerpt: w.excerpt,
     body: w.body ? w.body.split("\n").filter(Boolean) : [],
@@ -794,6 +797,7 @@ export function dbWorkToWork(w: DbWork): Work {
       month: "long",
       year: "numeric",
     }),
+    updatedAt: w.updatedAt.toISOString(),
   };
 }
 
@@ -845,6 +849,7 @@ function workToDb(w: any): DbWork {
     status: w.status as ReviewStatusDb,
     curatorNote: w.curatorNote,
     createdAt: (w.createdAt as Date).toISOString(),
+    updatedAt: w.updatedAt as Date,
     publishedAt: w.publishedAt ? (w.publishedAt as Date).toISOString() : null,
   };
 }

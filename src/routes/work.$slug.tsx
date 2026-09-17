@@ -229,9 +229,10 @@ function WorkPage() {
   const topRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
 
-  // View counter — fire on mount
+  // View counter + registra timestamp da última leitura (para detectar atualizações)
   useEffect(() => {
     void fetch(`/api/works/${work.slug}/view`, { method: "POST" });
+    try { localStorage.setItem(`beyond_last_read_${work.slug}`, new Date().toISOString()); } catch {}
   }, [work.slug]);
 
   // Back to top

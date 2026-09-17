@@ -410,19 +410,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ler/$slug': {
-      id: '/ler/$slug'
-      path: '/ler/$slug'
-      fullPath: '/ler/$slug'
-      preLoaderRoute: typeof LerSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/ler/$slug': {
+      id: '/ler/$slug'
+      path: '/ler/$slug'
+      fullPath: '/ler/$slug'
+      preLoaderRoute: typeof LerSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/work/$slug': {
       id: '/work/$slug'

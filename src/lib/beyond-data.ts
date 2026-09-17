@@ -23,6 +23,7 @@ export type Work = {
   pages?: number;
   pdfUrl?: string;
   chapters?: WorkChapter[];
+  updatedAt?: string;
 };
 
 export type Artist = {
