@@ -223,6 +223,7 @@ function WorkPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("sobre");
   const [showBackTop, setShowBackTop] = useState(false);
+  const [chapterOrder, setChapterOrder] = useState<"asc" | "desc">("asc");
   const topRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
 
@@ -618,22 +619,48 @@ function WorkPage() {
                 {/* Chapters index */}
                 {work.chapters && work.chapters.length > 0 && (
                   <div className="mt-8 border border-border bg-surface">
-                    <p className="eyebrow border-b border-border px-5 py-3 text-xs">Capítulos</p>
-                    <ol className="divide-y divide-border">
-                      {work.chapters.map((ch) => (
-                        <li
-                          key={ch.number}
-                          className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm"
+                    <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+                      <p className="eyebrow text-xs">Capítulos ({work.chapters.length})</p>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setChapterOrder("asc")}
+                          className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                            chapterOrder === "asc"
+                              ? "bg-gilt text-ink"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
                         >
-                          <span className="flex items-baseline gap-3">
-                            <span className="tabular-nums text-muted-foreground/50">
-                              {String(ch.number).padStart(2, "0")}
+                          Mais antigo
+                        </button>
+                        <button
+                          onClick={() => setChapterOrder("desc")}
+                          className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                            chapterOrder === "desc"
+                              ? "bg-gilt text-ink"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Mais recente
+                        </button>
+                      </div>
+                    </div>
+                    <ol className="divide-y divide-border">
+                      {[...work.chapters]
+                        .sort((a, b) => chapterOrder === "asc" ? a.number - b.number : b.number - a.number)
+                        .map((ch) => (
+                          <li
+                            key={ch.number}
+                            className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm"
+                          >
+                            <span className="flex items-baseline gap-3">
+                              <span className="tabular-nums text-muted-foreground/50">
+                                {String(ch.number).padStart(2, "0")}
+                              </span>
+                              <span className="text-foreground">{ch.title}</span>
                             </span>
-                            <span className="text-foreground">{ch.title}</span>
-                          </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
-                        </li>
-                      ))}
+                            <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
+                          </li>
+                        ))}
                     </ol>
                   </div>
                 )}
