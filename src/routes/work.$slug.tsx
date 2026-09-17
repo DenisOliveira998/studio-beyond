@@ -22,7 +22,7 @@ export const Route = createFileRoute("/work/$slug")({
       .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
       .slice(0, 3)
       .map(dbWorkToWork);
-    return { work, related };
+    return { work, related, hasBody: !!dbWork.body?.trim() };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -217,7 +217,7 @@ function useBookmark(slug: string, artistSlug: string) {
 }
 
 function WorkPage() {
-  const { work, related } = Route.useLoaderData();
+  const { work, related, hasBody } = Route.useLoaderData();
   const { user } = useAuth();
   const qc = useQueryClient();
   const artistName = work.artistName ?? "";
@@ -530,7 +530,7 @@ function WorkPage() {
           />
         )}
 
-        {work.body.length > 0 && (
+        {hasBody && (
           <Link
             to="/ler/$slug"
             params={{ slug: work.slug }}
