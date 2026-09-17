@@ -69,7 +69,7 @@ function HeroCarousel({ works }: { works: Work[] }) {
 
   if (count === 0) {
     return (
-      <div className="flex aspect-[3/4] max-h-[520px] flex-col items-center justify-center gap-3 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
+      <div className="flex aspect-square max-h-[640px] flex-col items-center justify-center gap-3 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
         <span className="font-display text-5xl font-bold text-gilt/10">EM BREVE</span>
         <span className="eyebrow text-gilt/20">obras em destaque</span>
       </div>
@@ -87,11 +87,8 @@ function HeroCarousel({ works }: { works: Work[] }) {
         {slides.map((slide, i) => {
           const isDb = slide.kind === "db";
           const title = isDb ? slide.item.title : stripHtml(slide.work.title);
-          const author = isDb ? (slide.item.subtitle ?? "") : (slide.work.artistName ?? "");
           const imgUrl = isDb ? (slide.item.imageUrl ?? "") : (slide.work.cover ?? "");
           const linkUrl = isDb ? (slide.item.linkUrl ?? "#") : `/work/${slide.work.slug}`;
-          const tag = isDb ? "" : MEDIUM_LABEL[slide.work.medium];
-          const excerpt = isDb ? "" : slide.work.excerpt;
 
           return (
             <div
@@ -103,7 +100,7 @@ function HeroCarousel({ works }: { works: Work[] }) {
             >
               <a href={linkUrl} className="group block">
                 {imgUrl ? (
-                  <div className="aspect-[3/4] max-h-[520px] w-full overflow-hidden border border-gilt/20">
+                  <div className="aspect-square max-h-[640px] w-full overflow-hidden border border-gilt/20">
                     <img
                       src={imgUrl}
                       alt={title}
@@ -111,29 +108,8 @@ function HeroCarousel({ works }: { works: Work[] }) {
                     />
                   </div>
                 ) : (
-                  <div className="aspect-[3/4] max-h-[520px] w-full border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
-                    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                      {tag && <span className="eyebrow text-gilt/40">{tag}</span>}
-                      <span className="font-display text-2xl font-bold leading-tight text-foreground/80 line-clamp-4">
-                        {title}
-                      </span>
-                      {author && <span className="text-xs text-muted-foreground">{author}</span>}
-                    </div>
-                  </div>
+                  <div className="aspect-square max-h-[640px] w-full border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent" />
                 )}
-                {/* Overlay info at bottom */}
-                <div className="mt-3">
-                  {tag && <p className="eyebrow text-gilt/70">{tag}</p>}
-                  <p className="mt-1 font-display text-base font-bold leading-tight text-foreground line-clamp-2 group-hover:text-gilt transition-colors">
-                    {title}
-                  </p>
-                  {author && <p className="mt-0.5 text-xs text-muted-foreground">{author}</p>}
-                  {excerpt && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/70 line-clamp-2">
-                      {excerpt}
-                    </p>
-                  )}
-                </div>
               </a>
             </div>
           );
