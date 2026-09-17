@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
+import type { Work } from "@/lib/beyond-data";
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Download, Minus, Plus, ArrowUp } from "lucide-react";
 import { stripHtml } from "@/lib/utils";
@@ -8,12 +9,12 @@ import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/ler/$slug")({
   loader: async ({ params }) => {
-    const { fetchWorkBySlug, dbWorkToWork } = await import("@/lib/beyond-db");
-    const dbWork = await fetchWorkBySlug(params.slug);
-    if (!dbWork || dbWork.status !== "approved") throw notFound();
-    if (!dbWork.body?.trim()) throw notFound();
-    const work = dbWorkToWork(dbWork);
-    return { work, bodyHtml: dbWork.body };
+    const base = typeof window === "undefined" ? SITE_URL : "";
+    const res = await fetch(`${base}/api/reader/${params.slug}`);
+    if (res.status === 404) throw notFound();
+    if (!res.ok) throw new Error("Falha ao carregar obra");
+    const data = await res.json() as { work: Work; bodyHtml: string };
+    return data;
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Obra não encontrada — The Beyond" }] };

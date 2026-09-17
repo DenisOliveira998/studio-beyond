@@ -1076,6 +1076,20 @@ export default {
         }
       }
 
+      // ── Leitor web: dados da obra por slug ───────────────────────────────────
+
+      if (pathname.startsWith("/api/reader/") && request.method === "GET") {
+        const slug = pathname.replace("/api/reader/", "").split("/")[0];
+        if (!slug) return new Response(JSON.stringify({ error: "Slug inválido" }), { status: 400, headers: { "content-type": "application/json" } });
+        const { fetchWorkBySlug, dbWorkToWork } = await import("./lib/beyond-db");
+        const dbWork = await fetchWorkBySlug(slug);
+        if (!dbWork || dbWork.status !== "approved" || !dbWork.body?.trim()) {
+          return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        const work = dbWorkToWork(dbWork);
+        return new Response(JSON.stringify({ work, bodyHtml: dbWork.body }), { headers: { "content-type": "application/json", "cache-control": "private, max-age=60" } });
+      }
+
       // ── Proxy de arquivos do Vercel Blob (private store) ─────────────────────
 
       if (pathname === "/api/blob-proxy" && request.method === "GET") {
