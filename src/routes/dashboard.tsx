@@ -122,13 +122,6 @@ function Dashboard() {
   const stats: WorkStats = dashData?.stats ?? { views: {}, donations: {}, supporters: {} };
 
   const [published, setPublished] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    if (myDbWorks.length > 0) {
-      const state: Record<string, boolean> = {};
-      for (const w of myDbWorks) state[w.id] = w.status === "approved";
-      setPublished(state);
-    }
-  }, [myDbWorks]);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const totalViews = Object.entries(stats.views)
@@ -146,6 +139,13 @@ function Dashboard() {
     enabled: !!user,
     staleTime: 30_000,
   });
+  useEffect(() => {
+    if (myDbWorks.length > 0) {
+      const state: Record<string, boolean> = {};
+      for (const w of myDbWorks) state[w.id] = w.status === "approved";
+      setPublished(state);
+    }
+  }, [myDbWorks]);
   const queue = myDbWorks
     .filter((w) => w.status !== "approved" && w.status !== "draft")
     .map((w) => ({

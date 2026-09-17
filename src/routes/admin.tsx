@@ -389,11 +389,11 @@ function AdminPage() {
 
   function confirmNoteModal() {
     if (!noteModal) return;
-    const note = noteInput.trim() || undefined;
+    const note = noteInput.trim() || null;
     if (noteModal.type === "application") {
-      patchApplication.mutate({ id: noteModal.id, status: noteModal.status, note });
+      patchApplication.mutate({ id: noteModal.id, status: noteModal.status, ...(note ? { note } : {}) });
     } else {
-      patchWork.mutate({ id: noteModal.id, status: noteModal.status, note });
+      patchWork.mutate({ id: noteModal.id, status: noteModal.status, ...(note ? { note } : {}) });
     }
     setNoteModal(null);
     setNoteInput("");
