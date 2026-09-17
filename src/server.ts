@@ -1083,19 +1083,16 @@ export default {
         if (!blobUrl || !blobUrl.includes("blob.vercel-storage.com")) {
           return new Response("Forbidden", { status: 403 });
         }
-        const token = process.env["BLOB_READ_WRITE_TOKEN"];
-        const upstream = await fetch(blobUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!upstream.ok) {
-          return new Response("Arquivo não encontrado", { status: upstream.status });
+        const { get: blobGet } = await import("@vercel/blob");
+        const result = await blobGet(blobUrl, { access: "private" }).catch(() => null);
+        if (!result || result.stream === null) {
+          return new Response("Arquivo não encontrado", { status: 404 });
         }
-        const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
-        const filename = decodeURIComponent(blobUrl.split("/").pop() ?? "arquivo");
-        const isInline = contentType.startsWith("image/") || contentType === "application/pdf";
-        return new Response(upstream.body, {
+        const filename = decodeURIComponent(blobUrl.split("/").pop()?.split("?")[0] ?? "arquivo");
+        const isInline = result.blob.contentType.startsWith("image/") || result.blob.contentType === "application/pdf";
+        return new Response(result.stream, {
           headers: {
-            "content-type": contentType,
+            "content-type": result.blob.contentType,
             "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename}"`,
             "cache-control": "private, max-age=3600",
           },

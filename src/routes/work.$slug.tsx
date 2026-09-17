@@ -549,7 +549,7 @@ function WorkPage() {
             className="flex items-center gap-2 border border-border px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
           >
             <Download className="h-3.5 w-3.5" />
-            Baixar PDF
+            LER
           </a>
         )}
       </div>
