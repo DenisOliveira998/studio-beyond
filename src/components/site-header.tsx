@@ -123,13 +123,13 @@ export function SiteHeader() {
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
 
-        {/* ── Centro: busca exposta ── */}
-        <div className="hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">
-          <SiteSearch inline />
-        </div>
-
-        {/* ── Direita: links de nav + controles ── */}
+        {/* ── Direita: busca + links de nav + controles ── */}
         <div className="ml-auto flex items-center gap-4 text-sm text-white/85 sm:gap-5">
+          {/* Busca exposta no desktop — antes do primeiro link de nav */}
+          <div className="hidden lg:block lg:w-48 xl:w-64">
+            <SiteSearch inline />
+          </div>
+
           {nav.map((item) => (
             <Link
               key={item.to}
@@ -142,7 +142,7 @@ export function SiteHeader() {
             </Link>
           ))}
 
-          {/* Ícone de busca no mobile (quando o campo central não aparece) */}
+          {/* Ícone de busca no mobile */}
           <span className="lg:hidden">
             <SiteSearch />
           </span>
