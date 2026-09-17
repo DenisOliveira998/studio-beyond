@@ -311,11 +311,11 @@ function WorkPage() {
   ];
 
   return (
-    <div ref={topRef} className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
-      <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
+    <div ref={topRef} className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
+      <div className="flex flex-col gap-10 lg:flex-row lg:gap-10">
 
         {/* ── SIDEBAR ───────────────────────────────────────────── */}
-        <aside className="flex flex-row gap-5 lg:flex-col lg:w-52 lg:flex-shrink-0 lg:sticky lg:top-8 lg:self-start">
+        <aside className="flex flex-row gap-4 lg:flex-col lg:w-72 lg:flex-shrink-0 lg:sticky lg:top-8 lg:self-start">
 
           {/* Cover */}
           {work.cover ? (
@@ -325,10 +325,11 @@ function WorkPage() {
               className="w-28 flex-shrink-0 object-cover lg:w-full aspect-[3/4]"
             />
           ) : (
-            <div className="w-28 flex-shrink-0 aspect-[3/4] bg-surface border border-border flex items-center justify-center lg:w-full">
-              <span className="text-3xl text-muted-foreground/30">
-                {work.medium === "manga" ? "漫" : work.medium === "hq" ? "HQ" : "B"}
+            <div className="w-28 flex-shrink-0 aspect-[3/4] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent flex flex-col items-center justify-center gap-2 lg:w-full">
+              <span className="font-display text-4xl font-bold text-gilt/20">
+                {MEDIUM_LABEL[work.medium].slice(0, 2).toUpperCase()}
               </span>
+              <span className="eyebrow text-gilt/25 text-[10px]">{MEDIUM_LABEL[work.medium]}</span>
             </div>
           )}
 
@@ -369,9 +370,9 @@ function WorkPage() {
               <Link
                 to="/ler/$slug"
                 params={{ slug: work.slug }}
-                className="flex items-center justify-center gap-2 bg-gilt px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-ink font-bold transition-opacity hover:opacity-90"
+                className="flex items-center justify-center gap-2 bg-gilt px-4 py-3 text-sm uppercase tracking-[0.18em] text-ink font-bold transition-opacity hover:opacity-90"
               >
-                <BookOpen className="h-3.5 w-3.5" />
+                <BookOpen className="h-4 w-4" />
                 LER
               </Link>
             )}
@@ -381,21 +382,21 @@ function WorkPage() {
               <button
                 onClick={handleLike}
                 aria-label={liked ? "Remover curtida" : "Curtir"}
-                className={`flex items-center justify-center gap-1.5 border py-2 text-[11px] uppercase tracking-[0.14em] transition-colors ${
+                className={`flex items-center justify-center gap-2 border py-2.5 text-xs uppercase tracking-[0.14em] transition-colors ${
                   liked ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Heart className={`h-3 w-3 ${liked ? "fill-current" : ""}`} />
+                <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
                 Curtir
               </button>
               <button
                 onClick={toggleBookmark}
                 aria-label={saved ? "Remover da lista" : "Salvar"}
-                className={`flex items-center justify-center gap-1.5 border py-2 text-[11px] uppercase tracking-[0.14em] transition-colors ${
+                className={`flex items-center justify-center gap-2 border py-2.5 text-xs uppercase tracking-[0.14em] transition-colors ${
                   saved ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Bookmark className={`h-3 w-3 ${saved ? "fill-current" : ""}`} />
+                <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
                 Salvar
               </button>
             </div>
@@ -403,9 +404,9 @@ function WorkPage() {
             {/* Compartilhar */}
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-1.5 border border-border py-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground"
+              className="flex items-center justify-center gap-2 border border-border py-2.5 text-xs uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground"
             >
-              <Link2 className="h-3 w-3" />
+              <Link2 className="h-3.5 w-3.5" />
               Compartilhar
             </button>
 
