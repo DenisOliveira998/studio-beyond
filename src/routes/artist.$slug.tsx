@@ -52,7 +52,7 @@ function ArtistPage() {
   const totalViews = works.reduce((sum, w) => sum + w.clicks, 0);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       <header className="flex flex-col gap-10 border-b border-border pb-12 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <h1 className="mt-5 font-display text-5xl leading-tight tracking-tight sm:text-6xl">

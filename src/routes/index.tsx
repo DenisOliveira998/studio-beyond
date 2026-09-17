@@ -75,7 +75,7 @@ function FeaturedCarousel({ works }: { works: Work[] }) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+      <div className="px-5 py-14 sm:px-10 sm:py-20 lg:px-14">
         <p className="eyebrow text-gilt">Em Destaque</p>
         <div className="relative mt-6">
           {slides.map((slide, i) => {
@@ -252,7 +252,7 @@ function CategoryRow({
         )}
       </div>
       {/* Scroll horizontal no mobile, grid fixo no desktop */}
-      <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-6 lg:overflow-visible lg:px-0 lg:pb-0 lg:gap-4">
+      <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-3 sm:-mx-10 sm:px-10 lg:mx-0 lg:grid lg:grid-cols-6 xl:grid-cols-8 lg:overflow-visible lg:px-0 lg:pb-0 lg:gap-4">
         {works.slice(0, 6).map((work) => {
           const b = badges[work.slug];
           return (
@@ -314,7 +314,7 @@ function ContinueReading({ works }: { works: Work[] }) {
 
   return (
     <section className="border-b border-border/70 bg-surface/40">
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+      <div className="px-5 py-8 sm:px-10 lg:px-14">
         <div className="mb-4 flex items-center gap-2">
           <BookOpen className="size-4 text-gilt" strokeWidth={1.5} />
           <p className="eyebrow">Continue lendo</p>
@@ -339,6 +339,7 @@ function ContinueReading({ works }: { works: Work[] }) {
 // ── Home ─────────────────────────────────────────────────────────
 
 function Home() {
+  const { user } = useAuth();
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
     queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
@@ -391,7 +392,7 @@ function Home() {
     <div>
       {/* Hero */}
       <section className="border-b border-border/70">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+        <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
           <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
           <h1 className="hero-type mt-6 max-w-3xl text-4xl sm:text-6xl">
             Um espaço silencioso para livros, mangás, HQs e contos que merecem ser lidos por mais tempo.
@@ -401,7 +402,10 @@ function Home() {
             qualquer pessoa envie apoio direto ao ateliê. Ficamos com 12%. O resto é de quem cria.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link to="/entrar" className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90">
+            <Link
+              to={user ? "/candidatura-autor" : "/entrar"}
+              className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
+            >
               Publique sua obra
             </Link>
             <Link to="/artists" className="rule-hover text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -418,7 +422,7 @@ function Home() {
       <FeaturedCarousel works={works} />
 
       {/* Catálogo por categoria */}
-      <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
+      <section className="px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
         <div className="flex flex-col gap-12">
           {sections.map((s) => (
             <CategoryRow
@@ -434,7 +438,7 @@ function Home() {
 
       {/* Artistas */}
       {artists.length > 0 && (
-        <section className="mx-auto max-w-6xl border-t border-border/70 px-5 py-16 sm:px-8">
+        <section className="border-t border-border/70 px-5 py-16 sm:px-10 lg:px-14">
           <h2 className="font-display text-2xl font-bold">Artistas residentes</h2>
           <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {artists.map((a) => (

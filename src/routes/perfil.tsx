@@ -48,7 +48,7 @@ function PerfilPage() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-6xl px-5 py-24 text-center sm:px-8">
+      <div className="px-5 py-24 text-center sm:px-10 lg:px-14">
         <p className="text-muted-foreground">Faça login para ver seu perfil.</p>
       </div>
     );
@@ -65,7 +65,7 @@ function PerfilPage() {
   const roleLabel = ROLE_LABEL[role];
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       {/* Cabeçalho do perfil */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10">
         <div className="flex size-20 shrink-0 items-center justify-center border border-gilt/40 font-display text-3xl text-gilt">

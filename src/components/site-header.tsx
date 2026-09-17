@@ -113,7 +113,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5 sm:gap-6 sm:px-8">
+      <div className="flex h-16 items-center gap-4 px-5 sm:gap-6 sm:px-10 lg:px-14">
 
         {/* ── Esquerda: logo ── */}
         <Link to="/" className="flex shrink-0 items-baseline gap-2">
@@ -200,7 +200,7 @@ export function SiteFooter() {
 
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
-      <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-20 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-12 px-5 py-16 sm:py-20 sm:px-10 lg:px-14 md:grid-cols-2 lg:grid-cols-4">
         {/* Identidade */}
         <div>
           <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
@@ -301,7 +301,7 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-border/70">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-14">
           <p className="caption">© 2026 The Beyond. Sem anúncios, sem interrupções.</p>
           <div className="flex items-center gap-6">
             <Link to="/privacidade" className="caption transition-colors hover:text-foreground">

@@ -98,7 +98,7 @@ function ContactPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       {/* Cabeçalho */}
       <p className="eyebrow">Fale conosco</p>
       <h1 className="hero-type mt-5 text-5xl tracking-tight">

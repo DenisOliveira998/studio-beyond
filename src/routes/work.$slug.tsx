@@ -312,7 +312,7 @@ function WorkPage() {
   ];
 
   return (
-    <div ref={topRef} className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
+    <div ref={topRef} className="px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
       <div className="flex flex-col gap-10 lg:flex-row lg:gap-10">
 
         {/* ── SIDEBAR ───────────────────────────────────────────── */}

@@ -36,7 +36,7 @@ function ArtistsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       <p className="eyebrow">O elenco</p>
       <h1 className="mt-5 max-w-2xl font-display text-5xl leading-tight tracking-tight">
         Artistas residentes

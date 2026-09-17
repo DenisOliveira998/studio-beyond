@@ -202,12 +202,12 @@ function Dashboard() {
       toast.error("A sinopse é obrigatória.");
       return;
     }
-    if (kind === "publish" && !coverFile) {
-      toast.error("A imagem de capa é obrigatória para envio.");
+    if (!coverFile) {
+      toast.error("A imagem de capa é obrigatória.");
       return;
     }
-    if (kind === "publish" && !pdfFile) {
-      toast.error("O arquivo da obra é obrigatório para envio.");
+    if (!pdfFile) {
+      toast.error("O arquivo da obra é obrigatório.");
       return;
     }
     setUploading(true);
@@ -433,9 +433,10 @@ function Dashboard() {
             }}
           >
             <div className="grid gap-8">
-              <Field label="Título da obra" htmlFor="obra-titulo">
+              <Field label="Título da obra *" htmlFor="obra-titulo">
                 <input
                   id="obra-titulo"
+                  required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ex.: Uma Taxonomia Silenciosa"

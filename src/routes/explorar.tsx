@@ -60,7 +60,7 @@ function ExplorePage() {
   const totalViews = filtered.reduce((s, w) => s + w.clicks, 0);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       <p className="eyebrow">Categorias</p>
       <h1 className="hero-type mt-5 max-w-2xl text-5xl tracking-tight">Explorar por categoria</h1>
       <p className="mt-6 max-w-xl leading-relaxed text-muted-foreground">
