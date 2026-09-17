@@ -192,7 +192,7 @@ function BibliotecaPage() {
                   <img
                     src={b.cover}
                     alt={b.title}
-                    className="h-48 w-full object-cover"
+                    className="h-48 w-full object-contain bg-surface"
                     loading="lazy"
                   />
                 ) : (

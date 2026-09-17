@@ -323,7 +323,7 @@ function WorkPage() {
             <img
               src={work.cover}
               alt={stripHtml(work.title)}
-              className="w-28 flex-shrink-0 object-cover lg:w-full aspect-[3/4]"
+              className="w-28 flex-shrink-0 object-contain bg-surface lg:w-full aspect-[3/4]"
             />
           ) : (
             <div className="w-28 flex-shrink-0 aspect-[3/4] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent flex flex-col items-center justify-center gap-2 lg:w-full">

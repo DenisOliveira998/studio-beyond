@@ -894,7 +894,7 @@ function AdminPage() {
                   <img
                     src={slide.imageUrl}
                     alt={slide.title}
-                    className="hidden h-16 w-12 flex-shrink-0 object-cover sm:block border border-border"
+                    className="hidden h-16 w-12 flex-shrink-0 object-contain bg-surface sm:block border border-border"
                   />
                 )}
                 <div className="min-w-0 flex-1">
@@ -985,7 +985,7 @@ function AdminPage() {
                     />
                   </label>
                   {newSlide.imageUrl && (
-                    <img src={newSlide.imageUrl} alt="" className="h-9 w-7 object-cover border border-border" />
+                    <img src={newSlide.imageUrl} alt="" className="h-9 w-7 object-contain bg-surface border border-border" />
                   )}
                 </div>
               </div>

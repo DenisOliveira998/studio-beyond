@@ -100,11 +100,11 @@ function HeroCarousel({ works }: { works: Work[] }) {
             >
               <a href={linkUrl} className="group block">
                 {imgUrl ? (
-                  <div className="aspect-square w-full max-h-[520px] overflow-hidden border border-gilt/20">
+                  <div className="aspect-square w-full max-h-[520px] overflow-hidden border border-gilt/20 bg-surface">
                     <img
                       src={imgUrl}
                       alt={title}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                      className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.03]"
                     />
                   </div>
                 ) : (
@@ -177,7 +177,7 @@ function CatalogCard({
             src={work.cover}
             alt={cleanTitle}
             loading="lazy"
-            className="aspect-[3/4] w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className="aspect-[3/4] w-full object-contain bg-surface transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
           <div className="aspect-[3/4] flex flex-col items-center justify-center gap-1 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">

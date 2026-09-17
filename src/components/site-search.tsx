@@ -175,7 +175,7 @@ function Thumb({ hit }: { hit: SearchHit }) {
         width={80}
         height={56}
         loading="lazy"
-        className="size-10 shrink-0 object-cover"
+        className="size-10 shrink-0 object-contain bg-surface"
       />
     );
   }

@@ -20,7 +20,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
               width={1280}
               height={860}
               loading={priority ? "eager" : "lazy"}
-              className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+              className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.03]"
             />
           </div>
         ) : (
