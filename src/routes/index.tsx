@@ -41,7 +41,13 @@ type SlideItem =
   | { kind: "db"; item: CarouselItemData }
   | { kind: "work"; work: Work };
 
-function HeroCarousel({ works }: { works: Work[] }) {
+function HeroCarousel({
+  works,
+  onCoverChange,
+}: {
+  works: Work[];
+  onCoverChange?: (cover: string | null) => void;
+}) {
   const [cur, setCur] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -63,6 +69,16 @@ function HeroCarousel({ works }: { works: Work[] }) {
     const t = setInterval(() => setCur((i) => (i + 1) % count), 5000);
     return () => clearInterval(t);
   }, [paused, count]);
+
+  // Notifica o parent sobre a capa atual (para blur de fundo)
+  useEffect(() => {
+    if (!onCoverChange || count === 0) return;
+    const slide = slides[cur];
+    if (!slide) { onCoverChange(null); return; }
+    const cover = slide.kind === "db" ? (slide.item.imageUrl ?? null) : (slide.work.cover ?? null);
+    onCoverChange(cover);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, count]);
 
   const prev = () => setCur((i) => (i - 1 + count) % count);
   const next = () => setCur((i) => (i + 1) % count);
@@ -102,38 +118,49 @@ function HeroCarousel({ works }: { works: Work[] }) {
               }`}
             >
               <a href={linkUrl} className="group block">
-                {imgUrl ? (
-                  <div className="aspect-[3/4] max-h-[520px] w-full overflow-hidden border border-gilt/20">
+                <div className="relative aspect-[3/4] max-h-[520px] w-full overflow-hidden border border-gilt/20">
+                  {imgUrl ? (
                     <img
                       src={imgUrl}
                       alt={title}
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                     />
-                  </div>
-                ) : (
-                  <div className="aspect-[3/4] max-h-[520px] w-full border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
-                    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                      {tag && <span className="eyebrow text-gilt/40">{tag}</span>}
-                      <span className="font-display text-2xl font-bold leading-tight text-foreground/80 line-clamp-4">
+                  ) : (
+                    /* Sem capa: mostra título + sinopse centralizados */
+                    <div className="flex h-full flex-col justify-end gap-0 bg-gradient-to-b from-surface/60 to-background p-5">
+                      {tag && <span className="eyebrow text-gilt/60 mb-2">{tag}</span>}
+                      <p className="font-display text-xl font-bold leading-tight text-foreground line-clamp-3">
                         {title}
-                      </span>
-                      {author && <span className="text-xs text-muted-foreground">{author}</span>}
+                      </p>
+                      {author && <p className="mt-1 text-xs text-muted-foreground">{author}</p>}
+                      {excerpt && (
+                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground/70 line-clamp-4">
+                          {excerpt}
+                        </p>
+                      )}
                     </div>
+                  )}
+                  {/* Badge "Em destaque" */}
+                  <span className="absolute left-2 top-2 border border-gilt/60 bg-background/80 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-gilt backdrop-blur-sm">
+                    Em destaque
+                  </span>
+                </div>
+
+                {/* Info abaixo da capa (só quando tem imagem) */}
+                {imgUrl && (
+                  <div className="mt-3">
+                    {tag && <p className="eyebrow text-gilt/60">{tag}</p>}
+                    <p className="mt-1 font-display text-sm font-bold leading-snug text-foreground line-clamp-2 group-hover:text-gilt transition-colors">
+                      {title}
+                    </p>
+                    {author && <p className="mt-0.5 text-[11px] text-muted-foreground">{author}</p>}
+                    {excerpt && (
+                      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/70 line-clamp-2">
+                        {excerpt}
+                      </p>
+                    )}
                   </div>
                 )}
-                {/* Overlay info at bottom */}
-                <div className="mt-3">
-                  {tag && <p className="eyebrow text-gilt/70">{tag}</p>}
-                  <p className="mt-1 font-display text-base font-bold leading-tight text-foreground line-clamp-2 group-hover:text-gilt transition-colors">
-                    {title}
-                  </p>
-                  {author && <p className="mt-0.5 text-xs text-muted-foreground">{author}</p>}
-                  {excerpt && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/70 line-clamp-2">
-                      {excerpt}
-                    </p>
-                  )}
-                </div>
               </a>
             </div>
           );
@@ -352,6 +379,7 @@ function ContinueReading({ works }: { works: Work[] }) {
 
 function Home() {
   const { user } = useAuth();
+  const [heroCover, setHeroCover] = useState<string | null>(null);
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
     queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
@@ -403,8 +431,21 @@ function Home() {
   return (
     <div>
       {/* Hero + Carrossel lado a lado */}
-      <section className="border-b border-border/70">
-        <div className="grid items-center gap-10 px-5 py-16 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:px-14 lg:py-24">
+      <section className="relative overflow-hidden border-b border-border/70">
+        {/* Blur de fundo baseado na capa atual */}
+        {heroCover && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 scale-110 opacity-15 transition-opacity duration-1000"
+            style={{
+              backgroundImage: `url(${heroCover})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              filter: "blur(40px)",
+            }}
+          />
+        )}
+        <div className="relative z-10 grid items-center gap-10 px-5 py-16 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:px-14 lg:py-24">
           {/* Texto */}
           <div>
             <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
@@ -428,8 +469,8 @@ function Home() {
             </div>
           </div>
           {/* Carrossel */}
-          <div className="lg:justify-self-end lg:w-full lg:max-w-sm xl:max-w-md">
-            <HeroCarousel works={works} />
+          <div className="lg:w-full lg:max-w-sm xl:max-w-md lg:justify-self-end">
+            <HeroCarousel works={works} onCoverChange={setHeroCover} />
           </div>
         </div>
       </section>

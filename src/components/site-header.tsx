@@ -113,23 +113,25 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
-      <div className="flex h-16 items-center gap-4 px-5 sm:gap-6 sm:px-10 lg:px-14">
+      <div className="flex h-16 items-center px-5 sm:px-10 lg:px-14">
 
         {/* ── Esquerda: logo ── */}
-        <Link to="/" className="flex shrink-0 items-baseline gap-2">
+        <Link to="/" className="flex shrink-0 items-baseline gap-2 mr-4 sm:mr-6">
           <span className="hero-type text-2xl leading-none text-white">
             The <span className="text-gilt">Beyond</span>
           </span>
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
 
-        {/* ── Centro: busca exposta ── */}
-        <div className="hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">
-          <SiteSearch inline />
+        {/* ── Centro: busca centralizada ── */}
+        <div className="hidden flex-1 justify-center lg:flex">
+          <div className="w-full max-w-sm xl:max-w-md">
+            <SiteSearch inline />
+          </div>
         </div>
 
         {/* ── Direita: links de nav + controles ── */}
-        <div className="ml-auto flex items-center gap-4 text-sm text-white/85 sm:gap-5">
+        <div className="ml-auto flex shrink-0 items-center gap-4 text-sm text-white/85 sm:gap-5">
           {nav.map((item) => (
             <Link
               key={item.to}
