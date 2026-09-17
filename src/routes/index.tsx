@@ -69,7 +69,7 @@ function HeroCarousel({ works }: { works: Work[] }) {
 
   if (count === 0) {
     return (
-      <div className="flex aspect-square max-h-[640px] flex-col items-center justify-center gap-3 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
+      <div className="flex aspect-square flex-col items-center justify-center gap-3 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
         <span className="font-display text-5xl font-bold text-gilt/10">EM BREVE</span>
         <span className="eyebrow text-gilt/20">obras em destaque</span>
       </div>
@@ -100,7 +100,7 @@ function HeroCarousel({ works }: { works: Work[] }) {
             >
               <a href={linkUrl} className="group block">
                 {imgUrl ? (
-                  <div className="aspect-square max-h-[640px] w-full overflow-hidden border border-gilt/20">
+                  <div className="aspect-square w-full overflow-hidden border border-gilt/20">
                     <img
                       src={imgUrl}
                       alt={title}
@@ -108,7 +108,7 @@ function HeroCarousel({ works }: { works: Work[] }) {
                     />
                   </div>
                 ) : (
-                  <div className="aspect-square max-h-[640px] w-full border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent" />
+                  <div className="aspect-square w-full border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent" />
                 )}
               </a>
             </div>
@@ -404,7 +404,7 @@ function Home() {
             </div>
           </div>
           {/* Carrossel */}
-          <div className="lg:justify-self-end lg:w-full lg:max-w-sm xl:max-w-md">
+          <div className="w-full">
             <HeroCarousel works={works} />
           </div>
         </div>
