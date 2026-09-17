@@ -78,6 +78,14 @@ const LOG_LABEL: Record<LogType, string> = {
 
 const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto"];
 
+const GENRE_TAGS = [
+  "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
+  "Ficção Científica", "Horror", "Mistério", "Romance",
+  "Suspense", "Slice of Life", "Sobrenatural", "Distopia",
+  "Histórico", "Policial", "Ensaio", "Poesia", "Biografia",
+  "Mangá Brasileiro", "Psicológico",
+];
+
 
 type DashboardData = {
   works: Work[];
@@ -156,7 +164,7 @@ function Dashboard() {
   const [synopsis, setSynopsis] = useState("");
   const [body, setBody] = useState("");
   const [showPreview, setShowPreview] = useState(false);
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [coverName, setCoverName] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
@@ -252,7 +260,7 @@ function Dashboard() {
           artistName: artistNameInput.trim() || displayName,
           excerpt: synopsis.trim(),
           body,
-          tags,
+          tags: tags.join(", "),
           pdfUrl,
           coverUrl,
           status: kind === "publish" ? "pending" : "draft",
@@ -536,14 +544,35 @@ function Dashboard() {
                 </p>
               </Field>
 
-              <Field label="Tags / categorias" htmlFor="obra-tags">
-                <input
-                  id="obra-tags"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="Ex.: ensaio, atenção, nanquim"
-                  className="w-full border border-border bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
-                />
+              <Field label="Gêneros / categorias" htmlFor="obra-tags">
+                <div className="flex flex-wrap gap-2">
+                  {GENRE_TAGS.map((g) => {
+                    const active = tags.includes(g);
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() =>
+                          setTags((prev) =>
+                            prev.includes(g) ? prev.filter((t) => t !== g) : [...prev, g],
+                          )
+                        }
+                        className={`px-3 py-1.5 text-xs uppercase tracking-[0.1em] border transition-colors ${
+                          active
+                            ? "border-gilt bg-gilt/10 text-gilt"
+                            : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+                {tags.length > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground/60">
+                    Selecionado: {tags.join(", ")}
+                  </p>
+                )}
               </Field>
             </div>
 
@@ -563,9 +592,9 @@ function Dashboard() {
                         dangerouslySetInnerHTML={{ __html: body.slice(0, 800) + (body.length > 800 ? "…" : "") }}
                       />
                     )}
-                    {tags && (
+                    {tags.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                        {tags.map((t) => (
                           <span key={t} className="border border-border px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
                         ))}
                       </div>
