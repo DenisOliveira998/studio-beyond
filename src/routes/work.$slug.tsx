@@ -537,21 +537,10 @@ function WorkPage() {
             className="flex items-center gap-2 border border-gilt/50 bg-gilt/10 px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-gilt transition-colors hover:bg-gilt hover:text-ink"
           >
             <BookOpen className="h-3.5 w-3.5" />
-            Ler online
+            LER
           </Link>
         )}
 
-        {work.pdfUrl && (
-          <a
-            href={work.pdfUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="flex items-center gap-2 border border-border px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-          >
-            <Download className="h-3.5 w-3.5" />
-            LER
-          </a>
-        )}
       </div>
 
       {/* ── Obras relacionadas ── */}
