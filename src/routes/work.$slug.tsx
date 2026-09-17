@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, BookOpen, Bookmark, Heart, Link2, Play } from "lucide-react";
+import { ArrowUp, BookOpen, Bookmark, FileDown, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
@@ -375,6 +375,17 @@ function WorkPage() {
                 LER
               </Link>
             )}
+            {work.pdfUrl && (
+              <a
+                href={work.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 border border-gilt px-4 py-3 text-sm uppercase tracking-[0.18em] text-gilt font-bold transition-opacity hover:opacity-80"
+              >
+                <FileDown className="h-4 w-4" />
+                PDF
+              </a>
+            )}
 
             {/* Curtir + Salvar */}
             <div className="grid grid-cols-2 gap-2">
@@ -525,6 +536,17 @@ function WorkPage() {
                 <BookOpen className="h-3.5 w-3.5" />
                 LER
               </Link>
+            )}
+            {work.pdfUrl && (
+              <a
+                href={work.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 border border-gilt px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-gilt font-bold transition-opacity hover:opacity-80"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                PDF
+              </a>
             )}
             <button
               onClick={handleLike}
