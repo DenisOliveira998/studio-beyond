@@ -41,8 +41,11 @@ const NOTE: Record<Medium, string> = {
 const ALL = "Tudo" as const;
 type FilterType = typeof ALL | Medium;
 
+const PREVIEW_LIMIT = 5;
+
 function ExplorePage() {
   const [filter, setFilter] = useState<FilterType>(ALL);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { data: works = [] } = useQuery<Work[]>({
@@ -56,8 +59,27 @@ function ExplorePage() {
     return () => clearTimeout(t);
   }, [filter]);
 
-  const filtered = filter === ALL ? works : works.filter((w) => w.medium === filter);
+  // Reset tag filter when switching medium
+  useEffect(() => {
+    setTagFilter(null);
+  }, [filter]);
+
+  const mediumFiltered = filter === ALL ? works : works.filter((w) => w.medium === filter);
+  const filtered = tagFilter
+    ? mediumFiltered.filter((w) => w.tags?.includes(tagFilter))
+    : mediumFiltered;
+
   const totalViews = filtered.reduce((s, w) => s + w.clicks, 0);
+
+  // Collect unique tags from the medium-filtered works (not tag-filtered)
+  const availableTags = filter !== ALL
+    ? Array.from(new Set(mediumFiltered.flatMap((w) => w.tags ?? []))).sort()
+    : [];
+
+  function selectMedium(m: Medium) {
+    setFilter(m);
+    setLoading(true);
+  }
 
   return (
     <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
@@ -67,6 +89,7 @@ function ExplorePage() {
         Livros, mangás, HQs e contos autorais — nenhuma recomendação automática. Escolha por onde entrar.
       </p>
 
+      {/* Medium filter */}
       <div className="mt-10 flex flex-wrap gap-2">
         {([ALL, ...MEDIA] as FilterType[]).map((m) => (
           <button
@@ -83,8 +106,28 @@ function ExplorePage() {
         ))}
       </div>
 
+      {/* Tag filter — visible when a medium is selected and there are tags */}
+      {availableTags.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setTagFilter((prev) => (prev === tag ? null : tag))}
+              className={`border px-3 py-1 text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                tagFilter === tag
+                  ? "border-gilt/60 bg-gilt/10 text-gilt"
+                  : "border-border/50 text-muted-foreground/70 hover:border-gilt/40 hover:text-muted-foreground"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className="mt-4 text-xs text-muted-foreground/60">
         {filtered.length} {filtered.length === 1 ? "obra" : "obras"} · {compact(totalViews)} visualizações
+        {tagFilter && <span> · tag: {tagFilter}</span>}
       </p>
 
       {filter === ALL ? (
@@ -92,6 +135,8 @@ function ExplorePage() {
           {MEDIA.map((m) => {
             const list = works.filter((w) => w.medium === m);
             const views = list.reduce((s, w) => s + w.clicks, 0);
+            const preview = list.slice(0, PREVIEW_LIMIT);
+            const hasMore = list.length > PREVIEW_LIMIT;
             return (
               <div key={m} className="bg-background p-8">
                 <p className="eyebrow">{list.length} obras · {compact(views)} visualizações</p>
@@ -99,9 +144,9 @@ function ExplorePage() {
                   {MEDIUM_LABEL[m]}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{NOTE[m]}</p>
-                {list.length > 0 && (
+                {preview.length > 0 && (
                   <ul className="mt-6 space-y-3 border-t border-border pt-5">
-                    {list.map((w) => (
+                    {preview.map((w) => (
                       <li key={w.slug}>
                         <Link
                           to="/work/$slug"
@@ -112,6 +157,16 @@ function ExplorePage() {
                         </Link>
                       </li>
                     ))}
+                    {hasMore && (
+                      <li>
+                        <button
+                          onClick={() => selectMedium(m)}
+                          className="mt-1 text-xs uppercase tracking-[0.14em] text-gilt hover:underline"
+                        >
+                          Ver mais ({list.length - PREVIEW_LIMIT}) →
+                        </button>
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
@@ -125,7 +180,11 @@ function ExplorePage() {
       ) : (
         <div className="mt-10 divide-y divide-border border-y border-border">
           {filtered.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma obra nesta categoria ainda.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {tagFilter
+                ? `Nenhuma obra com a tag "${tagFilter}" nesta categoria.`
+                : "Nenhuma obra nesta categoria ainda."}
+            </p>
           ) : filtered.map((w) => (
             <Link
               key={w.slug}
@@ -137,6 +196,22 @@ function ExplorePage() {
                 <span className="title-italic text-xl group-hover:text-gilt">{w.title}</span>
                 {w.genre && <span className="ml-3 text-xs text-muted-foreground">{w.genre}</span>}
                 <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{w.excerpt}</p>
+                {w.tags && w.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {w.tags.map((t) => (
+                      <span
+                        key={t}
+                        className={`border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${
+                          tagFilter === t
+                            ? "border-gilt/60 text-gilt"
+                            : "border-border/40 text-muted-foreground/60"
+                        }`}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">{compact(w.clicks)} views</span>
             </Link>

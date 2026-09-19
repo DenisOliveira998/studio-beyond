@@ -618,6 +618,20 @@ function WorkPage() {
                   </div>
                 )}
 
+                {/* Tags */}
+                {work.tags && work.tags.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {work.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="border border-border/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Audio player */}
                 {work.audio && (
                   <div className="mt-8 flex items-center gap-4 border border-border bg-surface px-5 py-4">

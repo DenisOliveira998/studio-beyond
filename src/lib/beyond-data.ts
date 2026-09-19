@@ -22,6 +22,7 @@ export type Work = {
   genre?: string;
   pages?: number;
   pdfUrl?: string;
+  tags?: string[];
   chapters?: WorkChapter[];
   updatedAt?: string;
   workStatus?: "andamento" | "finalizado" | "paralisado";
