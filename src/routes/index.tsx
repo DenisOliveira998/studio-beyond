@@ -234,12 +234,12 @@ function CategoryRow({
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-display text-xl font-bold tracking-tight">{label}</h2>
         {to && (
-          <Link
-            to={to}
+          <a
+            href={to}
             className="text-xs uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-gilt"
           >
             Ver tudo →
-          </Link>
+          </a>
         )}
       </div>
       {/* Scroll horizontal no mobile, grid fixo no desktop */}
@@ -371,7 +371,7 @@ function Home() {
       key: m,
       label: MEDIUM_LABEL[m],
       works: works.filter((w) => w.medium === m),
-      to: "/explorar" as const,
+      to: `/explorar?m=${m}`,
     })),
     {
       key: "novidades",

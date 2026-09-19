@@ -41,12 +41,18 @@ const NOTE: Record<Medium, string> = {
 const ALL = "Tudo" as const;
 type FilterType = typeof ALL | Medium;
 
-const PREVIEW_LIMIT = 5;
-
 function ExplorePage() {
   const [filter, setFilter] = useState<FilterType>(ALL);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Read ?m= search param on first render to pre-select the medium
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("m");
+    if (m && (MEDIA as string[]).includes(m)) {
+      setFilter(m as Medium);
+    }
+  }, []);
 
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
@@ -71,14 +77,18 @@ function ExplorePage() {
 
   const totalViews = filtered.reduce((s, w) => s + w.clicks, 0);
 
-  // Collect unique tags from the medium-filtered works (not tag-filtered)
-  const availableTags = filter !== ALL
-    ? Array.from(new Set(mediumFiltered.flatMap((w) => w.tags ?? []))).sort()
-    : [];
+  // Collect unique tags from the medium-filtered works
+  const availableTags = Array.from(
+    new Set(mediumFiltered.flatMap((w) => w.tags ?? []))
+  ).sort();
 
-  function selectMedium(m: Medium) {
+  function changeFilter(m: FilterType) {
     setFilter(m);
     setLoading(true);
+    // Clear the URL search param so the browser doesn't re-apply it on refresh
+    const url = new URL(window.location.href);
+    url.searchParams.delete("m");
+    window.history.replaceState(null, "", url.toString());
   }
 
   return (
@@ -94,7 +104,7 @@ function ExplorePage() {
         {([ALL, ...MEDIA] as FilterType[]).map((m) => (
           <button
             key={m}
-            onClick={() => { setFilter(m); setLoading(true); }}
+            onClick={() => changeFilter(m)}
             className={`border px-4 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors ${
               filter === m
                 ? "border-gilt text-gilt"
@@ -106,7 +116,7 @@ function ExplorePage() {
         ))}
       </div>
 
-      {/* Tag filter — visible when a medium is selected and there are tags */}
+      {/* Tag filter */}
       {availableTags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {availableTags.map((tag) => (
@@ -130,50 +140,8 @@ function ExplorePage() {
         {tagFilter && <span> · tag: {tagFilter}</span>}
       </p>
 
-      {filter === ALL ? (
-        <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
-          {MEDIA.map((m) => {
-            const list = works.filter((w) => w.medium === m);
-            const views = list.reduce((s, w) => s + w.clicks, 0);
-            const preview = list.slice(0, PREVIEW_LIMIT);
-            const hasMore = list.length > PREVIEW_LIMIT;
-            return (
-              <div key={m} className="bg-background p-8">
-                <p className="eyebrow">{list.length} obras · {compact(views)} visualizações</p>
-                <h2 className="mt-3 font-display text-3xl tracking-tight text-gilt">
-                  {MEDIUM_LABEL[m]}
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{NOTE[m]}</p>
-                {preview.length > 0 && (
-                  <ul className="mt-6 space-y-3 border-t border-border pt-5">
-                    {preview.map((w) => (
-                      <li key={w.slug}>
-                        <Link
-                          to="/work/$slug"
-                          params={{ slug: w.slug }}
-                          className="rule-hover title-italic text-lg transition-colors hover:text-gilt"
-                        >
-                          {w.title}
-                        </Link>
-                      </li>
-                    ))}
-                    {hasMore && (
-                      <li>
-                        <button
-                          onClick={() => selectMedium(m)}
-                          className="mt-1 text-xs uppercase tracking-[0.14em] text-gilt hover:underline"
-                        >
-                          Ver mais ({list.length - PREVIEW_LIMIT}) →
-                        </button>
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : loading ? (
+      {/* Works list — flat for both ALL and medium-filtered views */}
+      {loading ? (
         <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => <WorkCardSkeleton key={i} />)}
         </div>
@@ -182,40 +150,51 @@ function ExplorePage() {
           {filtered.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {tagFilter
-                ? `Nenhuma obra com a tag "${tagFilter}" nesta categoria.`
-                : "Nenhuma obra nesta categoria ainda."}
+                ? `Nenhuma obra com a tag "${tagFilter}"${filter !== ALL ? ` em ${MEDIUM_LABEL[filter as Medium]}` : ""}.`
+                : "Nenhuma obra aqui ainda."}
             </p>
-          ) : filtered.map((w) => (
-            <Link
-              key={w.slug}
-              to="/work/$slug"
-              params={{ slug: w.slug }}
-              className="group flex items-baseline justify-between gap-6 py-5 transition-colors hover:bg-surface/50 sm:px-3"
-            >
-              <div>
-                <span className="title-italic text-xl group-hover:text-gilt">{w.title}</span>
-                {w.genre && <span className="ml-3 text-xs text-muted-foreground">{w.genre}</span>}
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{w.excerpt}</p>
-                {w.tags && w.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {w.tags.map((t) => (
-                      <span
-                        key={t}
-                        className={`border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${
-                          tagFilter === t
-                            ? "border-gilt/60 text-gilt"
-                            : "border-border/40 text-muted-foreground/60"
-                        }`}
-                      >
-                        {t}
+          ) : (
+            filtered.map((w) => (
+              <Link
+                key={w.slug}
+                to="/work/$slug"
+                params={{ slug: w.slug }}
+                className="group flex items-baseline justify-between gap-6 py-5 transition-colors hover:bg-surface/50 sm:px-3"
+              >
+                <div>
+                  <div className="flex items-baseline gap-3">
+                    <span className="title-italic text-xl group-hover:text-gilt">{w.title}</span>
+                    {filter === ALL && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/50">
+                        {MEDIUM_LABEL[w.medium]}
                       </span>
-                    ))}
+                    )}
+                    {w.genre && (
+                      <span className="shrink-0 text-xs text-muted-foreground">{w.genre}</span>
+                    )}
                   </div>
-                )}
-              </div>
-              <span className="shrink-0 text-xs text-muted-foreground">{compact(w.clicks)} views</span>
-            </Link>
-          ))}
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-1">{w.excerpt}</p>
+                  {w.tags && w.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {w.tags.map((t) => (
+                        <span
+                          key={t}
+                          className={`border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${
+                            tagFilter === t
+                              ? "border-gilt/60 text-gilt"
+                              : "border-border/40 text-muted-foreground/60"
+                          }`}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{compact(w.clicks)} views</span>
+              </Link>
+            ))
+          )}
         </div>
       )}
 
