@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { MEDIUM_LABEL, type Work, type Medium } from "@/lib/beyond-data";
@@ -228,7 +228,35 @@ function CategoryRow({
   to?: string;
   badges?: Record<string, "HOT" | "NEW" | "NOVO">;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const dragDist = useRef(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanLeft(el.scrollLeft > 2);
+      setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [works]);
+
+  const SCROLL_STEP = 340;
+
+  const arrowCls =
+    "absolute top-[calc(50%-12px)] z-10 flex h-7 w-7 items-center justify-center border border-border bg-surface/95 text-muted-foreground shadow-sm transition-colors hover:border-gilt hover:text-gilt";
+
   if (works.length === 0) return null;
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -242,16 +270,58 @@ function CategoryRow({
           </a>
         )}
       </div>
-      {/* Scroll horizontal no mobile, grid fixo no desktop */}
-      <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-3 sm:-mx-10 sm:px-10 lg:mx-0 lg:grid lg:grid-cols-6 xl:grid-cols-8 lg:overflow-visible lg:px-0 lg:pb-0 lg:gap-4">
-        {works.slice(0, 6).map((work) => {
-          const b = badges[work.slug];
-          return (
-            <div key={work.id} className="w-[140px] shrink-0 sm:w-[160px] lg:w-auto">
-              {b ? <CatalogCard work={work} badge={b} /> : <CatalogCard work={work} />}
-            </div>
-          );
-        })}
+
+      <div className="relative">
+        {canLeft && (
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: -SCROLL_STEP, behavior: "smooth" })}
+            className={`${arrowCls} -left-3 lg:-left-4`}
+            aria-label="Anterior"
+          >
+            <ChevronLeft className="size-3.5" />
+          </button>
+        )}
+
+        <div
+          ref={scrollRef}
+          className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-3 select-none sm:-mx-10 sm:px-10 lg:mx-0 lg:px-0 lg:pb-0 lg:gap-4"
+          style={{ scrollbarWidth: "none", cursor: dragging ? "grabbing" : "grab" }}
+          onMouseDown={(e) => {
+            isDragging.current = true;
+            dragDist.current = 0;
+            setDragging(true);
+            dragStartX.current = e.clientX;
+            dragScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
+          }}
+          onMouseMove={(e) => {
+            if (!isDragging.current || !scrollRef.current) return;
+            const dx = e.clientX - dragStartX.current;
+            dragDist.current = Math.abs(dx);
+            scrollRef.current.scrollLeft = dragScrollLeft.current - dx;
+          }}
+          onMouseUp={() => { isDragging.current = false; setDragging(false); }}
+          onMouseLeave={() => { isDragging.current = false; setDragging(false); }}
+          onClickCapture={(e) => { if (dragDist.current > 5) e.stopPropagation(); }}
+        >
+          {works.slice(0, 12).map((work) => {
+            const b = badges[work.slug];
+            return (
+              <div key={work.id} className="w-[140px] shrink-0 sm:w-[160px] lg:w-[180px]">
+                {b ? <CatalogCard work={work} badge={b} /> : <CatalogCard work={work} />}
+              </div>
+            );
+          })}
+        </div>
+
+        {canRight && (
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: SCROLL_STEP, behavior: "smooth" })}
+            className={`${arrowCls} -right-3 lg:-right-4`}
+            aria-label="Próximo"
+          >
+            <ChevronRight className="size-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

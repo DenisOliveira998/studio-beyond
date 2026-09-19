@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { MEDIUM_LABEL, compact, type Work, type Medium } from "@/lib/beyond-data";
 import { WorkCardSkeleton } from "@/components/work-card-skeleton";
@@ -41,10 +42,13 @@ const NOTE: Record<Medium, string> = {
 const ALL = "Tudo" as const;
 type FilterType = typeof ALL | Medium;
 
+const ITEMS_PER_PAGE = 20;
+
 function ExplorePage() {
   const [filter, setFilter] = useState<FilterType>(ALL);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<"views" | "date">("views");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Read ?m= search param on first render to pre-select the medium
@@ -66,10 +70,14 @@ function ExplorePage() {
     return () => clearTimeout(t);
   }, [filter]);
 
-  // Reset tag filter when switching medium
+  // Reset tag filter and page when switching medium
   useEffect(() => {
     setTagFilter(null);
+    setPage(1);
   }, [filter]);
+
+  // Reset page when sort or tag changes
+  useEffect(() => { setPage(1); }, [sort, tagFilter]);
 
   const mediumFiltered = filter === ALL ? works : works.filter((w) => w.medium === filter);
   const tagFiltered = tagFilter
@@ -91,6 +99,9 @@ function ExplorePage() {
   const tagCounts = Object.fromEntries(
     availableTags.map((tag) => [tag, mediumFiltered.filter((w) => w.tags?.includes(tag)).length])
   );
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   function changeFilter(m: FilterType) {
     setFilter(m);
@@ -174,14 +185,14 @@ function ExplorePage() {
         </div>
       ) : (
         <div className="mt-10 divide-y divide-border border-y border-border">
-          {filtered.length === 0 ? (
+          {paginated.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {tagFilter
                 ? `Nenhuma obra com a tag "${tagFilter}"${filter !== ALL ? ` em ${MEDIUM_LABEL[filter as Medium]}` : ""}.`
                 : "Nenhuma obra aqui ainda."}
             </p>
           ) : (
-            filtered.map((w) => (
+            paginated.map((w) => (
               <Link
                 key={w.slug}
                 to="/work/$slug"
@@ -230,6 +241,54 @@ function ExplorePage() {
               </Link>
             ))
           )}
+        </div>
+      )}
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="mt-10 flex items-center justify-center gap-1">
+          <button
+            onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            disabled={page === 1}
+            className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-30"
+            aria-label="Página anterior"
+          >
+            <ChevronLeft className="size-3.5" />
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, idx) =>
+              p === "…" ? (
+                <span key={`sep-${idx}`} className="px-1 text-xs text-muted-foreground/50">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => { setPage(p as number); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={`flex h-8 w-8 items-center justify-center border text-xs transition-colors ${
+                    page === p
+                      ? "border-gilt text-gilt"
+                      : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+          <button
+            onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            disabled={page === totalPages}
+            className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-30"
+            aria-label="Próxima página"
+          >
+            <ChevronRight className="size-3.5" />
+          </button>
         </div>
       )}
 
