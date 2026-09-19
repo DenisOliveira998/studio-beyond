@@ -165,13 +165,23 @@ function Dashboard() {
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState("");
 
-  const [title, setTitle] = useState("");
+  const DRAFT_KEY = "beyond_dashboard_draft_v1";
+
+  const [title, setTitle] = useState(() => {
+    try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { title?: string }).title ?? ""; } catch { return ""; }
+  });
   const [artistNameInput, setArtistNameInput] = useState("");
   const [workType, setWorkType] = useState(WORK_TYPES[0]);
-  const [synopsis, setSynopsis] = useState("");
-  const [body, setBody] = useState("");
+  const [synopsis, setSynopsis] = useState(() => {
+    try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { synopsis?: string }).synopsis ?? ""; } catch { return ""; }
+  });
+  const [body, setBody] = useState(() => {
+    try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { body?: string }).body ?? ""; } catch { return ""; }
+  });
   const [showPreview, setShowPreview] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(() => {
+    try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { tags?: string[] }).tags ?? []; } catch { return []; }
+  });
   const [coverName, setCoverName] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string | null>(null);
@@ -180,6 +190,20 @@ function Dashboard() {
   const [uploadStep, setUploadStep] = useState<"idle" | "cover" | "pdf" | "work">("idle");
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
+
+  // Auto-save rascunho no localStorage
+  useEffect(() => {
+    if (!title && !synopsis && !body && !tags.length) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, synopsis, body, tags })); } catch {}
+  }, [title, synopsis, body, tags, DRAFT_KEY]);
+
+  // Aviso ao sair com conteúdo não salvo
+  useEffect(() => {
+    if (!title && !synopsis && !body) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) { e.preventDefault(); e.returnValue = ""; }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [title, synopsis, body]);
 
   async function togglePublish(id: string, workTitle: string) {
     const isLive = published[id];
@@ -291,6 +315,7 @@ function Dashboard() {
       setCoverFile(null);
       setPdfName(null);
       setPdfFile(null);
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
     } catch {
       toast.error("Erro ao enviar a obra. Tente novamente.");
     } finally {

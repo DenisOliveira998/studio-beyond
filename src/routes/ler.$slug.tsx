@@ -60,13 +60,26 @@ function ReaderPage() {
   const [showBackTop, setShowBackTop] = useState(false);
   const [fontKey, setFontKey] = useState<FontKey>(() => readFontPref());
   const fontCss = FONT_SIZES.find((f) => f.key === fontKey)?.css ?? FONT_SIZES[1].css;
+  const scrollKey = `beyond_scroll_${work.slug}`;
 
   // Salva preferência de fonte
   useEffect(() => {
     try { localStorage.setItem("beyond_reader_font", fontKey); } catch {}
   }, [fontKey]);
 
-  // Barra de progresso de leitura
+  // Restaura posição de scroll
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(scrollKey);
+      if (saved) {
+        const y = parseInt(saved, 10);
+        if (!isNaN(y) && y > 0) setTimeout(() => window.scrollTo(0, y), 120);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Barra de progresso de leitura + salva posição
   useEffect(() => {
     function onScroll() {
       const el = bodyRef.current;
@@ -76,9 +89,11 @@ function ReaderPage() {
       const scrolled = Math.max(0, viewH - top);
       setProgress(Math.min(scrolled / height, 1));
       setShowBackTop(window.scrollY > 600);
+      try { localStorage.setItem(scrollKey, String(window.scrollY)); } catch {}
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quota de leitura (mesmo sistema da página de obra)
@@ -95,6 +110,12 @@ function ReaderPage() {
     staleTime: 60_000,
   });
   const quotaExhausted = quota ? quota.remaining !== null && quota.remaining <= 0 : false;
+  const showQuotaWarning =
+    quota &&
+    quota.remaining !== null &&
+    quota.limit !== null &&
+    quota.remaining > 0 &&
+    quota.remaining <= Math.max(3, Math.floor(quota.limit * 0.2));
   const pagesConsumedRef = useRef(0);
 
   useEffect(() => {
@@ -141,7 +162,7 @@ function ReaderPage() {
     <>
       {/* Barra de progresso fixa no topo */}
       <div
-        className="fixed left-0 right-0 top-0 z-50 h-0.5 bg-gilt/25"
+        className="fixed left-0 right-0 top-0 z-50 h-1 bg-gilt/25"
         aria-hidden="true"
       >
         <div
@@ -253,18 +274,34 @@ function ReaderPage() {
 
         {/* Rodapé do leitor */}
         {!quotaExhausted && (
-          <div className="mt-16 border-t border-border pt-8 text-center">
+          <div className="mt-16 border-t border-border pt-10 text-center">
             <p className="caption">Fim da obra</p>
-            <Link
-              to="/work/$slug"
-              params={{ slug: work.slug }}
-              className="btn-type mt-4 inline-block border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-            >
-              ← Voltar à página da obra
-            </Link>
+            <p className="mt-2 title-italic text-lg text-muted-foreground">Boa leitura!</p>
+            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link
+                to="/work/$slug"
+                params={{ slug: work.slug }}
+                className="btn-type border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+              >
+                ← Página da obra
+              </Link>
+              <Link
+                to="/explorar"
+                className="btn-type border border-gilt/50 px-5 py-2.5 text-xs text-gilt/80 transition-colors hover:border-gilt hover:text-gilt"
+              >
+                Explorar mais obras →
+              </Link>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Indicador de cota restante */}
+      {showQuotaWarning && (
+        <div className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 border border-gilt/40 bg-surface px-4 py-2 text-xs text-gilt shadow-lg">
+          {quota!.remaining} {quota!.remaining === 1 ? "página" : "páginas"} restantes hoje
+        </div>
+      )}
 
       {/* Botão voltar ao topo */}
       {showBackTop && (

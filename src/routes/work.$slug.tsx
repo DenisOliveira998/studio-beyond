@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, BookOpen, Bookmark, FileDown, Heart, Link2, Play } from "lucide-react";
+import { ArrowUp, BookOpen, Bookmark, Check, FileDown, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
@@ -224,6 +224,7 @@ function WorkPage() {
   const [activeTab, setActiveTab] = useState<Tab>("sobre");
   const [showBackTop, setShowBackTop] = useState(false);
   const [chapterOrder, setChapterOrder] = useState<"asc" | "desc">("asc");
+  const [shareCopied, setShareCopied] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
 
@@ -232,6 +233,20 @@ function WorkPage() {
     void fetch(`/api/works/${work.slug}/view`, { method: "POST" });
     try { localStorage.setItem(`beyond_last_read_${work.slug}`, new Date().toISOString()); } catch {}
   }, [work.slug]);
+
+  // Tab state in URL
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "comentarios" || tab === "relacionados") setActiveTab(tab);
+  }, []);
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    if (tab === "sobre") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url.toString());
+  }
 
   // Back to top
   useEffect(() => {
@@ -301,6 +316,8 @@ function WorkPage() {
       void navigator.clipboard?.writeText(window.location.href);
     }
     toast.success("Link copiado");
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -414,10 +431,12 @@ function WorkPage() {
             {/* Compartilhar */}
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-2 border border-border py-2.5 text-xs uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground"
+              className={`flex items-center justify-center gap-2 border py-2.5 text-xs uppercase tracking-[0.14em] transition-colors ${
+                shareCopied ? "border-gilt/60 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <Link2 className="h-3.5 w-3.5" />
-              Compartilhar
+              {shareCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+              {shareCopied ? "Copiado!" : "Compartilhar"}
             </button>
 
             {/* Stats */}
@@ -568,10 +587,12 @@ function WorkPage() {
             </button>
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 border border-border px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+              className={`flex items-center gap-2 border px-4 py-2.5 text-xs uppercase tracking-[0.18em] transition-colors ${
+                shareCopied ? "border-gilt/60 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <Link2 className="h-3.5 w-3.5" />
-              Compartilhar
+              {shareCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+              {shareCopied ? "Copiado!" : "Compartilhar"}
             </button>
           </div>
 
@@ -581,7 +602,7 @@ function WorkPage() {
               {tabs.map((t) => (
                 <button
                   key={t.key}
-                  onClick={() => setActiveTab(t.key)}
+                  onClick={() => switchTab(t.key)}
                   className={`px-5 py-3 text-xs uppercase tracking-[0.16em] transition-colors border-b-2 -mb-px ${
                     activeTab === t.key
                       ? "border-gilt text-gilt"
@@ -684,17 +705,20 @@ function WorkPage() {
                       {[...work.chapters]
                         .sort((a, b) => chapterOrder === "asc" ? a.number - b.number : b.number - a.number)
                         .map((ch) => (
-                          <li
-                            key={ch.number}
-                            className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm"
-                          >
-                            <span className="flex items-baseline gap-3">
-                              <span className="tabular-nums text-muted-foreground/50">
-                                {String(ch.number).padStart(2, "0")}
+                          <li key={ch.number}>
+                            <Link
+                              to="/ler/$slug"
+                              params={{ slug: work.slug }}
+                              className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm transition-colors hover:bg-surface/80 hover:text-gilt"
+                            >
+                              <span className="flex items-baseline gap-3">
+                                <span className="tabular-nums text-muted-foreground/50">
+                                  {String(ch.number).padStart(2, "0")}
+                                </span>
+                                <span>{ch.title}</span>
                               </span>
-                              <span className="text-foreground">{ch.title}</span>
-                            </span>
-                            <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
+                            </Link>
                           </li>
                         ))}
                     </ol>

@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, LayoutDashboard, LogOut, Shield, Youtube } from "lucide-react";
+import { Instagram, LayoutDashboard, LogOut, Menu, Shield, X, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSelector } from "@/components/language-selector";
 import { SiteSearch } from "@/components/site-search";
 import { useAuth } from "@/lib/auth";
 import type { SiteConfigData } from "@/lib/beyond-db";
@@ -40,8 +39,15 @@ function UserMenu() {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, []);
 
   const initials = (user?.name ?? user?.email ?? "?")
@@ -110,6 +116,20 @@ function UserMenu() {
 
 export function SiteHeader() {
   const { user, loading } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
@@ -134,7 +154,7 @@ export function SiteHeader() {
             <Link
               key={item.to}
               to={item.to}
-              className="rule-hover hidden transition-colors hover:text-gilt xl:inline"
+              className="rule-hover hidden transition-colors hover:text-gilt lg:inline"
               activeProps={{ className: "text-gilt" }}
               activeOptions={{ exact: item.to === "/" }}
             >
@@ -147,22 +167,77 @@ export function SiteHeader() {
             <SiteSearch />
           </span>
 
-          {!loading && (
-            user ? (
-              <UserMenu />
-            ) : (
-              <Link
-                to="/entrar"
-                className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
-              >
-                Entrar
-              </Link>
-            )
+          {loading ? (
+            <div className="size-8 rounded-full bg-white/10 animate-pulse" />
+          ) : user ? (
+            <UserMenu />
+          ) : (
+            <Link
+              to="/entrar"
+              className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
+            >
+              Entrar
+            </Link>
           )}
-          <LanguageSelector />
           <ThemeToggle />
+
+          {/* Hamburger — apenas mobile */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex items-center justify-center size-8 text-white/80 transition-colors hover:text-gilt lg:hidden"
+            aria-label="Abrir menu"
+          >
+            <Menu className="size-4" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/60"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="fixed left-0 top-0 bottom-0 z-50 w-72 bg-ink border-r border-border flex flex-col">
+            <div className="flex items-center justify-between px-5 h-16 border-b border-border/60">
+              <span className="hero-type text-xl text-white">The <span className="text-gilt">Beyond</span></span>
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="text-white/60 hover:text-gilt transition-colors"
+                aria-label="Fechar menu"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <nav className="flex flex-col px-5 py-4">
+              {nav.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="py-3 text-sm text-white/80 hover:text-gilt transition-colors border-b border-border/30"
+                  activeProps={{ className: "text-gilt" }}
+                  activeOptions={{ exact: item.to === "/" }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            {!loading && !user && (
+              <div className="px-5 pb-6 mt-auto">
+                <Link
+                  to="/entrar"
+                  onClick={() => setMobileOpen(false)}
+                  className="btn-type block text-center border border-gilt px-4 py-2.5 text-xs text-gilt hover:bg-gilt hover:text-ink transition-colors"
+                >
+                  Entrar
+                </Link>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </header>
   );
 }

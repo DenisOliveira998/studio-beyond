@@ -44,6 +44,7 @@ type FilterType = typeof ALL | Medium;
 function ExplorePage() {
   const [filter, setFilter] = useState<FilterType>(ALL);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [sort, setSort] = useState<"views" | "date">("views");
   const [loading, setLoading] = useState(false);
 
   // Read ?m= search param on first render to pre-select the medium
@@ -71,9 +72,14 @@ function ExplorePage() {
   }, [filter]);
 
   const mediumFiltered = filter === ALL ? works : works.filter((w) => w.medium === filter);
-  const filtered = tagFilter
+  const tagFiltered = tagFilter
     ? mediumFiltered.filter((w) => w.tags?.includes(tagFilter))
     : mediumFiltered;
+  const filtered = [...tagFiltered].sort((a, b) =>
+    sort === "date"
+      ? new Date(b.published).getTime() - new Date(a.published).getTime()
+      : b.clicks - a.clicks
+  );
 
   const totalViews = filtered.reduce((s, w) => s + w.clicks, 0);
 
@@ -81,6 +87,10 @@ function ExplorePage() {
   const availableTags = Array.from(
     new Set(mediumFiltered.flatMap((w) => w.tags ?? []))
   ).sort();
+
+  const tagCounts = Object.fromEntries(
+    availableTags.map((tag) => [tag, mediumFiltered.filter((w) => w.tags?.includes(tag)).length])
+  );
 
   function changeFilter(m: FilterType) {
     setFilter(m);
@@ -123,22 +133,39 @@ function ExplorePage() {
             <button
               key={tag}
               onClick={() => setTagFilter((prev) => (prev === tag ? null : tag))}
-              className={`border px-3 py-1 text-[10px] uppercase tracking-[0.14em] transition-colors ${
+              className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.14em] transition-colors ${
                 tagFilter === tag
                   ? "border-gilt/60 bg-gilt/10 text-gilt"
                   : "border-border/50 text-muted-foreground/70 hover:border-gilt/40 hover:text-muted-foreground"
               }`}
             >
-              {tag}
+              {tag} <span className="opacity-50">{tagCounts[tag]}</span>
             </button>
           ))}
         </div>
       )}
 
-      <p className="mt-4 text-xs text-muted-foreground/60">
-        {filtered.length} {filtered.length === 1 ? "obra" : "obras"} · {compact(totalViews)} visualizações
-        {tagFilter && <span> · tag: {tagFilter}</span>}
-      </p>
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground/60">
+          {filtered.length} {filtered.length === 1 ? "obra" : "obras"} · {compact(totalViews)} visualizações
+          {tagFilter && <span> · tag: {tagFilter}</span>}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setSort("views")}
+            className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] transition-colors ${sort === "views" ? "text-gilt" : "text-muted-foreground/60 hover:text-muted-foreground"}`}
+          >
+            Popular
+          </button>
+          <span className="text-border">|</span>
+          <button
+            onClick={() => setSort("date")}
+            className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] transition-colors ${sort === "date" ? "text-gilt" : "text-muted-foreground/60 hover:text-muted-foreground"}`}
+          >
+            Recente
+          </button>
+        </div>
+      </div>
 
       {/* Works list — flat for both ALL and medium-filtered views */}
       {loading ? (
@@ -159,9 +186,17 @@ function ExplorePage() {
                 key={w.slug}
                 to="/work/$slug"
                 params={{ slug: w.slug }}
-                className="group flex items-baseline justify-between gap-6 py-5 transition-colors hover:bg-surface/50 sm:px-3"
+                className="group flex items-center justify-between gap-4 py-4 transition-colors hover:bg-surface/50 sm:px-3"
               >
-                <div>
+                {w.cover && (
+                  <img
+                    src={w.cover}
+                    alt=""
+                    className="h-14 w-9 shrink-0 object-cover bg-surface"
+                    loading="lazy"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-3">
                     <span className="title-italic text-xl group-hover:text-gilt">{w.title}</span>
                     {filter === ALL && (
@@ -179,7 +214,7 @@ function ExplorePage() {
                       {w.tags.map((t) => (
                         <span
                           key={t}
-                          className={`border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${
+                          className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${
                             tagFilter === t
                               ? "border-gilt/60 text-gilt"
                               : "border-border/40 text-muted-foreground/60"
