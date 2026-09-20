@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, compact } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
 import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import type { CommentData } from "@/lib/beyond-db";
@@ -569,7 +569,7 @@ function WorkPage() {
             </p>
 
             {/* Body preview (first paragraph as teaser) */}
-            {work.body.length > 0 && work.body[0] && (
+            {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && (
               <div className="mt-6 prose max-w-none">
                 <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
                 {hasBody && (
