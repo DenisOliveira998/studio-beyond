@@ -568,21 +568,51 @@ function WorkPage() {
               {stripHtml(work.excerpt)}
             </p>
 
-            {/* Body preview (first paragraph as teaser) */}
-            {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && (
-              <div className="mt-6 prose max-w-none">
-                <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
-                {hasBody && (
-                  <Link
-                    to="/ler/$slug"
-                    params={{ slug: work.slug }}
-                    className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Continuar lendo
-                  </Link>
-                )}
-              </div>
+            {/* Body preview */}
+            {work.body.length > 0 && work.body[0] && (
+              WEBTOON_MEDIUMS.includes(work.medium) ? (() => {
+                let panels: string[] = [];
+                try { panels = JSON.parse(work.body[0]); } catch {}
+                return panels.length > 0 ? (
+                  <div className="mt-6">
+                    <div className="flex gap-0.5 overflow-hidden">
+                      {panels.slice(0, 3).map((src, i) => (
+                        <img
+                          key={i}
+                          src={src}
+                          alt=""
+                          className="h-44 flex-1 object-cover object-top bg-surface"
+                          loading="lazy"
+                        />
+                      ))}
+                    </div>
+                    {hasBody && (
+                      <Link
+                        to="/ler/$slug"
+                        params={{ slug: work.slug }}
+                        className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                        Ver capítulo
+                      </Link>
+                    )}
+                  </div>
+                ) : null;
+              })() : (
+                <div className="mt-6 prose max-w-none">
+                  <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
+                  {hasBody && (
+                    <Link
+                      to="/ler/$slug"
+                      params={{ slug: work.slug }}
+                      className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      Continuar lendo
+                    </Link>
+                  )}
+                </div>
+              )
             )}
 
             {/* Tags */}
