@@ -207,8 +207,6 @@ function StatusBadge({ status }: { status: keyof typeof STATUS_CONFIG }) {
 
 // ── WorkPage ──────────────────────────────────────────────────────
 
-type Tab = "sobre" | "comentarios" | "relacionados";
-
 function WorkPage() {
   const { work, related, hasBody } = Route.useLoaderData();
   const { user } = useAuth();
@@ -216,7 +214,6 @@ function WorkPage() {
   const artistName = work.artistName ?? "";
   const artistSlug = work.artistSlug;
 
-  const [activeTab, setActiveTab] = useState<Tab>("sobre");
   const [showBackTop, setShowBackTop] = useState(false);
   const [chapterOrder, setChapterOrder] = useState<"asc" | "desc">("asc");
   const [shareCopied, setShareCopied] = useState(false);
@@ -228,20 +225,6 @@ function WorkPage() {
     void fetch(`/api/works/${work.slug}/view`, { method: "POST" });
     try { localStorage.setItem(`beyond_last_read_${work.slug}`, new Date().toISOString()); } catch {}
   }, [work.slug]);
-
-  // Tab state in URL
-  useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab === "comentarios" || tab === "relacionados") setActiveTab(tab);
-  }, []);
-
-  function switchTab(tab: Tab) {
-    setActiveTab(tab);
-    const url = new URL(window.location.href);
-    if (tab === "sobre") url.searchParams.delete("tab");
-    else url.searchParams.set("tab", tab);
-    window.history.replaceState(null, "", url.toString());
-  }
 
   // Back to top
   useEffect(() => {
@@ -290,13 +273,6 @@ function WorkPage() {
     onError: () => toast.error("Erro. Tente novamente."),
   });
 
-  // Comments query (for tab count)
-  const { data: comments = [] } = useQuery<CommentData[]>({
-    queryKey: ["comments", work.slug],
-    queryFn: () => fetch(`/api/works/${work.slug}/comments`).then((r) => r.json() as Promise<CommentData[]>),
-    staleTime: 30_000,
-  });
-
   const genreTags = work.genre
     ? work.genre.split(",").map((g) => g.trim()).filter(Boolean)
     : [];
@@ -314,12 +290,6 @@ function WorkPage() {
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2000);
   }
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "sobre", label: "Sobre" },
-    { key: "comentarios", label: `Comentários${comments.length ? ` (${comments.length})` : ""}` },
-    { key: "relacionados", label: `Relacionados${related.length ? ` (${related.length})` : ""}` },
-  ];
 
   return (
     <div ref={topRef} className="px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
@@ -591,178 +561,155 @@ function WorkPage() {
             </button>
           </div>
 
-          {/* ── Tabs ─────────────────────────────────────────────── */}
+          {/* ── Conteúdo da obra ─────────────────────────────────── */}
           <div className="mt-8 lg:mt-10">
-            <div className="flex border-b border-border">
-              {tabs.map((t) => (
+            {/* Synopsis */}
+            <p className="text-base leading-relaxed text-muted-foreground">
+              {stripHtml(work.excerpt)}
+            </p>
+
+            {/* Body preview (first paragraph as teaser) */}
+            {work.body.length > 0 && work.body[0] && (
+              <div className="mt-6 prose max-w-none">
+                <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
+                {hasBody && (
+                  <Link
+                    to="/ler/$slug"
+                    params={{ slug: work.slug }}
+                    className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Continuar lendo
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Tags */}
+            {work.tags && work.tags.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {work.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="border border-border/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Audio player */}
+            {work.audio && (
+              <div className="mt-8 flex items-center gap-4 border border-border bg-surface px-5 py-4">
                 <button
-                  key={t.key}
-                  onClick={() => switchTab(t.key)}
-                  className={`px-5 py-3 text-xs uppercase tracking-[0.16em] transition-colors border-b-2 -mb-px ${
-                    activeTab === t.key
-                      ? "border-gilt text-gilt"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
+                  onClick={() => toast("A reprodução é simulada nesta prévia.")}
+                  aria-label="Reproduzir"
+                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[2px] bg-primary text-primary-foreground"
                 >
-                  {t.label}
+                  <Play className="h-4 w-4" />
                 </button>
-              ))}
-            </div>
-
-            {/* ── Sobre ── */}
-            {activeTab === "sobre" && (
-              <div className="pt-8">
-                {/* Synopsis */}
-                <p className="text-base leading-relaxed text-muted-foreground">
-                  {stripHtml(work.excerpt)}
-                </p>
-
-                {/* Body preview (first paragraph as teaser) */}
-                {work.body.length > 0 && work.body[0] && (
-                  <div className="mt-6 prose max-w-none">
-                    <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
-                    {hasBody && (
-                      <Link
-                        to="/ler/$slug"
-                        params={{ slug: work.slug }}
-                        className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
-                      >
-                        <BookOpen className="h-3.5 w-3.5" />
-                        Continuar lendo
-                      </Link>
-                    )}
+                <div className="flex-1">
+                  <p className="text-sm">{work.title}</p>
+                  <div className="mt-2 h-px w-full bg-border">
+                    <div className="h-px w-1/3 bg-gilt" />
                   </div>
-                )}
-
-                {/* Tags */}
-                {work.tags && work.tags.length > 0 && (
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    {work.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="border border-border/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Audio player */}
-                {work.audio && (
-                  <div className="mt-8 flex items-center gap-4 border border-border bg-surface px-5 py-4">
-                    <button
-                      onClick={() => toast("A reprodução é simulada nesta prévia.")}
-                      aria-label="Reproduzir"
-                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[2px] bg-primary text-primary-foreground"
-                    >
-                      <Play className="h-4 w-4" />
-                    </button>
-                    <div className="flex-1">
-                      <p className="text-sm">{work.title}</p>
-                      <div className="mt-2 h-px w-full bg-border">
-                        <div className="h-px w-1/3 bg-gilt" />
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">11:04</span>
-                  </div>
-                )}
-
-                {/* Chapters index */}
-                {work.chapters && work.chapters.length > 0 && (
-                  <div className="mt-8 border border-border bg-surface">
-                    <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
-                      <p className="eyebrow text-xs">Capítulos ({work.chapters.length})</p>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setChapterOrder("asc")}
-                          className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
-                            chapterOrder === "asc"
-                              ? "bg-gilt text-ink"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          Mais antigo
-                        </button>
-                        <button
-                          onClick={() => setChapterOrder("desc")}
-                          className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
-                            chapterOrder === "desc"
-                              ? "bg-gilt text-ink"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          Mais recente
-                        </button>
-                      </div>
-                    </div>
-                    <ol className="divide-y divide-border">
-                      {[...work.chapters]
-                        .sort((a, b) => chapterOrder === "asc" ? a.number - b.number : b.number - a.number)
-                        .map((ch) => (
-                          <li key={ch.number}>
-                            <Link
-                              to="/ler/$slug"
-                              params={{ slug: work.slug }}
-                              className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm transition-colors hover:bg-surface/80 hover:text-gilt"
-                            >
-                              <span className="flex items-baseline gap-3">
-                                <span className="tabular-nums text-muted-foreground/50">
-                                  {String(ch.number).padStart(2, "0")}
-                                </span>
-                                <span>{ch.title}</span>
-                              </span>
-                              <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
-                            </Link>
-                          </li>
-                        ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* Mobile donate + stats */}
-                <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6 lg:hidden">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{compact(views)} visualizações</span>
-                    <span>{compact(likeCount)} curtidas</span>
-                    {work.pages && <span>{work.pages} páginas</span>}
-                  </div>
-                  {artistName && (
-                    <DonateDialog
-                      artistName={artistName}
-                      trigger={
-                        <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-                          Apoiar {artistName.split(" ")[0]}
-                        </button>
-                      }
-                    />
-                  )}
                 </div>
+                <span className="text-xs text-muted-foreground">11:04</span>
               </div>
             )}
 
-            {/* ── Comentários ── */}
-            {activeTab === "comentarios" && (
-              <CommentsSection workSlug={work.slug} />
-            )}
-
-            {/* ── Relacionados ── */}
-            {activeTab === "relacionados" && (
-              <div className="pt-6">
-                {related.length === 0 ? (
-                  <p className="py-8 text-sm text-muted-foreground">Nenhuma obra relacionada encontrada.</p>
-                ) : (
-                  <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-                    {related.map((w) => (
-                      <WorkCard key={w.id} work={w} />
-                    ))}
+            {/* Chapters index */}
+            {work.chapters && work.chapters.length > 0 && (
+              <div className="mt-8 border border-border bg-surface">
+                <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+                  <p className="eyebrow text-xs">Capítulos ({work.chapters.length})</p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setChapterOrder("asc")}
+                      className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                        chapterOrder === "asc"
+                          ? "bg-gilt text-ink"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Mais antigo
+                    </button>
+                    <button
+                      onClick={() => setChapterOrder("desc")}
+                      className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
+                        chapterOrder === "desc"
+                          ? "bg-gilt text-ink"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Mais recente
+                    </button>
                   </div>
-                )}
+                </div>
+                <ol className="divide-y divide-border">
+                  {[...work.chapters]
+                    .sort((a, b) => chapterOrder === "asc" ? a.number - b.number : b.number - a.number)
+                    .map((ch) => (
+                      <li key={ch.number}>
+                        <Link
+                          to="/ler/$slug"
+                          params={{ slug: work.slug }}
+                          className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm transition-colors hover:bg-surface/80 hover:text-gilt"
+                        >
+                          <span className="flex items-baseline gap-3">
+                            <span className="tabular-nums text-muted-foreground/50">
+                              {String(ch.number).padStart(2, "0")}
+                            </span>
+                            <span>{ch.title}</span>
+                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
+                        </Link>
+                      </li>
+                    ))}
+                </ol>
               </div>
             )}
+
+            {/* Mobile donate + stats */}
+            <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6 lg:hidden">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>{compact(views)} visualizações</span>
+                <span>{compact(likeCount)} curtidas</span>
+                {work.pages && <span>{work.pages} páginas</span>}
+              </div>
+              {artistName && (
+                <DonateDialog
+                  artistName={artistName}
+                  trigger={
+                    <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
+                      Apoiar {artistName.split(" ")[0]}
+                    </button>
+                  }
+                />
+              )}
+            </div>
           </div>
         </main>
       </div>
+
+      {/* ── Relacionados ── */}
+      {related.length > 0 && (
+        <section className="mt-16 border-t border-border pt-10">
+          <p className="eyebrow mb-6">Relacionados</p>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {related.map((w) => (
+              <WorkCard key={w.id} work={w} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Comentários ── */}
+      <section className="mt-16 border-t border-border pt-10">
+        <p className="eyebrow mb-6">Comentários</p>
+        <CommentsSection workSlug={work.slug} />
+      </section>
 
       {/* ── Voltar ao topo ── */}
       {showBackTop && (
