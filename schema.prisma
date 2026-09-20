@@ -113,6 +113,9 @@ enum WorkMedium {
   manga
   hq
   conto
+  lightnovel
+  manhwa
+  manhua
 }
 
 enum WorkStatus {

@@ -30,13 +30,16 @@ export const Route = createFileRoute("/explorar")({
   component: ExplorePage,
 });
 
-const MEDIA: Medium[] = ["livro", "manga", "hq", "conto"];
+const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
 
 const NOTE: Record<Medium, string> = {
   livro: "Romances, novelas e ficção literária publicados capítulo a capítulo ou completos.",
   manga: "Mangás autorais com roteiro e traço originais — nenhuma adaptação.",
   hq: "Histórias em quadrinhos brasileiras, do noir ao documental, do autobiográfico ao fantástico.",
   conto: "Contos curtos e longas histórias breves — leitura de uma sentada.",
+  lightnovel: "Histórias em prosa de origem japonesa — textos longos com ilustrações ocasionais.",
+  manhwa: "Quadrinhos coreanos em formato webtoon — leitura vertical em scroll contínuo.",
+  manhua: "Quadrinhos chineses em formato webtoon ou paginado — arte detalhada e narrativa visual.",
 };
 
 const ALL = "Tudo" as const;

@@ -33,7 +33,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const MEDIA: Medium[] = ["livro", "manga", "hq", "conto"];
+const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
 
 // ── Carrossel (coluna direita do hero) ──────────────────────────
 

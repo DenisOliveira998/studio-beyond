@@ -1,8 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
+import { MEDIUM_LABEL } from "@/lib/beyond-data";
 import type { Work } from "@/lib/beyond-data";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Minus, Plus, ArrowUp } from "lucide-react";
+import { ArrowLeft, Download, Minus, Plus, ArrowUp, ImageOff } from "lucide-react";
 import { stripHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +14,9 @@ export const Route = createFileRoute("/ler/$slug")({
     const res = await fetch(`${base}/api/reader/${params.slug}`);
     if (res.status === 404) throw notFound();
     if (!res.ok) throw new Error("Falha ao carregar obra");
-    const data = await res.json() as { work: Work; bodyHtml: string };
+    const data = await res.json() as
+      | { work: Work; bodyHtml: string; readerMode: "text" }
+      | { work: Work; bodyImages: string[]; readerMode: "webtoon" };
     return data;
   },
   head: ({ loaderData }) => {
@@ -50,8 +53,37 @@ function readFontPref(): FontKey {
   return "md";
 }
 
+function WebtoonBody({ images, bodyRef }: { images: string[]; bodyRef: React.RefObject<HTMLDivElement> }) {
+  if (images.length === 0) {
+    return (
+      <div ref={bodyRef} className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
+        <ImageOff className="size-10 opacity-30" strokeWidth={1.5} />
+        <p className="text-sm">As imagens desta obra ainda não foram carregadas.</p>
+      </div>
+    );
+  }
+  return (
+    <div ref={bodyRef} className="flex flex-col items-center gap-0">
+      {images.map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`Página ${i + 1}`}
+          className="w-full max-w-[800px] block"
+          loading={i < 3 ? "eager" : "lazy"}
+          decoding="async"
+        />
+      ))}
+    </div>
+  );
+}
+
 function ReaderPage() {
-  const { work, bodyHtml } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
+  const { work } = loaderData;
+  const isWebtoon = loaderData.readerMode === "webtoon";
+  const bodyHtml = !isWebtoon ? (loaderData as { work: Work; bodyHtml: string; readerMode: "text" }).bodyHtml : "";
+  const bodyImages = isWebtoon ? (loaderData as { work: Work; bodyImages: string[]; readerMode: "webtoon" }).bodyImages : [];
   const { user } = useAuth();
   const bodyRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -184,7 +216,7 @@ function ReaderPage() {
           </Link>
 
           <div className="flex items-center gap-1 border border-border bg-surface">
-            {FONT_SIZES.map((f) => (
+            {!isWebtoon && FONT_SIZES.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFontKey(f.key)}
@@ -222,7 +254,7 @@ function ReaderPage() {
 
         {/* Cabeçalho da obra */}
         <header className="border-b border-border pb-8 mb-10">
-          <p className="eyebrow mb-3">{work.medium}</p>
+          <p className="eyebrow mb-3">{MEDIUM_LABEL[work.medium] ?? work.medium}</p>
           <h1 className="font-display text-3xl tracking-tight sm:text-4xl">{cleanTitle}</h1>
           {work.artistName && (
             <p className="mt-3 text-sm text-muted-foreground">
@@ -233,11 +265,15 @@ function ReaderPage() {
 
         {/* Corpo da obra */}
         <div className="relative">
-          <div
-            ref={bodyRef}
-            className={`prose prose-invert max-w-none ${fontCss} [&_p]:mb-[1.4em] [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:font-display [&_h2]:text-2xl [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:font-display [&_blockquote]:border-l-2 [&_blockquote]:border-gilt/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground`}
-            dangerouslySetInnerHTML={{ __html: bodyHtml }}
-          />
+          {isWebtoon ? (
+            <WebtoonBody images={bodyImages} bodyRef={bodyRef} />
+          ) : (
+            <div
+              ref={bodyRef}
+              className={`prose prose-invert max-w-none ${fontCss} [&_p]:mb-[1.4em] [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:font-display [&_h2]:text-2xl [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:font-display [&_blockquote]:border-l-2 [&_blockquote]:border-gilt/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground`}
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
+          )}
 
           {/* Paywall overlay */}
           {quotaExhausted && (

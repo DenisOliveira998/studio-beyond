@@ -1143,11 +1143,25 @@ export default {
         if (!slug) return new Response(JSON.stringify({ error: "Slug inválido" }), { status: 400, headers: { "content-type": "application/json" } });
         const { fetchWorkBySlug, dbWorkToWork } = await import("./lib/beyond-db");
         const dbWork = await fetchWorkBySlug(slug);
-        if (!dbWork || dbWork.status !== "approved" || !dbWork.body?.trim()) {
+        if (!dbWork || dbWork.status !== "approved") {
+          return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        const isWebtoon = ["manhwa", "manhua"].includes(dbWork.medium);
+        if (!isWebtoon && !dbWork.body?.trim()) {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
         const work = dbWorkToWork(dbWork);
-        return new Response(JSON.stringify({ work, bodyHtml: dbWork.body }), { headers: { "content-type": "application/json", "cache-control": "private, max-age=60" } });
+        if (isWebtoon) {
+          // body armazena JSON com array de URLs de imagem para obras webtoon
+          let bodyImages: string[] = [];
+          try { bodyImages = JSON.parse(dbWork.body ?? "[]"); } catch {}
+          return new Response(JSON.stringify({ work, bodyImages, readerMode: "webtoon" }), {
+            headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
+          });
+        }
+        return new Response(JSON.stringify({ work, bodyHtml: dbWork.body, readerMode: "text" }), {
+          headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
+        });
       }
 
       // ── Proxy de arquivos do Vercel Blob (private store) ─────────────────────

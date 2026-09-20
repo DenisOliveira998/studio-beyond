@@ -76,7 +76,7 @@ const LOG_LABEL: Record<LogType, string> = {
   review:   "Revisão",
 };
 
-const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto"];
+const WORK_TYPES = ["Livro", "Mangá", "HQ", "Conto", "Light Novel", "Manhwa", "Manhua"];
 
 const GENRE_TAGS = [
   "Ação", "Aventura", "Comédia", "Drama", "Fantasia",
@@ -280,6 +280,7 @@ function Dashboard() {
 
       const mediumMap: Record<string, string> = {
         Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto",
+        "Light Novel": "lightnovel", Manhwa: "manhwa", Manhua: "manhua",
       };
       const medium = mediumMap[workType ?? "Livro"] ?? "livro";
       await fetch("/api/works", {
@@ -941,7 +942,7 @@ function Dashboard() {
                     if (!editingWork) return;
                     setSavingEdit(true);
                     try {
-                      const mediumMap: Record<string, string> = { Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto" };
+                      const mediumMap: Record<string, string> = { Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto", "Light Novel": "lightnovel", Manhwa: "manhwa", Manhua: "manhua" };
                       const res = await fetch(`/api/works/${editingWork.id}`, {
                         method: "PATCH",
                         headers: { "content-type": "application/json" },

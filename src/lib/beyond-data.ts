@@ -1,6 +1,15 @@
 import { formatMoney, formatNumber } from "@/lib/i18n";
 
-export type Medium = "livro" | "manga" | "hq" | "conto";
+export type Medium = "livro" | "manga" | "hq" | "conto" | "lightnovel" | "manhwa" | "manhua";
+
+// Mediums com leitor de imagem vertical (webtoon/scroll)
+export const WEBTOON_MEDIUMS: Medium[] = ["manhwa", "manhua"];
+// Mediums com leitor de texto
+export const TEXT_MEDIUMS: Medium[] = ["livro", "conto", "lightnovel", "manga"];
+
+export function getReaderMode(medium: Medium): "text" | "webtoon" {
+  return WEBTOON_MEDIUMS.includes(medium) ? "webtoon" : "text";
+}
 
 export type WorkChapter = { number: number; title: string; date: string };
 
@@ -45,6 +54,9 @@ export const MEDIUM_LABEL: Record<Medium, string> = {
   manga: "Mangá",
   hq: "HQ",
   conto: "Conto",
+  lightnovel: "Light Novel",
+  manhwa: "Manhwa",
+  manhua: "Manhua",
 };
 
 export const artists: Artist[] = [];
