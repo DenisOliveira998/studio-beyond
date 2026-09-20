@@ -13,16 +13,11 @@ import type { CommentData } from "@/lib/beyond-db";
 
 export const Route = createFileRoute("/work/$slug")({
   loader: async ({ params }) => {
-    const { fetchWorkBySlug, fetchApprovedWorks, dbWorkToWork } = await import("@/lib/beyond-db");
-    const dbWork = await fetchWorkBySlug(params.slug);
-    if (!dbWork || dbWork.status !== "approved") throw notFound();
-    const work = dbWorkToWork(dbWork);
-    const allWorks = await fetchApprovedWorks();
-    const related = allWorks
-      .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
-      .slice(0, 4)
-      .map(dbWorkToWork);
-    return { work, related, hasBody: !!dbWork.body?.trim() };
+    const base = typeof window === "undefined" ? SITE_URL : "";
+    const res = await fetch(`${base}/api/work/${params.slug}`);
+    if (res.status === 404) throw notFound();
+    if (!res.ok) throw new Error("Falha ao carregar obra");
+    return res.json() as Promise<{ work: import("@/lib/beyond-data").Work; related: import("@/lib/beyond-data").Work[]; hasBody: boolean }>;
   },
   head: ({ loaderData }) => {
     if (!loaderData) {

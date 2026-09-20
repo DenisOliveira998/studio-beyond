@@ -671,6 +671,30 @@ export default {
         });
       }
 
+      // Obra individual por slug (público) — usado pelo loader de /work/$slug
+      const workSlugApiMatch = pathname.match(/^\/api\/work\/([^/]+)$/);
+      if (workSlugApiMatch && request.method === "GET") {
+        const slug = workSlugApiMatch[1];
+        const { fetchWorkBySlug, fetchApprovedWorks, dbWorkToWork } = await import("./lib/beyond-db");
+        const dbWork = await fetchWorkBySlug(slug);
+        if (!dbWork || dbWork.status !== "approved") {
+          return new Response(JSON.stringify({ error: "not_found" }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const work = dbWorkToWork(dbWork);
+        const allWorks = await fetchApprovedWorks();
+        const related = allWorks
+          .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
+          .slice(0, 4)
+          .map(dbWorkToWork);
+        return new Response(
+          JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+
       // Listar obras aprovadas (público)
       if (pathname === "/api/works" && request.method === "GET") {
         const { fetchApprovedWorks, dbWorkToWork } = await import("./lib/beyond-db");
