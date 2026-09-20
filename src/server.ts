@@ -747,6 +747,25 @@ export default {
         return new Response(JSON.stringify(artists), { headers: { "content-type": "application/json" } });
       }
 
+      // Perfil de artista por slug (obras publicadas)
+      const artistProfileMatch = pathname.match(/^\/api\/artists\/([^/]+)$/);
+      if (artistProfileMatch && request.method === "GET") {
+        const artistSlug = decodeURIComponent(artistProfileMatch[1]!);
+        const { fetchWorksByArtistSlug, dbWorkToWork } = await import("./lib/beyond-db");
+        const dbWorks = await fetchWorksByArtistSlug(artistSlug);
+        if (!dbWorks.length) {
+          return new Response(JSON.stringify({ error: "Artista não encontrado" }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const works = dbWorks.map(dbWorkToWork);
+        const artistName = dbWorks[0]!.artistName;
+        return new Response(JSON.stringify({ artistName, artistSlug, works }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
       // Admin: contas
       if (pathname === "/api/accounts" && request.method === "GET") {
         const { error } = await requireAdmin(request);

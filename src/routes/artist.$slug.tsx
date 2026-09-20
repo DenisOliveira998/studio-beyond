@@ -3,16 +3,16 @@ import { SITE_URL } from "@/lib/site-url";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { compact } from "@/lib/beyond-data";
+import type { Work } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/artist/$slug")({
   loader: async ({ params }) => {
-    const { fetchWorksByArtistSlug, dbWorkToWork } = await import("@/lib/beyond-db");
-    const dbWorks = await fetchWorksByArtistSlug(params.slug);
-    if (!dbWorks.length) throw notFound();
-    const works = dbWorks.map(dbWorkToWork);
-    const artistName = dbWorks[0]!.artistName;
-    const artistSlug = params.slug;
-    return { artistName, artistSlug, works };
+    const base = typeof window === "undefined" ? SITE_URL : "";
+    const res = await fetch(`${base}/api/artists/${encodeURIComponent(params.slug)}`);
+    if (res.status === 404) throw notFound();
+    if (!res.ok) throw new Error("Falha ao carregar perfil do artista");
+    const data = await res.json() as { artistName: string; artistSlug: string; works: Work[] };
+    return data;
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
