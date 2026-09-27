@@ -607,30 +607,6 @@ function Home() {
 
   return (
     <div>
-      {/* Proposta de valor */}
-      <section className="border-b border-border/70 px-5 py-10 sm:px-10 sm:py-12 lg:px-14">
-        <h1 className="hero-type max-w-3xl text-3xl leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-          Livros, mangás, HQs e contos autorais brasileiros. Sem anúncios.
-        </h1>
-        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          Leia de graça, sem interrupções. Apoie direto quem escreve — 88% vai para o autor.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            to="/explorar"
-            className="btn-type bg-gilt px-6 py-3 text-xs font-bold text-ink transition-opacity hover:opacity-90"
-          >
-            Começar a ler
-          </Link>
-          <Link
-            to="/candidatura-autor"
-            className="btn-type border border-border px-6 py-3 text-xs text-foreground transition-colors hover:border-gilt hover:text-gilt"
-          >
-            Publicar minha obra
-          </Link>
-        </div>
-      </section>
-
       {/* Destaque Beyond — hero carousel */}
       <DestaqueHero works={works} initialDestaque={[]} />
 
