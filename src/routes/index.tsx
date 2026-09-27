@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Eye } from "lucide-react";
 import { MEDIUM_LABEL, type Work, type Medium } from "@/lib/beyond-data";
-import type { CarouselItemData, ReaderProfileStats, ArtistSummary } from "@/lib/beyond-db";
+import type { ReaderProfileStats, ArtistSummary } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
 
@@ -35,119 +35,261 @@ export const Route = createFileRoute("/")({
 
 const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
 
-// ── Carrossel (coluna direita do hero) ──────────────────────────
+// ── Destaque Beyond — hero carousel full-width ──────────────────
 
-type SlideItem =
-  | { kind: "db"; item: CarouselItemData }
-  | { kind: "work"; work: Work };
-
-function HeroCarousel({ works }: { works: Work[] }) {
-  const [cur, setCur] = useState(0);
-  const [paused, setPaused] = useState(false);
-
-  const { data: dbItems = [] } = useQuery<CarouselItemData[]>({
-    queryKey: ["carousel"],
-    queryFn: () => fetch("/api/carousel").then((r) => r.json() as Promise<CarouselItemData[]>),
+function DestaqueHero({ works }: { works: Work[] }) {
+  const { data: destaqueSlugs = [] } = useQuery<string[]>({
+    queryKey: ["destaque"],
+    queryFn: () => fetch("/api/destaque").then((r) => r.json() as Promise<string[]>),
     staleTime: 60_000,
   });
 
-  const featuredFallback = [...works].slice(0, 5);
-  const slides: SlideItem[] =
-    dbItems.filter((i) => i.active).length > 0
-      ? dbItems.filter((i) => i.active).map((item) => ({ kind: "db" as const, item }))
-      : featuredFallback.map((work) => ({ kind: "work" as const, work }));
+  const [activeMedium, setActiveMedium] = useState<Medium | "all">("all");
+  const [cur, setCur] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  // Works em ordem do destaque; fallback: top 5 por cliques
+  const destaqueWorks =
+    destaqueSlugs.length > 0
+      ? (destaqueSlugs.map((slug) => works.find((w) => w.slug === slug)).filter(Boolean) as Work[])
+      : [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+
+  const availableMediums = [...new Set(destaqueWorks.map((w) => w.medium))];
+
+  const slides =
+    activeMedium === "all" ? destaqueWorks : destaqueWorks.filter((w) => w.medium === activeMedium);
   const count = slides.length;
 
+  useEffect(() => { setCur(0); }, [activeMedium]);
+
   useEffect(() => {
-    if (paused || count === 0) return;
-    const t = setInterval(() => setCur((i) => (i + 1) % count), 5000);
+    if (paused || count <= 1) return;
+    const t = setInterval(() => setCur((i) => (i + 1) % count), 6000);
     return () => clearInterval(t);
   }, [paused, count]);
 
   const prev = () => setCur((i) => (i - 1 + count) % count);
   const next = () => setCur((i) => (i + 1) % count);
 
-  if (count === 0) {
-    return (
-      <div className="flex aspect-square max-h-[520px] flex-col items-center justify-center gap-3 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
-        <span className="font-display text-5xl font-bold text-gilt/10">EM BREVE</span>
-        <span className="eyebrow text-gilt/20">obras em destaque</span>
-      </div>
-    );
+  function isNew(work: Work) {
+    try { return Date.now() - new Date(work.published).getTime() < 14 * 86_400_000; }
+    catch { return false; }
   }
 
-  return (
-    <div
-      className="relative select-none"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {/* Slides */}
-      <div className="relative overflow-hidden">
-        {slides.map((slide, i) => {
-          const isDb = slide.kind === "db";
-          const title = isDb ? slide.item.title : stripHtml(slide.work.title);
-          const imgUrl = isDb ? (slide.item.imageUrl ?? "") : (slide.work.cover ?? "");
-          const linkUrl = isDb ? (slide.item.linkUrl ?? "#") : `/work/${slide.work.slug}`;
+  if (works.length === 0) return null;
 
-          return (
-            <div
-              key={isDb ? slide.item.id : slide.work.id}
-              aria-hidden={i !== cur}
-              className={`transition-opacity duration-700 ${
-                i === cur ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
+  return (
+    <section className="border-b border-border/70">
+      {/* Pills de categoria */}
+      {availableMediums.length > 1 && (
+        <div className="flex flex-wrap gap-2 border-b border-border/40 px-5 py-3 sm:px-10 lg:px-14">
+          <button
+            onClick={() => setActiveMedium("all")}
+            className={`border px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors ${
+              activeMedium === "all"
+                ? "border-gilt bg-gilt text-ink"
+                : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
+            }`}
+          >
+            Todos
+          </button>
+          {availableMediums.map((m) => (
+            <button
+              key={m}
+              onClick={() => setActiveMedium(m)}
+              className={`border px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors ${
+                activeMedium === m
+                  ? "border-gilt bg-gilt text-ink"
+                  : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
               }`}
             >
-              <a href={linkUrl} className="group block">
-                {imgUrl ? (
-                  <div className="aspect-square w-full max-h-[520px] overflow-hidden border border-gilt/20 bg-surface">
-                    <img
-                      src={imgUrl}
-                      alt={title}
-                      className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.03]"
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-square w-full max-h-[520px] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent" />
-                )}
-              </a>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Controles */}
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCur(i)}
-              aria-label={`Slide ${i + 1}`}
-              className={`h-px transition-all duration-300 ${
-                i === cur ? "w-8 bg-gilt" : "w-4 bg-border hover:bg-muted-foreground"
-              }`}
-            />
+              {MEDIUM_LABEL[m]}
+            </button>
           ))}
         </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={prev}
-            aria-label="Anterior"
-            className="border border-border p-1.5 text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-          <button
-            onClick={next}
-            aria-label="Próximo"
-            className="border border-border p-1.5 text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
+      )}
+
+      {slides.length === 0 ? (
+        <div className="flex h-48 items-center justify-center">
+          <span className="text-sm text-muted-foreground">Nenhuma obra nesta categoria.</span>
         </div>
-      </div>
-    </div>
+      ) : (
+        <div
+          className="relative select-none overflow-hidden"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {/* Slides */}
+          {slides.map((work, i) => {
+            const cleanTitle = stripHtml(work.title);
+            const coverUrl = work.cover ?? "";
+            const tags = Array.isArray(work.tags)
+              ? work.tags
+              : (work.tags as unknown as string | undefined ?? "").split(",").filter(Boolean);
+
+            return (
+              <div
+                key={work.id}
+                aria-hidden={i !== cur}
+                className={`transition-opacity duration-700 ${
+                  i === cur ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
+                }`}
+              >
+                {/* Background blur */}
+                {coverUrl && (
+                  <div
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage: `url(${coverUrl})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      filter: "blur(28px) saturate(1.3) brightness(.55)",
+                      transform: "scale(1.1)",
+                    }}
+                  />
+                )}
+                {!coverUrl && <div className="absolute inset-0 bg-surface/90" />}
+
+                {/* Conteúdo */}
+                <div className="relative z-10 flex flex-col items-center gap-8 px-12 py-12 lg:flex-row lg:gap-14 lg:px-24 lg:py-16">
+                  {/* Capa */}
+                  <div className="flex shrink-0 flex-col items-start gap-2">
+                    {isNew(work) && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-red-500" />
+                        <span className="text-[11px] uppercase tracking-[0.12em] text-red-400">Novo</span>
+                      </div>
+                    )}
+                    <div className="overflow-hidden" style={{ width: 160, height: 240 }}>
+                      {coverUrl ? (
+                        <img
+                          src={coverUrl}
+                          alt={cleanTitle}
+                          className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-0.5"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-white/5">
+                          <span className="font-display text-2xl text-white/20">
+                            {MEDIUM_LABEL[work.medium].slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1 text-center lg:text-left">
+                    {/* Status + autor */}
+                    <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                      <span
+                        className="border border-gilt/40 text-center text-[10px] uppercase tracking-[0.1em] text-gilt/80"
+                        style={{ width: 120, padding: "3px 0" }}
+                      >
+                        {work.workStatus === "finalizado"
+                          ? "Finalizado"
+                          : work.workStatus === "paralisado"
+                          ? "Paralisado"
+                          : "Em andamento"}
+                      </span>
+                      {work.artistName && (
+                        <span className="text-xs italic text-white/60">{work.artistName}</span>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    {tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap justify-center gap-1.5 lg:justify-start">
+                        {tags.slice(0, 4).map((t) => (
+                          <span
+                            key={t}
+                            className="border border-white/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-white/60"
+                          >
+                            {t.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Título */}
+                    <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white line-clamp-2 sm:text-4xl">
+                      {cleanTitle}
+                    </h2>
+
+                    {/* Excerpt */}
+                    <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/70 line-clamp-3 mx-auto lg:mx-0">
+                      {stripHtml(work.excerpt)}
+                    </p>
+
+                    {/* Cliques */}
+                    <div className="mt-3 flex items-center justify-center gap-1.5 lg:justify-start">
+                      <Eye className="size-3.5 text-white/40" strokeWidth={1.5} />
+                      <span className="text-xs text-white/40">
+                        {work.clicks.toLocaleString("pt-BR")}
+                      </span>
+                    </div>
+
+                    {/* Botões */}
+                    <div className="mt-5 flex flex-wrap justify-center gap-3 lg:justify-start">
+                      <Link
+                        to="/work/$slug"
+                        params={{ slug: work.slug }}
+                        className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
+                      >
+                        Começar a Ler
+                      </Link>
+                      <Link
+                        to="/work/$slug"
+                        params={{ slug: work.slug }}
+                        className="border border-white/30 px-6 py-2.5 text-sm text-white/80 transition-colors hover:border-gilt hover:text-gilt"
+                      >
+                        Saiba Mais
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Setas */}
+          {count > 1 && (
+            <>
+              <button
+                onClick={prev}
+                aria-label="Anterior"
+                className="absolute left-3 top-1/2 z-20 -translate-y-1/2 border border-white/20 bg-black/30 p-2 text-white/60 backdrop-blur-sm transition-colors hover:border-gilt hover:text-gilt sm:left-5"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+              <button
+                onClick={next}
+                aria-label="Próximo"
+                className="absolute right-3 top-1/2 z-20 -translate-y-1/2 border border-white/20 bg-black/30 p-2 text-white/60 backdrop-blur-sm transition-colors hover:border-gilt hover:text-gilt sm:right-5"
+              >
+                <ChevronRight className="size-5" />
+              </button>
+            </>
+          )}
+
+          {/* Dots */}
+          {count > 1 && (
+            <div className="relative z-20 flex items-center justify-center gap-2 pb-5">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCur(i)}
+                  aria-label={`Slide ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === cur ? "w-5 bg-gilt" : "w-1.5 bg-white/30 hover:bg-white/50"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -402,7 +544,6 @@ function ContinueReading({ works }: { works: Work[] }) {
 // ── Home ─────────────────────────────────────────────────────────
 
 function Home() {
-  const { user, role } = useAuth();
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
     queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
@@ -453,43 +594,8 @@ function Home() {
 
   return (
     <div>
-      {/* Hero + Carrossel lado a lado */}
-      <section className="border-b border-border/70">
-        <div className="grid items-center gap-10 px-5 py-16 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:px-14 lg:py-24">
-          {/* Texto */}
-          <div>
-            <p className="eyebrow">Sem anúncios · Sem banners · Sem interrupções</p>
-            <h1 className="hero-type mt-6 text-4xl sm:text-5xl xl:text-6xl">
-              Um espaço silencioso para livros, mangás, HQs e contos que merecem ser lidos por mais tempo.
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground">
-              O The Beyond paga os artistas por cada visualização que a obra conquista e permite que
-              qualquer pessoa envie apoio direto ao ateliê. Ficamos com 12%. O resto é de quem cria.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center gap-4">
-              <Link
-                to={
-                  !user
-                    ? "/entrar"
-                    : (["author", "admin", "gerente", "owner"] as const).includes(role as "author" | "admin" | "gerente" | "owner")
-                    ? "/dashboard"
-                    : "/candidatura-autor"
-                }
-                className="btn-type bg-primary px-6 py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                Publique sua obra
-              </Link>
-              <Link to="/artists" className="rule-hover text-sm text-muted-foreground transition-colors hover:text-foreground">
-                Explorar artistas
-              </Link>
-            </div>
-          </div>
-          {/* Carrossel */}
-          <div className="w-full">
-            <HeroCarousel works={works} />
-          </div>
-        </div>
-      </section>
+      {/* Destaque Beyond — hero carousel */}
+      <DestaqueHero works={works} />
 
       {/* Continue lendo */}
       <ContinueReading works={works} />
