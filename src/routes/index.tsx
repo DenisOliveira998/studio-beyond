@@ -131,8 +131,7 @@ function DestaqueHero({ works }: { works: Work[] }) {
               <div
                 key={work.id}
                 aria-hidden={i !== cur}
-                style={{ minHeight: "460px" }}
-                className={`flex flex-col justify-center transition-opacity duration-700 ${
+                className={`flex flex-col justify-center transition-opacity duration-700 lg:h-[500px] ${
                   i === cur ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
                 }`}
               >
