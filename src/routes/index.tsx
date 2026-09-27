@@ -152,7 +152,7 @@ function DestaqueHero({ works }: { works: Work[] }) {
                 {!coverUrl && <div className="absolute inset-0 bg-surface/90" />}
 
                 {/* Conteúdo */}
-                <div className="relative z-10 flex flex-col items-center gap-8 px-12 py-12 lg:flex-row lg:gap-14 lg:px-24 lg:py-16">
+                <div className="relative z-10 flex flex-col items-center gap-8 px-12 py-14 lg:flex-row lg:gap-14 lg:px-24 lg:py-20">
                   {/* Capa */}
                   <div className="flex shrink-0 flex-col items-start gap-2">
                     {isNew(work) && (
@@ -572,12 +572,6 @@ function Home() {
   }
 
   const sections = [
-    {
-      key: "em-alta",
-      label: "🔥 Em alta",
-      works: sorted.slice(0, 6),
-      to: "/explorar" as const,
-    },
     ...MEDIA.map((m) => ({
       key: m,
       label: MEDIUM_LABEL[m],
