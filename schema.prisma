@@ -326,6 +326,16 @@ model DailyReadingQuota {
   @@map("daily_reading_quota")
 }
 
+// Obras selecionadas para o Destaque Beyond (hero carousel)
+model DestaqueWork {
+  id       String   @id @default(cuid())
+  workSlug String   @unique
+  order    Int      @default(0)
+  addedAt  DateTime @default(now())
+
+  @@map("destaque_works")
+}
+
 // Eventos de email registrados via Resend webhook
 model EmailEvent {
   id         String   @id @default(cuid())

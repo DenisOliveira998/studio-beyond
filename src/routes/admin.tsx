@@ -18,6 +18,7 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
+  CheckCircle2,
   CircleDollarSign,
   ClipboardList,
   Eye,
@@ -30,6 +31,7 @@ import {
   Save,
   Settings,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Trophy,
   Users,
@@ -81,6 +83,7 @@ const LADDER: AppRole[] = ["reader", "vip", "author", "gerente", "admin", "owner
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
   { id: "rankings", label: "Rankings", icon: Trophy },
+  { id: "destaque", label: "Destaque", icon: Sparkles },
   { id: "candidaturas", label: "Candidaturas", icon: ClipboardList },
   { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
@@ -119,6 +122,13 @@ function AdminPage() {
     id: string; status: ReviewStatus; type: "application" | "submission"; name: string;
   } | null>(null);
   const [noteInput, setNoteInput] = useState("");
+
+  // Destaque
+  const [destaqueSearch, setDestaqueSearch] = useState("");
+  const [destaqueMedium, setDestaqueMedium] = useState<string>("all");
+  const [destaqueSort, setDestaqueSort] = useState<"clicks" | "date" | "title">("clicks");
+  const [destaqueSelected, setDestaqueSelected] = useState<string[]>([]);
+  const [destaqueConfirm, setDestaqueConfirm] = useState(false);
 
   const ADMIN_ROLES_CLIENT = ["owner", "admin", "gerente"] as const;
   const isStaff = !loading && profile && ADMIN_ROLES_CLIENT.includes(profile.role as typeof ADMIN_ROLES_CLIENT[number]);
@@ -417,6 +427,53 @@ function AdminPage() {
   const pendingApplications = applications.filter((a) => a.status === "pending").length;
   const pendingSubmissions = reviewableSubmissions.filter((w) => w.status === "pending").length;
 
+  // Destaque — slugs salvos no banco
+  const { data: destaqueSlugs = [], refetch: refetchDestaque } = useQuery<string[]>({
+    queryKey: ["destaque"],
+    queryFn: () => fetch("/api/destaque").then((r) => r.json() as Promise<string[]>),
+    staleTime: 30_000,
+  });
+
+  // Inicializa seleção quando dados chegam (uma vez)
+  useEffect(() => {
+    if (destaqueSlugs.length > 0 && destaqueSelected.length === 0) {
+      setDestaqueSelected(destaqueSlugs);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destaqueSlugs]);
+
+  const saveDestaque = useMutation({
+    mutationFn: (slugs: string[]) =>
+      fetch("/api/destaque", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slugs }),
+      }),
+    onSuccess: () => {
+      void refetchDestaque();
+      setDestaqueConfirm(false);
+      toast.success("Destaque atualizado com sucesso.");
+    },
+    onError: () => toast.error("Erro ao salvar destaque."),
+  });
+
+  const destaqueFiltered = useMemo(() => {
+    let list = allWorks.filter((w) => {
+      const q = destaqueSearch.toLowerCase();
+      const tagsStr = Array.isArray(w.tags) ? w.tags.join(" ") : (w.tags ?? "");
+      const matchesQ = !q || w.title.toLowerCase().includes(q) ||
+        tagsStr.toLowerCase().includes(q) ||
+        (w.genre ?? "").toLowerCase().includes(q) ||
+        (w.artistName ?? "").toLowerCase().includes(q);
+      const matchesMedium = destaqueMedium === "all" || w.medium === destaqueMedium;
+      return matchesQ && matchesMedium;
+    });
+    if (destaqueSort === "clicks") list = [...list].sort((a, b) => b.clicks - a.clicks);
+    else if (destaqueSort === "date") list = [...list].sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
+    else list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+    return list;
+  }, [allWorks, destaqueSearch, destaqueMedium, destaqueSort]);
+
   const byClicks = useMemo(
     () => [...allWorks].sort((a, b) => b.clicks - a.clicks).slice(0, 5),
     [allWorks],
@@ -530,6 +587,135 @@ function AdminPage() {
                 metric: money(adminStats?.donations[w.slug] ?? 0),
               }))}
             />
+          </div>
+        </section>
+
+        {/* Destaque Beyond */}
+        <section id="destaque" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Sparkles}>Destaque Beyond</SectionTitle>
+          <p className="caption mt-4">
+            Selecione até <span className="text-gilt">10 obras</span> para aparecerem no hero carousel da página inicial.
+            Atualmente salvas: <span className="text-gilt">{destaqueSlugs.length}</span> ·
+            Selecionadas agora: <span className={destaqueSelected.length >= 10 ? "text-destructive" : "text-gilt"}>{destaqueSelected.length}/10</span>
+          </p>
+
+          {/* Filtros */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <input
+              type="text"
+              value={destaqueSearch}
+              onChange={(e) => setDestaqueSearch(e.target.value)}
+              placeholder="Buscar por título, tags, autor…"
+              className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none min-w-[220px] flex-1"
+            />
+            <select
+              value={destaqueMedium}
+              onChange={(e) => setDestaqueMedium(e.target.value)}
+              className="border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-gilt focus:outline-none"
+            >
+              <option value="all">Todos os formatos</option>
+              {Object.entries(MEDIUM_LABEL).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+            <div className="flex gap-1">
+              {([["clicks", "Mais cliques"], ["date", "Mais recentes"], ["title", "A–Z"]] as const).map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => setDestaqueSort(v)}
+                  className={`border px-3 py-2 text-xs transition-colors ${destaqueSort === v ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:border-gilt/50"}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grade de obras */}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {destaqueFiltered.map((w) => {
+              const isSelected = destaqueSelected.includes(w.slug);
+              const isFull = destaqueSelected.length >= 10 && !isSelected;
+              return (
+                <button
+                  key={w.slug}
+                  disabled={isFull}
+                  onClick={() =>
+                    setDestaqueSelected((prev) =>
+                      isSelected ? prev.filter((s) => s !== w.slug) : [...prev, w.slug],
+                    )
+                  }
+                  className={`flex items-start gap-3 border p-4 text-left transition-all ${
+                    isSelected
+                      ? "border-[color:var(--chart-2)] bg-[color:var(--chart-2)]/5"
+                      : isFull
+                        ? "border-border opacity-40 cursor-not-allowed"
+                        : "border-border bg-surface hover:border-gilt/50"
+                  }`}
+                >
+                  {/* Capa */}
+                  <div className="relative size-14 shrink-0">
+                    {w.cover ? (
+                      <img
+                        src={w.cover.startsWith("/api/") ? `https://studio-beyond-phi.vercel.app${w.cover}` : w.cover}
+                        alt={w.title}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="size-full bg-muted" />
+                    )}
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--chart-2)]/20">
+                        <CheckCircle2 className="size-5 text-[color:var(--chart-2)]" />
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm leading-snug">{w.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{w.artistName}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <span className="border border-gilt/30 px-1.5 py-0.5 text-[0.6rem] text-gilt">
+                        {MEDIUM_LABEL[w.medium as keyof typeof MEDIUM_LABEL] ?? w.medium}
+                      </span>
+                      {(Array.isArray(w.tags) ? w.tags : (w.tags ?? "").split(",").filter(Boolean)).slice(0, 2).map((t) => (
+                        <span key={t} className="border border-border px-1.5 py-0.5 text-[0.6rem] text-muted-foreground">
+                          {t.trim()}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[0.6rem] text-muted-foreground/60">
+                      {w.clicks.toLocaleString("pt-BR")} cliques
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+            {destaqueFiltered.length === 0 && (
+              <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
+                Nenhuma obra encontrada com esses filtros.
+              </p>
+            )}
+          </div>
+
+          {/* Ação salvar */}
+          <div className="mt-6 flex items-center gap-4">
+            <button
+              onClick={() => setDestaqueConfirm(true)}
+              disabled={destaqueSelected.length === 0}
+              className="inline-flex items-center gap-2 bg-gilt px-5 py-2.5 text-sm font-medium text-ink transition-opacity disabled:opacity-50 hover:opacity-90"
+            >
+              <Sparkles className="size-4" strokeWidth={1.5} />
+              Salvar Destaque ({destaqueSelected.length}/10)
+            </button>
+            {destaqueSelected.length > 0 && (
+              <button
+                onClick={() => setDestaqueSelected([])}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Limpar seleção
+              </button>
+            )}
           </div>
         </section>
 
@@ -1137,6 +1323,55 @@ function AdminPage() {
           </div>
         </section>
       </main>
+
+      {/* Modal de confirmação do Destaque */}
+      {destaqueConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg border border-gilt/30 bg-background p-6 shadow-xl">
+            <h3 className="font-display text-lg tracking-tight flex items-center gap-2">
+              <Sparkles className="size-5 text-gilt" strokeWidth={1.5} />
+              Confirmar Destaque Beyond
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              As seguintes <span className="text-foreground font-medium">{destaqueSelected.length} obras</span> serão
+              exibidas no hero carousel da página inicial:
+            </p>
+            <ul className="mt-4 space-y-2 max-h-64 overflow-y-auto pr-1">
+              {destaqueSelected.map((slug, i) => {
+                const w = allWorks.find((x) => x.slug === slug);
+                return (
+                  <li key={slug} className="flex items-center gap-2 text-sm">
+                    <span className="text-gilt/60 tabular-nums w-5 shrink-0">{i + 1}.</span>
+                    {w ? (
+                      <>
+                        <span className="font-medium truncate">{w.title}</span>
+                        <span className="text-muted-foreground truncate">— {w.artistName}</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">{slug}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDestaqueConfirm(false)}
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => saveDestaque.mutate(destaqueSelected)}
+                disabled={saveDestaque.isPending}
+                className="inline-flex items-center gap-2 bg-gilt px-5 py-2 text-sm font-medium text-ink hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {saveDestaque.isPending ? "Salvando…" : "Confirmar e Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de nota para decisões */}
       {noteModal && (

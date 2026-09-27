@@ -457,6 +457,21 @@ export async function reorderCarouselItems(ids: string[]): Promise<void> {
   );
 }
 
+/* ---------- destaque ---------- */
+
+export async function getDestaqueWorks(): Promise<string[]> {
+  const rows = await prisma.destaqueWork.findMany({ orderBy: { order: "asc" } });
+  return rows.map((r) => r.workSlug);
+}
+
+export async function setDestaqueWorks(slugs: string[]): Promise<void> {
+  const safe = slugs.slice(0, 10);
+  await prisma.$transaction([
+    prisma.destaqueWork.deleteMany(),
+    ...safe.map((workSlug, i) => prisma.destaqueWork.create({ data: { workSlug, order: i } })),
+  ]);
+}
+
 /* ---------- favoritos ---------- */
 
 export type FavoriteData = {

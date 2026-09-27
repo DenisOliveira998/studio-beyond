@@ -315,6 +315,23 @@ export default {
         }
       }
 
+      // Destaque Beyond — obras selecionadas para o hero carousel
+      if (pathname === "/api/destaque") {
+        if (request.method === "GET") {
+          const { getDestaqueWorks } = await import("./lib/beyond-db");
+          const slugs = await getDestaqueWorks();
+          return new Response(JSON.stringify(slugs), { headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "POST") {
+          const { error } = await requireAdmin(request);
+          if (error) return error;
+          const { slugs } = (await request.json()) as { slugs: string[] };
+          const { setDestaqueWorks } = await import("./lib/beyond-db");
+          await setDestaqueWorks(slugs);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        }
+      }
+
       // Carrossel — leitura pública / gestão admin
       if (pathname === "/api/carousel") {
         if (request.method === "GET") {
