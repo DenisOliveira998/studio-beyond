@@ -212,12 +212,12 @@ function DestaqueHero({ works }: { works: Work[] }) {
                     )}
 
                     {/* Título */}
-                    <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white line-clamp-2 sm:text-4xl">
+                    <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white line-clamp-2 sm:text-4xl" style={{ minHeight: "2.5em" }}>
                       {cleanTitle}
                     </h2>
 
                     {/* Excerpt */}
-                    <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/70 line-clamp-3 mx-auto lg:mx-0">
+                    <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/70 line-clamp-3 mx-auto lg:mx-0" style={{ minHeight: "4.875em" }}>
                       {stripHtml(work.excerpt)}
                     </p>
 
