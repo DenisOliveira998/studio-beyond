@@ -37,11 +37,17 @@ const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa"
 
 // ── Destaque Beyond — hero carousel full-width ──────────────────
 
-function DestaqueHero({ works }: { works: Work[] }) {
+/** Obra com leitor disponível: webtoon (imagens) ou texto com corpo. */
+function isReadable(work: Work): boolean {
+  return WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0;
+}
+
+function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaque: string[] }) {
   const { data: destaqueSlugs = [] } = useQuery<string[]>({
     queryKey: ["destaque"],
     queryFn: () => fetch("/api/destaque").then((r) => r.json() as Promise<string[]>),
     staleTime: 60_000,
+    initialData: initialDestaque,
   });
 
   const [activeMedium, setActiveMedium] = useState<Medium | "all">("all");
@@ -70,11 +76,6 @@ function DestaqueHero({ works }: { works: Work[] }) {
 
   const prev = () => setCur((i) => (i - 1 + count) % count);
   const next = () => setCur((i) => (i + 1) % count);
-
-  function isNew(work: Work) {
-    try { return Date.now() - new Date(work.published).getTime() < 14 * 86_400_000; }
-    catch { return false; }
-  }
 
   if (works.length === 0) return null;
 
@@ -155,12 +156,14 @@ function DestaqueHero({ works }: { works: Work[] }) {
                 <div className="relative z-10 flex flex-col items-center gap-8 px-12 py-10 lg:flex-row lg:items-center lg:gap-14 lg:px-24">
                   {/* Capa */}
                   <div className="flex shrink-0 flex-col items-start gap-2">
-                    {isNew(work) && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-red-500" />
-                        <span className="text-[11px] uppercase tracking-[0.12em] text-red-400">Novo</span>
-                      </div>
-                    )}
+                    <div className="flex h-5 items-center gap-1.5">
+                      {isRecentWork(work) && (
+                        <>
+                          <span className="size-2 rounded-full bg-red-500" />
+                          <span className="text-[11px] uppercase tracking-[0.12em] text-red-400">Novo</span>
+                        </>
+                      )}
+                    </div>
                     <div className="overflow-hidden" style={{ width: 210, height: 315 }}>
                       {coverUrl ? (
                         <img
@@ -221,29 +224,41 @@ function DestaqueHero({ works }: { works: Work[] }) {
                       {stripHtml(work.excerpt)}
                     </p>
 
-                    {/* Cliques */}
-                    <div className="mt-3 flex items-center justify-center gap-1.5 lg:justify-start">
-                      <Eye className="size-3.5 text-white/40" strokeWidth={1.5} />
-                      <span className="text-xs text-white/40">
-                        {work.clicks.toLocaleString("pt-BR")}
-                      </span>
-                    </div>
+                    {/* Visualizações — só a partir de VIEWS_DISPLAY_MIN */}
+                    {work.clicks >= VIEWS_DISPLAY_MIN && (
+                      <div className="mt-3 flex items-center justify-center gap-1.5 lg:justify-start">
+                        <Eye className="size-3.5 text-white/40" strokeWidth={1.5} />
+                        <span className="text-xs text-white/40">
+                          {work.clicks.toLocaleString("pt-BR")}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Botões */}
                     <div className="mt-5 flex flex-wrap justify-center gap-3 lg:justify-start">
-                      <Link
-                        to="/work/$slug"
-                        params={{ slug: work.slug }}
-                        className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
-                      >
-                        Começar a Ler
-                      </Link>
+                      {isReadable(work) ? (
+                        <Link
+                          to="/ler/$slug"
+                          params={{ slug: work.slug }}
+                          className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
+                        >
+                          Começar a ler
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/work/$slug"
+                          params={{ slug: work.slug }}
+                          className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
+                        >
+                          Começar a ler
+                        </Link>
+                      )}
                       <Link
                         to="/work/$slug"
                         params={{ slug: work.slug }}
                         className="border border-white/30 px-6 py-2.5 text-sm text-white/80 transition-colors hover:border-gilt hover:text-gilt"
                       >
-                        Saiba Mais
+                        Ver detalhes
                       </Link>
                     </div>
                   </div>
@@ -310,6 +325,8 @@ function CatalogCard({
     NEW: "border-gilt/50 bg-background/80 text-gilt",
     NOVO: "border-gilt bg-gilt text-ink font-bold",
   };
+  // NEW = publicada há < 14 dias · NOVO = obra em leitura com atualização
+  const badgeLabel = { HOT: "HOT", NEW: "Novo", NOVO: "Atualizado" };
 
   return (
     <Link to="/work/$slug" params={{ slug: work.slug }} className="group block">
@@ -333,7 +350,7 @@ function CatalogCard({
         )}
         {badge && (
           <span className={`absolute left-2 top-2 border px-1.5 py-0.5 text-[9px] uppercase tracking-[0.1em] ${badgeCls[badge]}`}>
-            {badge}
+            {badgeLabel[badge]}
           </span>
         )}
         {pagesRead !== undefined && (
@@ -570,20 +587,46 @@ function Home() {
       key: m,
       label: MEDIUM_LABEL[m],
       works: works.filter((w) => w.medium === m),
-      to: `/explorar?m=${m}`,
+      to: `/explorar/${m}`,
     })),
     {
       key: "novidades",
       label: "★ Novidades",
-      works: [...works].reverse().slice(0, 6),
+      works: [...works]
+        .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
+        .slice(0, 6),
       to: "/explorar" as const,
     },
   ].filter((s) => s.works.length > 0);
 
   return (
     <div>
+      {/* Proposta de valor */}
+      <section className="border-b border-border/70 px-5 py-10 sm:px-10 sm:py-12 lg:px-14">
+        <h1 className="hero-type max-w-3xl text-3xl leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+          Livros, mangás, HQs e contos autorais brasileiros. Sem anúncios.
+        </h1>
+        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
+          Leia de graça, sem interrupções. Apoie direto quem escreve — 88% vai para o autor.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            to="/explorar"
+            className="btn-type bg-gilt px-6 py-3 text-xs font-bold text-ink transition-opacity hover:opacity-90"
+          >
+            Começar a ler
+          </Link>
+          <Link
+            to="/candidatura-autor"
+            className="btn-type border border-border px-6 py-3 text-xs text-foreground transition-colors hover:border-gilt hover:text-gilt"
+          >
+            Publicar minha obra
+          </Link>
+        </div>
+      </section>
+
       {/* Destaque Beyond — hero carousel */}
-      <DestaqueHero works={works} />
+      <DestaqueHero works={works} initialDestaque={initial.destaque} />
 
       {/* Continue lendo */}
       <ContinueReading works={works} />
