@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen, Eye } from "lucide-react";
 import { MEDIUM_LABEL, type Work, type Medium } from "@/lib/beyond-data";
-import type { ReaderProfileStats, ArtistSummary } from "@/lib/beyond-db";
+import type { ReaderProfileStats } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
 
@@ -550,12 +550,6 @@ function Home() {
     staleTime: 60_000,
   });
 
-  const { data: artists = [] } = useQuery<ArtistSummary[]>({
-    queryKey: ["artists"],
-    queryFn: () => fetch("/api/artists").then((r) => r.json() as Promise<ArtistSummary[]>),
-    staleTime: 60_000,
-  });
-
   // Badges: HOT = top 30% em views com pelo menos 3 visualizações | NEW = < 5 views
   const sorted = [...works].sort((a, b) => b.clicks - a.clicks);
   const hotCount = Math.max(1, Math.ceil(works.length * 0.3));
@@ -609,25 +603,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Artistas */}
-      {artists.length > 0 && (
-        <section className="border-t border-border/70 px-5 py-16 sm:px-10 lg:px-14">
-          <h2 className="font-display text-2xl font-bold">Artistas residentes</h2>
-          <div className="mt-8 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-            {artists.map((a) => (
-              <Link
-                key={a.slug}
-                to="/artist/$slug"
-                params={{ slug: a.slug }}
-                className="group bg-background p-6 transition-colors hover:bg-surface"
-              >
-                <p className="eyebrow">{a.workCount} {a.workCount === 1 ? "obra" : "obras"}</p>
-                <p className="mt-3 font-display text-lg font-bold group-hover:text-gilt">{a.name}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
