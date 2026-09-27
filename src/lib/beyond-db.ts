@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { AppRole } from "@/lib/auth";
-import type { Medium, Work } from "@/lib/beyond-data";
+import type { AuthorBioData, Medium, Work } from "@/lib/beyond-data";
 import { stripHtml } from "@/lib/utils";
 
 export type ReviewStatusDb = "pending" | "approved" | "rejected" | "changes" | "draft";
@@ -812,6 +812,7 @@ export function dbWorkToWork(w: DbWork): Work {
     body: w.body ? w.body.split("\n").filter(Boolean) : [],
     clicks: 0,
     likes: 0,
+    publishedAt: new Date(w.publishedAt ?? w.createdAt).toISOString(),
     published: new Date(w.publishedAt ?? w.createdAt).toLocaleDateString("pt-BR", {
       day: "numeric",
       month: "long",
@@ -924,4 +925,63 @@ function appToDb(a: any): DbApplication {
     createdAt: (a.createdAt as Date).toISOString(),
     decidedAt: a.decidedAt ? (a.decidedAt as Date).toISOString() : null,
   };
+}
+
+/* ---------- lista de espera (plano Leitor Assíduo) ---------- */
+
+export type WaitlistRow = { id: string; email: string; plan: string; createdAt: string };
+
+export async function addToWaitlist(input: { email: string; plan: string; userId?: string | null }): Promise<void> {
+  await prisma.waitlistEntry.upsert({
+    where: { email: input.email },
+    create: { email: input.email, plan: input.plan, userId: input.userId ?? null },
+    update: { plan: input.plan },
+  });
+}
+
+export async function fetchWaitlist(): Promise<WaitlistRow[]> {
+  const rows = await prisma.waitlistEntry.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map((r) => ({ id: r.id, email: r.email, plan: r.plan, createdAt: r.createdAt.toISOString() }));
+}
+
+/* ---------- perfil público do autor ---------- */
+
+export const EMPTY_AUTHOR_BIO: AuthorBioData = { bio: "", avatarUrl: "", city: "", instagram: "", website: "" };
+
+/** Retorna a bio do autor; se a tabela ainda não existir no banco, devolve vazio. */
+export async function getAuthorBio(userId: string | null | undefined): Promise<AuthorBioData> {
+  if (!userId) return EMPTY_AUTHOR_BIO;
+  try {
+    const row = await prisma.authorBio.findUnique({ where: { userId } });
+    if (!row) return EMPTY_AUTHOR_BIO;
+    return {
+      bio: row.bio,
+      avatarUrl: blobProxy(row.avatarUrl) ?? "",
+      city: row.city,
+      instagram: row.instagram,
+      website: row.website,
+    };
+  } catch (err) {
+    console.error("getAuthorBio falhou (tabela author_bios existe?)", err);
+    return EMPTY_AUTHOR_BIO;
+  }
+}
+
+/** Bio crua (sem proxy) para o formulário de edição do próprio autor. */
+export async function getOwnAuthorBio(userId: string): Promise<AuthorBioData> {
+  try {
+    const row = await prisma.authorBio.findUnique({ where: { userId } });
+    if (!row) return EMPTY_AUTHOR_BIO;
+    return { bio: row.bio, avatarUrl: row.avatarUrl, city: row.city, instagram: row.instagram, website: row.website };
+  } catch {
+    return EMPTY_AUTHOR_BIO;
+  }
+}
+
+export async function saveAuthorBio(userId: string, data: AuthorBioData): Promise<void> {
+  await prisma.authorBio.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
 }

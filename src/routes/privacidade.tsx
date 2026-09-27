@@ -33,7 +33,7 @@ function PrivacyPage() {
         </p>
         <p>
           Registramos apenas o necessário para contabilizar visualizações e repassar a receita ao
-          artista correto: identificador da obra, data e um contador agregado.
+          autor correto: identificador da obra, data e um contador agregado.
         </p>
         <p>
           Contas armazenam nome, e-mail e preferências de leitura. Dados de pagamento, quando

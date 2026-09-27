@@ -27,6 +27,8 @@ export type Work = {
   clicks: number;
   likes: number;
   published: string;
+  /** Data ISO de publicação (usada para o selo "Novo") */
+  publishedAt?: string;
   readTime?: string;
   genre?: string;
   pages?: number;
@@ -65,6 +67,33 @@ export const works: Work[] = [];
 
 export const PLATFORM_FEE = 0.12;
 export const RATE_PER_CLICK = 0.004;
+
+/** Contadores de visualização só aparecem a partir deste número (evita "0 visualizações"). */
+export const VIEWS_DISPLAY_MIN = 50;
+
+/** Selo "Novo": obras publicadas há menos de 14 dias. */
+export const NEW_WORK_DAYS = 14;
+
+export function isRecentWork(work: Pick<Work, "publishedAt">): boolean {
+  if (!work.publishedAt) return false;
+  const t = new Date(work.publishedAt).getTime();
+  return !Number.isNaN(t) && Date.now() - t < NEW_WORK_DAYS * 86_400_000;
+}
+
+/** Limite diário de leitura gratuita (mesma regra para visitantes e contas gratuitas). */
+export const FREE_DAILY_QUOTA = 10;
+
+/** Resumo público do autor retornado por /api/artists (busca e listagens). */
+export type PublicArtist = { name: string; slug: string; workCount: number };
+
+/** Perfil público do autor (bio, foto, redes) — vazio quando o autor não preencheu. */
+export type AuthorBioData = {
+  bio: string;
+  avatarUrl: string;
+  city: string;
+  instagram: string;
+  website: string;
+};
 
 export function getArtist(slug: string) {
   return artists.find((a) => a.slug === slug);
@@ -152,40 +181,47 @@ export type SearchHit =
   | { kind: "work"; slug: string; title: string; category: string; cover?: string | undefined }
   | { kind: "artist"; slug: string; title: string; category: string; initials: string };
 
-export function searchAll(query: string): { works: SearchHit[]; artists: SearchHit[] } {
-  const q = query.trim().toLowerCase();
+/** Minúsculas, sem acentos e sem tags HTML — para comparar termos de busca. */
+function normalizeSearch(value: string): string {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+export function searchAll(
+  query: string,
+  works: Work[],
+  artists: PublicArtist[],
+): { works: SearchHit[]; artists: SearchHit[] } {
+  const q = normalizeSearch(query.trim());
   if (!q) return { works: [], artists: [] };
 
   const w = works
     .filter((work) =>
-      [work.title, MEDIUM_LABEL[work.medium], work.genre ?? "", work.artistName ?? "", work.excerpt]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
+      normalizeSearch(
+        [work.title, MEDIUM_LABEL[work.medium], work.genre ?? "", work.artistName ?? "", (work.tags ?? []).join(" "), work.excerpt].join(" "),
+      ).includes(q),
     )
     .slice(0, 5)
     .map<SearchHit>((work) => ({
       kind: "work",
       slug: work.slug,
-      title: work.title,
+      title: work.title.replace(/<[^>]*>/g, ""),
       category: MEDIUM_LABEL[work.medium],
       cover: work.cover,
     }));
 
   const a = artists
-    .filter((artist) =>
-      [artist.name, artist.discipline, artist.location, artist.bio]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    )
+    .filter((artist) => normalizeSearch(artist.name).includes(q))
     .slice(0, 4)
     .map<SearchHit>((artist) => ({
       kind: "artist",
       slug: artist.slug,
       title: artist.name,
-      category: artist.discipline,
-      initials: artist.initials,
+      category: `${artist.workCount} ${artist.workCount === 1 ? "obra" : "obras"}`,
+      initials: artist.name.slice(0, 2).toUpperCase(),
     }));
 
   return { works: w, artists: a };

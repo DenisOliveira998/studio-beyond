@@ -37,11 +37,11 @@ function AboutPage() {
       <div className="mt-10 space-y-6 leading-relaxed text-muted-foreground">
         <p>
           O The Beyond nasceu de uma recusa simples: nenhum anúncio, nenhum banner, nenhuma
-          interrupção entre quem olha e o que foi feito. A página existe para a obra.
+          interrupção entre quem lê e o que foi escrito. A página existe para a obra.
         </p>
         <p>
-          Cada visualização contabilizada gera receita para o artista. Quem quiser ir além pode
-          doar diretamente ao ateliê. A plataforma retém {Math.round(PLATFORM_FEE * 100)}% para se
+          Cada visualização contabilizada gera receita para o autor. Quem quiser ir além pode
+          doar diretamente a quem escreveu. A plataforma retém {Math.round(PLATFORM_FEE * 100)}% para se
           manter — o resto é de quem cria.
         </p>
         <p>
@@ -54,7 +54,7 @@ function AboutPage() {
       <div className="mt-12 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
         {[
           { k: "Zero", v: "anúncios, sempre" },
-          { k: "88%", v: "da receita ao artista" },
+          { k: "88%", v: "da receita ao autor" },
           { k: "Semanal", v: "pagamentos sem mínimo" },
         ].map((s) => (
           <div key={s.k} className="bg-background p-7">

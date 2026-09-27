@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { searchAll, type SearchHit } from "@/lib/beyond-data";
+import { useQuery } from "@tanstack/react-query";
+import { searchAll, type PublicArtist, type SearchHit, type Work } from "@/lib/beyond-data";
 
 type SiteSearchProps = {
   /** Quando true, o campo de busca fica sempre visível (modo header inline) */
@@ -14,7 +15,22 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => searchAll(query), [query]);
+  // Busca no catálogo real (mesmas queries da home — compartilham cache)
+  const wantsData = query.trim().length > 0;
+  const { data: works = [] } = useQuery<Work[]>({
+    queryKey: ["works"],
+    queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
+    staleTime: 60_000,
+    enabled: wantsData,
+  });
+  const { data: artists = [] } = useQuery<PublicArtist[]>({
+    queryKey: ["artists"],
+    queryFn: () => fetch("/api/artists").then((r) => r.json() as Promise<PublicArtist[]>),
+    staleTime: 60_000,
+    enabled: wantsData,
+  });
+
+  const results = useMemo(() => searchAll(query, works, artists), [query, works, artists]);
   const empty = query.trim().length > 0 && !results.works.length && !results.artists.length;
   const showDropdown = (inline ? true : open) && query.trim().length > 0;
 
@@ -60,7 +76,7 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
       {!inline && !open && (
         <button
           onClick={() => setOpen(true)}
-          aria-label="Buscar obras e artistas"
+          aria-label="Buscar obras e autores"
           title="Buscar (Ctrl+K)"
           className="flex items-center gap-2 border border-transparent px-1.5 py-1.5 text-muted-foreground transition-colors hover:text-gilt"
         >
@@ -82,7 +98,7 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Obras, artistas, categorias…"
+            placeholder="Obras, autores, categorias…"
             className={`bg-transparent text-sm outline-none placeholder:text-white/40 ${
               inline ? "w-full text-white" : "w-40 sm:w-56 placeholder:text-muted-foreground"
             }`}
@@ -125,7 +141,7 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
           )}
 
           {results.artists.length > 0 && (
-            <ResultGroup label="Artistas">
+            <ResultGroup label="Autores">
               {results.artists.map((hit) => (
                 <Link
                   key={hit.slug}

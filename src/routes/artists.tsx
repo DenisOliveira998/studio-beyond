@@ -2,18 +2,20 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useQuery } from "@tanstack/react-query";
 import type { ArtistSummary } from "@/lib/beyond-db";
+import { loaderFetch } from "@/lib/loader-fetch";
 
 export const Route = createFileRoute("/artists")({
+  loader: async () => ({ artists: await loaderFetch<ArtistSummary[]>("/api/artists", []) }),
   head: () => ({
     meta: [
-      { title: "Autores e Artistas | The Beyond — Publicação Independente" },
+      { title: "Autores | The Beyond — Publicação Independente" },
       {
         name: "description",
         content:
           "Conheça os escritores, mangakistas e quadrinistas que publicam no The Beyond. Obras autorais de mangá, HQ, livro e conto com curadoria independente e sem anúncios.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Autores e Artistas | The Beyond" },
+      { property: "og:title", content: "Autores | The Beyond" },
       {
         property: "og:description",
         content:
@@ -29,17 +31,19 @@ export const Route = createFileRoute("/artists")({
 });
 
 function ArtistsPage() {
+  const initial = Route.useLoaderData();
   const { data: artists = [], isLoading } = useQuery<ArtistSummary[]>({
     queryKey: ["artists"],
     queryFn: () => fetch("/api/artists").then((r) => r.json() as Promise<ArtistSummary[]>),
     staleTime: 60_000,
+    initialData: initial.artists,
   });
 
   return (
     <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
-      <p className="eyebrow">O elenco</p>
+      <p className="eyebrow">Quem publica</p>
       <h1 className="mt-5 max-w-2xl font-display text-5xl leading-tight tracking-tight">
-        Artistas residentes
+        Autores da casa
       </h1>
 
       <div className="mt-10 divide-y divide-border border-y border-border">
@@ -56,7 +60,7 @@ function ArtistsPage() {
             ))}
           </>
         ) : artists.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Nenhum artista publicou obras ainda.</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">Nenhum autor publicou obras ainda.</p>
         ) : artists.map((a) => (
           <Link
             key={a.slug}

@@ -4,10 +4,14 @@ import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/auth";
+import { safeRedirect } from "@/lib/redirect";
 
 export const Route = createFileRoute("/criar")({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
+    typeof search["redirect"] === "string" ? { redirect: search["redirect"] } : {},
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Criar conta — The Beyond" },
       { name: "description", content: "Crie sua conta de leitor no The Beyond e comece a ler agora." },
       { property: "og:title", content: "Criar conta — The Beyond" },
@@ -43,14 +47,15 @@ function PasswordRules({ password }: { password: string }) {
 function CriarPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
+  const redirectTo = safeRedirect(search.redirect);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
 
   useEffect(() => {
-    if (!authLoading && user) void navigate({ to: "/" });
-  }, [user, authLoading, navigate]);
+    if (!authLoading && user) void navigate({ to: redirectTo });
+  }, [user, authLoading, navigate, redirectTo]);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [signingGoogle, setSigningGoogle] = useState(false);
@@ -67,17 +72,13 @@ function CriarPage() {
       toast.error("A senha não atende os requisitos de segurança.");
       return;
     }
-    if (password !== confirm) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
     setLoading(true);
     try {
       const result = await authClient.signUp.email({
         email: email.trim(),
         password,
         name: name.trim() || email.split("@")[0] || "",
-        callbackURL: "/",
+        callbackURL: redirectTo,
       });
       if (result?.error) {
         const msg = result.error.message ?? "";
@@ -87,8 +88,8 @@ function CriarPage() {
           toast.error(msg || "Erro ao criar conta.");
         }
       } else {
-        toast.success("Conta criada! Bem-vindo ao The Beyond.");
-        window.location.href = "/";
+        toast.success("Conta criada. Boas-vindas ao The Beyond.");
+        window.location.href = redirectTo;
       }
     } catch {
       toast.error("Erro ao criar conta. Tente novamente.");
@@ -100,7 +101,7 @@ function CriarPage() {
   async function handleGoogle() {
     setSigningGoogle(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: redirectTo });
       if (result?.error) {
         toast.error(result.error.message ?? "Erro ao entrar com Google.");
         setSigningGoogle(false);
@@ -123,7 +124,7 @@ function CriarPage() {
           Conta de Leitor criada em segundos. Acesso completo ao acervo sem anúncios, sem interrupções.
         </p>
         <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
-          <li>Papel Leitor por padrão — leia qualquer obra do acervo.</li>
+          <li>Salve obras e continue de onde parou.</li>
           <li>Quer publicar? Candidate-se como autor após criar a conta.</li>
           <li className="text-xs text-muted-foreground/60">
             Seus dados não são compartilhados ou vendidos.
@@ -211,24 +212,9 @@ function CriarPage() {
             <PasswordRules password={password} />
           </label>
 
-          <label className="block">
-            <span className="eyebrow">Confirmar senha</span>
-            <input
-              type={showPw ? "text" : "password"}
-              required
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="••••••••"
-              className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
-            />
-            {confirm && password !== confirm && (
-              <p className="mt-1 text-xs text-red-400">As senhas não coincidem.</p>
-            )}
-          </label>
-
           <button
             type="submit"
-            disabled={loading || !pwValid || password !== confirm}
+            disabled={loading || !pwValid}
             className="btn-type w-full bg-primary py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {loading ? "Criando conta…" : "Criar conta"}
@@ -237,7 +223,7 @@ function CriarPage() {
 
         <p className="text-xs text-muted-foreground text-center">
           Já tem uma conta?{" "}
-          <Link to="/entrar" className="text-gilt transition-colors hover:text-gilt/80">
+          <Link to="/entrar" search={search} className="text-gilt transition-colors hover:text-gilt/80">
             Entrar aqui
           </Link>
         </p>

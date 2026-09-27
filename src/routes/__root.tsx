@@ -15,6 +15,8 @@ import { SiteFooter, SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
+import { DEFAULT_OG_IMAGE, siteUrl } from "@/lib/site-url";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -105,6 +107,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:description",
         content: "Plataforma de publicação independente sem anúncios. 88% da receita vai para quem cria.",
       },
+      { property: "og:image", content: siteUrl(DEFAULT_OG_IMAGE) },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:image", content: siteUrl(DEFAULT_OG_IMAGE) },
+      { "script:ld+json": organizationJsonLd() },
+      { "script:ld+json": websiteJsonLd() },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

@@ -36,7 +36,7 @@ export function DonateDialog({
             Apoiar {artistName}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
-            Uma doação, direto para o ateliê. Sem assinatura, sem amarras.
+            Uma doação, direto para quem escreveu. Sem assinatura, sem amarras.
           </DialogDescription>
         </DialogHeader>
 

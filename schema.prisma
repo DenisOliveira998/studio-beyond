@@ -366,3 +366,27 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// Lista de espera do plano Leitor Assíduo (/planos em construção)
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  plan      String   @default("") // monthly | quarterly | yearly
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_entries")
+}
+
+// Perfil público do autor (bio, foto e redes) — chave = id do usuário
+model AuthorBio {
+  userId    String   @id
+  bio       String   @db.Text
+  avatarUrl String   @db.Text
+  city      String   @default("")
+  instagram String   @default("")
+  website   String   @default("")
+  updatedAt DateTime @updatedAt
+
+  @@map("author_bios")
+}

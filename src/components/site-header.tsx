@@ -23,11 +23,11 @@ const DEFAULT_CONFIG: SiteConfigData = {
 };
 
 const nav = [
-  { to: "/", label: "Obras" },
-  { to: "/artists", label: "Artistas" },
   { to: "/explorar", label: "Explorar" },
+  { to: "/artists", label: "Autores" },
+  { to: "/biblioteca", label: "Biblioteca" },
   { to: "/planos", label: "Planos" },
-  { to: "/sobre", label: "Quem somos" },
+  { to: "/candidatura-autor", label: "Publique aqui" },
 ];
 
 function UserMenu() {
@@ -172,12 +172,20 @@ export function SiteHeader() {
           ) : user ? (
             <UserMenu />
           ) : (
-            <Link
-              to="/entrar"
-              className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
-            >
-              Entrar
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/entrar"
+                className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
+              >
+                Entrar
+              </Link>
+              <Link
+                to="/criar"
+                className="btn-type hidden bg-gilt px-3 py-1.5 text-xs font-bold text-ink transition-opacity hover:opacity-90 sm:inline-block"
+              >
+                Criar conta
+              </Link>
+            </div>
           )}
           <ThemeToggle />
 
@@ -225,7 +233,14 @@ export function SiteHeader() {
               ))}
             </nav>
             {!loading && !user && (
-              <div className="px-5 pb-6 mt-auto">
+              <div className="mt-auto flex flex-col gap-3 px-5 pb-6">
+                <Link
+                  to="/criar"
+                  onClick={() => setMobileOpen(false)}
+                  className="btn-type block bg-gilt px-4 py-2.5 text-center text-xs font-bold text-ink transition-opacity hover:opacity-90"
+                >
+                  Criar conta
+                </Link>
                 <Link
                   to="/entrar"
                   onClick={() => setMobileOpen(false)}
@@ -243,9 +258,10 @@ export function SiteHeader() {
 }
 
 const navLinks = [
-  { to: "/", label: "Obras" },
-  { to: "/artists", label: "Artistas" },
+  { to: "/", label: "Início" },
   { to: "/explorar", label: "Explorar categorias" },
+  { to: "/artists", label: "Autores" },
+  { to: "/biblioteca", label: "Biblioteca clássica" },
   { to: "/planos", label: "Planos de leitura" },
   { to: "/sobre", label: "Quem somos" },
   { to: "/contato", label: "Contato" },
@@ -253,8 +269,8 @@ const navLinks = [
 
 const accountLinks = [
   { to: "/entrar", label: "Entrar" },
-  { to: "/planos", label: "Planos de assinatura" },
-  { to: "/candidatura-autor", label: "Candidatura de Autor" },
+  { to: "/criar", label: "Criar conta" },
+  { to: "/candidatura-autor", label: "Publique aqui" },
 ] as const;
 
 const legalLinks = [

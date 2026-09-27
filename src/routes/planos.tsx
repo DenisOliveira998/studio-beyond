@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState } from "react";
-import { Check, X, CreditCard, Smartphone, ChevronDown, AlertCircle } from "lucide-react";
+import { Check, X, CreditCard, Smartphone, ChevronDown, Hammer } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { faqJsonLd } from "@/lib/seo";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -10,17 +12,18 @@ export const Route = createFileRoute("/planos")({
       {
         name: "description",
         content:
-          "Assine o The Beyond e apoie autores independentes de livros, mangás, HQs e contos. Acesso a curadoria exclusiva, obras em primeira mão e leitura sem interrupções.",
+          "Plano Leitor Assíduo do The Beyond (em construção): leitura ilimitada de livros, mangás, HQs e contos autorais. Entre na lista de espera.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Planos | The Beyond — Apoie Autores Independentes" },
       {
         property: "og:description",
-        content: "Assine o The Beyond: curadoria exclusiva, acesso antecipado e zero anúncios.",
+        content: "Leitura ilimitada, sem anúncios. O plano Leitor Assíduo está em construção — entre na lista de espera.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/planos` },
       { name: "twitter:card", content: "summary_large_image" },
+      { "script:ld+json": faqJsonLd(FAQ) },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/planos` }],
   }),
@@ -50,14 +53,13 @@ const PLANS: Plan[] = [
     name: "Mensal",
     monthlyPrice: "19,90",
     totalPrice: "19,90",
-    billing: "cobrado mensalmente",
+    billing: "R$ 19,90 por mês",
     months: 1,
     featured: false,
     badge: null,
     benefits: [
-      "Acesso a obras VIP exclusivas",
-      "Badge de Leitor Assíduo no perfil",
-      "Cancele quando quiser",
+      "Leitura ilimitada, sem limite diário",
+      "Selo de Leitor Assíduo no perfil",
     ],
     buttonStyle: "ghost",
   },
@@ -66,14 +68,13 @@ const PLANS: Plan[] = [
     name: "Trimestral",
     monthlyPrice: "16,90",
     totalPrice: "50,70",
-    billing: "cobrado R$ 50,70 a cada 3 meses",
+    billing: "R$ 50,70 por 3 meses",
     months: 3,
     featured: false,
-    badge: null,
+    badge: "Economize 15%",
     benefits: [
-      "Acesso a obras VIP exclusivas",
-      "Badge de Leitor Assíduo no perfil",
-      "Cancele quando quiser",
+      "Leitura ilimitada, sem limite diário",
+      "Selo de Leitor Assíduo no perfil",
     ],
     buttonStyle: "secondary",
   },
@@ -82,14 +83,13 @@ const PLANS: Plan[] = [
     name: "Anual",
     monthlyPrice: "12,90",
     totalPrice: "154,80",
-    billing: "cobrado R$ 154,80 por ano",
+    billing: "R$ 154,80 por ano",
     months: 12,
     featured: true,
-    badge: "MELHOR VALOR",
+    badge: "Economize R$ 84 por ano",
     benefits: [
-      "Acesso a obras VIP exclusivas",
-      "Badge de Leitor Assíduo no perfil",
-      "Cancele quando quiser",
+      "Leitura ilimitada, sem limite diário",
+      "Selo de Leitor Assíduo no perfil",
       "Acesso antecipado a obras em lançamento",
       "Seu nome na lista de apoiadores da plataforma",
     ],
@@ -99,56 +99,101 @@ const PLANS: Plan[] = [
 
 const FAQ = [
   {
-    q: "Posso cancelar quando quiser?",
-    a: "Sim, você cancela a qualquer momento sem taxa ou multa. O acesso continua até o fim do período já pago.",
+    q: "Quando o plano Leitor Assíduo abre?",
+    a: "Assim que os pagamentos forem ativados. Quem está na lista de espera é avisado primeiro, por e-mail.",
   },
   {
-    q: "O plano VIP remove anúncios?",
-    a: "A plataforma já não tem anúncios — esse é um princípio do The Beyond. O VIP dá acesso a obras e conteúdos exclusivos que não aparecem no feed aberto.",
+    q: "Entrar na lista de espera cobra alguma coisa?",
+    a: "Não. É só o seu e-mail. Nenhum valor é cobrado e você decide depois se quer assinar.",
   },
   {
-    q: "Como funciona a cobrança?",
-    a: "Você paga uma vez e tem acesso pelo período escolhido. Simples assim.",
+    q: "Preciso assinar para ler?",
+    a: "Não. A leitura gratuita continua aberta. O plano remove o limite diário de leitura.",
   },
   {
-    q: "Minha assinatura renova automaticamente?",
-    a: "Não. Você recebe um aviso antes do vencimento e decide se quer renovar. Sem cobranças surpresa.",
+    q: "O plano remove anúncios?",
+    a: "O The Beyond não tem anúncios — esse é um princípio da plataforma, para todos os leitores.",
+  },
+  {
+    q: "Como vai funcionar a cobrança?",
+    a: "Os detalhes de cobrança e cancelamento serão publicados nesta página antes da abertura.",
   },
 ];
 
-type ModalType = "success" | "failure" | null;
-
-function addMonths(months: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d.toLocaleDateString("pt-BR");
-}
-
 function PlansPage() {
-  const [modal, setModal] = useState<ModalType>(null);
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [error, setError] = useState("");
 
-  function openModal(plan: Plan) {
+  function openWaitlist(plan: Plan) {
     setSelectedPlan(plan);
-    setModal("success");
+    setEmail((prev) => prev || user?.email || "");
+    setJoined(false);
+    setError("");
+  }
+
+  function closeWaitlist() {
+    setSelectedPlan(null);
+  }
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), plan: selectedPlan.id }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Não foi possível entrar na lista agora.");
+      }
+      setJoined(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível entrar na lista agora.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
+      {/* Selo de construção */}
+      <div
+        className="mb-10 flex items-center gap-3 px-4 py-3 text-xs"
+        style={{ border: `1px solid ${GOLD}50`, background: `${GOLD}10`, fontFamily: TAHOMA }}
+      >
+        <Hammer className="size-4 shrink-0" strokeWidth={1.5} style={{ color: GOLD }} />
+        <span>
+          <strong className="uppercase tracking-[0.18em]" style={{ color: GOLD }}>
+            Em construção
+          </strong>
+          <span className="text-muted-foreground">
+            {" "}— os pagamentos ainda não estão ativos. Entre na lista de espera e avisamos quando o plano abrir.
+          </span>
+        </span>
+      </div>
+
       {/* Header */}
       <p
         className="text-[0.65rem] font-bold uppercase tracking-[0.22em]"
         style={{ fontFamily: TAHOMA, color: GOLD }}
       >
-        Planos Leitor Assíduo
+        Leitor Assíduo
       </p>
       <h1 className="hero-type mt-5 max-w-2xl text-4xl sm:text-5xl">
-        Apoie a arte. Leia sem limites.
+        Leia sem limite. Apoie quem escreve.
       </h1>
       <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-        Você pode usar o The Beyond sem assinar — o feed permanece aberto. Assinantes entram
-        antes nas novas obras e acessam conteúdo exclusivo.
+        Você pode usar o The Beyond sem assinar — a leitura gratuita continua aberta. O plano Leitor
+        Assíduo remove o limite diário de leitura.
       </p>
 
       {/* Plans grid */}
@@ -162,12 +207,16 @@ function PlansPage() {
             }}
           >
             {/* Badge */}
-            {plan.badge && (
+            {plan.badge ? (
               <span
-                className="mb-4 inline-block px-2 py-1 text-[0.6rem] font-bold uppercase tracking-[0.15em]"
+                className="mb-4 inline-block self-start px-2 py-1 text-[0.6rem] font-bold uppercase tracking-[0.15em]"
                 style={{ fontFamily: TAHOMA, color: GOLD, border: `1px solid ${GOLD}50` }}
               >
                 {plan.badge}
+              </span>
+            ) : (
+              <span className="mb-4 inline-block py-1 text-[0.6rem]" aria-hidden>
+                &nbsp;
               </span>
             )}
 
@@ -208,46 +257,32 @@ function PlansPage() {
               ))}
             </ul>
 
-            {/* Button with "Em breve" tooltip */}
-            <div className="group relative mt-8">
-              <button
-                onClick={() => openModal(plan)}
-                className="btn-type w-full py-3 text-xs transition-all"
-                style={
-                  plan.buttonStyle === "primary"
-                    ? {
-                        background: GOLD,
-                        color: "#121519",
-                        fontFamily: TAHOMA,
-                        fontWeight: "bold",
-                      }
-                    : plan.buttonStyle === "secondary"
-                    ? {
-                        background: "var(--secondary)",
-                        color: "var(--secondary-foreground)",
-                        fontFamily: TAHOMA,
-                      }
-                    : {
-                        border: "1px solid var(--border)",
-                        color: "var(--foreground)",
-                        fontFamily: TAHOMA,
-                      }
-                }
-              >
-                Começar
-              </button>
-              <span
-                className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-[0.15em] opacity-0 transition-opacity group-hover:opacity-100"
-                style={{
-                  fontFamily: TAHOMA,
-                  background: MODAL_BG,
-                  color: GOLD,
-                  border: `1px solid ${GOLD}40`,
-                }}
-              >
-                Em breve
-              </span>
-            </div>
+            <button
+              onClick={() => openWaitlist(plan)}
+              className="btn-type mt-8 w-full py-3 text-xs transition-all"
+              style={
+                plan.buttonStyle === "primary"
+                  ? {
+                      background: GOLD,
+                      color: "#121519",
+                      fontFamily: TAHOMA,
+                      fontWeight: "bold",
+                    }
+                  : plan.buttonStyle === "secondary"
+                  ? {
+                      background: "var(--secondary)",
+                      color: "var(--secondary-foreground)",
+                      fontFamily: TAHOMA,
+                    }
+                  : {
+                      border: "1px solid var(--border)",
+                      color: "var(--foreground)",
+                      fontFamily: TAHOMA,
+                    }
+              }
+            >
+              Entrar na lista de espera
+            </button>
           </div>
         ))}
       </div>
@@ -258,7 +293,7 @@ function PlansPage() {
           className="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
           style={{ fontFamily: TAHOMA }}
         >
-          Formas de pagamento:
+          Formas de pagamento previstas:
         </span>
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground">
@@ -276,24 +311,25 @@ function PlansPage() {
         className="mt-3 text-[0.65rem] text-muted-foreground"
         style={{ fontFamily: TAHOMA }}
       >
-        Pagamentos processados com segurança. Você decide se renova.
+        Pagamentos disponíveis quando o plano abrir.
       </p>
 
       <Link
-        to="/"
+        to="/explorar"
         className="rule-hover mt-6 inline-block text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        Continuar sem assinar
+        Continuar lendo de graça
       </Link>
 
       {/* FAQ */}
       <div className="mt-20 border-t border-border pt-14">
-        <p className="eyebrow mb-8">Perguntas frequentes</p>
+        <h2 className="eyebrow mb-8">Perguntas frequentes</h2>
         <div className="divide-y divide-border">
           {FAQ.map((item, i) => (
             <div key={i}>
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                aria-expanded={openFaq === i}
                 className="flex w-full items-center justify-between py-5 text-left text-sm font-bold transition-colors hover:text-gilt"
               >
                 {item.q}
@@ -311,14 +347,17 @@ function PlansPage() {
         </div>
       </div>
 
-      {/* Modals */}
-      {modal && (
+      {/* Modal — lista de espera */}
+      {selectedPlan && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-5"
           style={{ background: "rgba(0,0,0,0.76)" }}
-          onClick={() => setModal(null)}
+          onClick={closeWaitlist}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="waitlist-title"
             className="relative w-full max-w-md p-8"
             style={{
               background: MODAL_BG,
@@ -328,136 +367,68 @@ function PlansPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setModal(null)}
+              onClick={closeWaitlist}
+              aria-label="Fechar"
               className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="size-4" />
             </button>
 
-            {modal === "success" ? (
+            <p
+              className="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.2em]"
+              style={{ fontFamily: TAHOMA, color: GOLD }}
+            >
+              Lista de espera · {selectedPlan.name}
+            </p>
+
+            {joined ? (
               <>
-                <div
-                  className="mb-6 flex size-12 items-center justify-center"
-                  style={{
-                    border: `1px solid ${GOLD}40`,
-                    background: `${GOLD}14`,
-                    borderRadius: "2px",
-                  }}
-                >
-                  <Check className="size-6" strokeWidth={2} style={{ color: GOLD }} />
-                </div>
-                <p
-                  className="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.2em]"
-                  style={{ fontFamily: TAHOMA, color: GOLD }}
-                >
-                  Assinatura ativa
-                </p>
-                <h2 className="font-display text-xl font-bold text-foreground">
-                  Seja bem-vindo, Leitor Assíduo.
+                <h2 id="waitlist-title" className="font-display text-xl font-bold text-foreground">
+                  Você está na lista.
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  Sua assinatura está ativa. Agora você tem acesso a tudo que o The Beyond
-                  reservou para quem vai além.
+                  Avisamos <span className="text-foreground">{email.trim()}</span> assim que o plano
+                  abrir. Nenhum valor foi cobrado.
                 </p>
-                {selectedPlan && (
-                  <div
-                    className="mt-6 space-y-1.5 p-4"
-                    style={{ border: "1px solid var(--border)" }}
-                  >
-                    <p className="caption">Plano: {selectedPlan.name}</p>
-                    <p className="caption">Valor: R$ {selectedPlan.totalPrice}</p>
-                    <p className="caption">Vencimento: {addMonths(selectedPlan.months)}</p>
-                  </div>
-                )}
-                <div className="mt-6 flex flex-col gap-3">
-                  <Link
-                    to="/"
-                    onClick={() => setModal(null)}
-                    className="btn-type block w-full py-3 text-center text-xs transition-opacity hover:opacity-85"
-                    style={{
-                      background: GOLD,
-                      color: "#121519",
-                      fontFamily: TAHOMA,
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Explorar obras exclusivas
-                  </Link>
-                  <button
-                    onClick={() => setModal(null)}
-                    className="btn-type w-full py-3 text-xs text-foreground transition-colors hover:text-gilt"
-                    style={{ border: "1px solid var(--border)" }}
-                  >
-                    Ver meu perfil
-                  </button>
-                </div>
+                <Link
+                  to="/explorar"
+                  onClick={closeWaitlist}
+                  className="btn-type mt-6 block w-full py-3 text-center text-xs transition-opacity hover:opacity-85"
+                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                >
+                  Continuar lendo
+                </Link>
               </>
             ) : (
-              <>
-                <div
-                  className="mb-6 flex size-12 items-center justify-center"
-                  style={{
-                    border: "1px solid rgba(180,100,100,0.3)",
-                    background: "rgba(150,70,70,0.08)",
-                    borderRadius: "2px",
-                  }}
-                >
-                  <AlertCircle
-                    className="size-6"
-                    strokeWidth={1.5}
-                    style={{ color: "#c87070" }}
-                  />
-                </div>
-                <p
-                  className="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.2em]"
-                  style={{ fontFamily: TAHOMA, color: "#c87070" }}
-                >
-                  Pagamento não processado
-                </p>
-                <h2 className="font-display text-xl font-bold text-foreground">
-                  Algo deu errado.
+              <form onSubmit={(e) => void handleJoin(e)}>
+                <h2 id="waitlist-title" className="font-display text-xl font-bold text-foreground">
+                  O plano abre em breve.
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  Não conseguimos processar seu pagamento. Nenhum valor foi cobrado.
+                  Deixe seu e-mail e avisamos no dia. Nenhum valor é cobrado agora.
                 </p>
-                <ul className="mt-5 space-y-2">
-                  {[
-                    "Saldo insuficiente",
-                    "Dados do cartão incorretos",
-                    "Pagamento Pix expirado",
-                  ].map((r) => (
-                    <li
-                      key={r}
-                      className="flex items-center gap-2 text-xs text-muted-foreground"
-                    >
-                      <span className="size-1 shrink-0 rounded-full bg-muted-foreground" />
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6 flex flex-col gap-3">
-                  <button
-                    onClick={() => setModal(null)}
-                    className="btn-type w-full py-3 text-xs transition-opacity hover:opacity-85"
-                    style={{
-                      background: GOLD,
-                      color: "#121519",
-                      fontFamily: TAHOMA,
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Tentar novamente
-                  </button>
-                  <Link
-                    to="/contato"
-                    onClick={() => setModal(null)}
-                    className="btn-type block w-full py-3 text-center text-xs text-foreground transition-colors hover:text-gilt"
-                    style={{ border: "1px solid var(--border)" }}
-                  >
-                    Falar com suporte
-                  </Link>
-                </div>
-              </>
+                <label className="mt-6 block">
+                  <span className="eyebrow">E-mail</span>
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="voce@exemplo.com"
+                    className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+                  />
+                </label>
+                {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="btn-type mt-6 w-full py-3 text-xs transition-opacity hover:opacity-85 disabled:opacity-60"
+                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                >
+                  {sending ? "Enviando…" : "Quero ser avisado"}
+                </button>
+              </form>
             )}
           </div>
         </div>

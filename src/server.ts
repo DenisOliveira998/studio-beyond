@@ -539,6 +539,163 @@ export default {
         });
       }
 
+      // ── SEO: robots.txt, sitemap.xml, llms.txt (dinâmicos, seguem SITE_URL) ──
+
+      if (pathname === "/robots.txt") {
+        const { SITE_URL } = await import("./lib/site-url");
+        const body = [
+          "User-agent: *",
+          "Allow: /",
+          "Disallow: /admin",
+          "Disallow: /dashboard",
+          "Disallow: /perfil",
+          "",
+          `Sitemap: ${SITE_URL}/sitemap.xml`,
+          "",
+        ].join("\n");
+        return new Response(body, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" },
+        });
+      }
+
+      if (pathname === "/sitemap.xml") {
+        const { SITE_URL } = await import("./lib/site-url");
+        const { fetchApprovedWorks, fetchDistinctArtists } = await import("./lib/beyond-db");
+        const [works, artists] = await Promise.all([
+          fetchApprovedWorks().catch(() => []),
+          fetchDistinctArtists().catch(() => []),
+        ]);
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const url = (path: string, lastmod?: string) =>
+          `  <url><loc>${esc(`${SITE_URL}${path}`)}</loc>${lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : ""}</url>`;
+        const mediums = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
+        const usedMediums = new Set(works.map((w) => w.medium));
+        const lines = [
+          url("/"),
+          url("/explorar"),
+          ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m}`)),
+          url("/artists"),
+          url("/biblioteca"),
+          url("/planos"),
+          url("/sobre"),
+          url("/candidatura-autor"),
+          url("/contato"),
+          url("/termos"),
+          url("/privacidade"),
+          ...works.map((w) => url(`/work/${encodeURIComponent(w.slug)}`, w.updatedAt.toISOString())),
+          ...artists.filter((a) => a.slug).map((a) => url(`/artist/${encodeURIComponent(a.slug)}`)),
+        ];
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${lines.join("\n")}\n</urlset>\n`;
+        return new Response(xml, {
+          headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" },
+        });
+      }
+
+      if (pathname === "/llms.txt") {
+        const { SITE_URL } = await import("./lib/site-url");
+        const body = `# The Beyond
+
+> Plataforma editorial independente, sem anúncios, para ler e publicar livros, mangás, HQs e contos autorais brasileiros. 88% da receita vai para o autor.
+
+## Para leitores
+- Leitura gratuita, sem anúncios e sem interrupções.
+- Apoio direto: o leitor pode doar para o autor; 88% do valor chega a ele.
+- Plano Leitor Assíduo (em construção): leitura ilimitada, sem limite diário. Lista de espera aberta.
+
+## Para autores
+- Entrada por curadoria humana: o autor envia uma candidatura e recebe resposta em até 15 dias úteis. Candidatar-se não custa nada.
+- Renda: R$ 0,004 por visualização + doações diretas dos leitores.
+- A plataforma retém 12%; 88% é do autor. Repasse semanal, sem valor mínimo.
+- A obra continua do autor; o The Beyond tem apenas licença para exibi-la.
+
+## Páginas principais
+- [Início](${SITE_URL}/): destaques e catálogo por categoria
+- [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
+- [Autores](${SITE_URL}/artists): autores publicados
+- [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
+- [Planos](${SITE_URL}/planos): plano Leitor Assíduo (em construção)
+- [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor
+- [Quem somos](${SITE_URL}/sobre)
+- [Sitemap](${SITE_URL}/sitemap.xml)
+`;
+        return new Response(body, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" },
+        });
+      }
+
+      // Lista de espera do plano Leitor Assíduo
+      if (pathname === "/api/waitlist" && request.method === "POST") {
+        const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
+        const email = (body.email ?? "").trim().toLowerCase();
+        const plan = ["monthly", "quarterly", "yearly"].includes(body.plan ?? "") ? body.plan! : "";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+          return new Response(JSON.stringify({ error: "Informe um e-mail válido." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const session = await (await import("./lib/auth-server")).auth.api
+          .getSession({ headers: request.headers })
+          .catch(() => null);
+        const { addToWaitlist } = await import("./lib/beyond-db");
+        try {
+          await addToWaitlist({ email, plan, userId: session?.user?.id ?? null });
+        } catch (err) {
+          console.error("waitlist: falha ao salvar (tabela waitlist_entries existe?)", err);
+          return new Response(JSON.stringify({ error: "Não foi possível salvar agora. Tente novamente em instantes." }), {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
+      if (pathname === "/api/admin/waitlist" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { fetchWaitlist } = await import("./lib/beyond-db");
+        const rows = await fetchWaitlist().catch(() => []);
+        return new Response(JSON.stringify(rows), { headers: { "content-type": "application/json" } });
+      }
+
+      // Bio pública do próprio autor (editar no painel)
+      if (pathname === "/api/profile/author-bio") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        if (request.method === "GET") {
+          const { getOwnAuthorBio } = await import("./lib/beyond-db");
+          return new Response(JSON.stringify(await getOwnAuthorBio(session.user.id)), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (request.method === "PATCH") {
+          const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+          const httpOnly = (v: string) => (v === "" || /^https?:\/\//i.test(v) ? v : `https://${v}`);
+          const data = {
+            bio: str(raw["bio"], 1200),
+            avatarUrl: str(raw["avatarUrl"], 1000),
+            city: str(raw["city"], 80),
+            instagram: str(raw["instagram"], 200),
+            website: httpOnly(str(raw["website"], 300)),
+          };
+          const { saveAuthorBio } = await import("./lib/beyond-db");
+          try {
+            await saveAuthorBio(session.user.id, data);
+          } catch (err) {
+            console.error("author-bio: falha ao salvar (tabela author_bios existe?)", err);
+            return new Response(JSON.stringify({ error: "Não foi possível salvar o perfil agora." }), {
+              status: 503,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        }
+      }
+
       // Candidatura de autor → salva no DB + Resend
       if (pathname === "/api/candidatura" && request.method === "POST") {
         const body = (await request.json()) as {
@@ -778,7 +935,10 @@ export default {
         }
         const works = dbWorks.map(dbWorkToWork);
         const artistName = dbWorks[0]!.artistName;
-        return new Response(JSON.stringify({ artistName, artistSlug, works }), {
+        const { getAuthorBio } = await import("./lib/beyond-db");
+        const authorId = dbWorks.find((w) => w.authorId)?.authorId ?? null;
+        const bio = await getAuthorBio(authorId);
+        return new Response(JSON.stringify({ artistName, artistSlug, works, bio }), {
           headers: { "content-type": "application/json" },
         });
       }

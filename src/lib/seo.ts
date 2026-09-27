@@ -1,0 +1,110 @@
+// Dados estruturados (JSON-LD) — usados via `{ "script:ld+json": … }` no head() das rotas.
+import { SITE_URL, absoluteUrl, siteUrl } from "@/lib/site-url";
+import { MEDIUM_LABEL, type AuthorBioData, type Work } from "@/lib/beyond-data";
+import { stripHtml } from "@/lib/utils";
+
+export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
+
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": ORGANIZATION_ID,
+    name: "The Beyond",
+    url: `${SITE_URL}/`,
+    logo: siteUrl("/favicon.svg"),
+    description:
+      "Plataforma editorial independente, sem anúncios, para ler e publicar livros, mangás, HQs e contos autorais brasileiros.",
+  };
+}
+
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
+    name: "The Beyond",
+    url: `${SITE_URL}/`,
+    inLanguage: "pt-BR",
+    publisher: { "@id": ORGANIZATION_ID },
+  };
+}
+
+export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: siteUrl(item.path),
+    })),
+  };
+}
+
+/** Livro/conto/light novel → Book; mangá/HQ/manhwa/manhua → ComicStory. */
+export function workJsonLd(work: Work) {
+  const isComic = ["manga", "hq", "manhwa", "manhua"].includes(work.medium);
+  const tags = work.tags ?? [];
+  return {
+    "@context": "https://schema.org",
+    "@type": isComic ? "ComicStory" : "Book",
+    name: stripHtml(work.title),
+    url: siteUrl(`/work/${work.slug}`),
+    description: stripHtml(work.excerpt),
+    inLanguage: "pt-BR",
+    genre: [MEDIUM_LABEL[work.medium], ...(work.genre ? [work.genre] : []), ...tags],
+    isAccessibleForFree: true,
+    ...(work.cover ? { image: absoluteUrl(work.cover) } : {}),
+    ...(work.publishedAt ? { datePublished: work.publishedAt.slice(0, 10) } : {}),
+    ...(work.artistName
+      ? {
+          author: {
+            "@type": "Person",
+            name: work.artistName,
+            url: siteUrl(`/artist/${work.artistSlug}`),
+          },
+        }
+      : {}),
+    publisher: { "@id": ORGANIZATION_ID },
+  };
+}
+
+export function authorProfileJsonLd(input: { name: string; slug: string; bio: AuthorBioData; worksCount: number }) {
+  const sameAs = [instagramUrl(input.bio.instagram), input.bio.website].filter((v) => /^https?:\/\//i.test(v));
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url: siteUrl(`/artist/${input.slug}`),
+    mainEntity: {
+      "@type": "Person",
+      name: input.name,
+      url: siteUrl(`/artist/${input.slug}`),
+      ...(input.bio.bio ? { description: input.bio.bio } : {}),
+      ...(input.bio.avatarUrl ? { image: absoluteUrl(input.bio.avatarUrl) } : {}),
+      ...(input.bio.city ? { homeLocation: { "@type": "Place", name: input.bio.city } } : {}),
+      ...(sameAs.length ? { sameAs } : {}),
+    },
+  };
+}
+
+export function faqJsonLd(items: { q: string; a: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+}
+
+/** Link de Instagram: aceita "@usuario", "usuario" ou URL completa. */
+export function instagramUrl(value: string): string {
+  const v = value.trim();
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v)) return v;
+  return `https://instagram.com/${v.replace(/^@/, "")}`;
+}

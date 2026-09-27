@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
-import { MEDIUM_LABEL, compact, getArtist, type Work } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, compact, getArtist, type Work } from "@/lib/beyond-data";
 import { stripHtml } from "@/lib/utils";
 
 export function WorkCard({ work, priority = false }: { work: Work; priority?: boolean }) {
@@ -38,10 +38,10 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
         </p>
         <h3 className="font-display text-lg font-bold leading-tight">
           <Link to="/work/$slug" params={{ slug: work.slug }} className="rule-hover">
-            {work.title}
+            {cleanTitle}
           </Link>
         </h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{work.excerpt}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{stripHtml(work.excerpt)}</p>
         <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
           {artistName && (
             <Link
@@ -52,10 +52,12 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
               {artistName}
             </Link>
           )}
-          <span aria-hidden>·</span>
-          <span>{compact(work.clicks)} visualizações</span>
-          <span aria-hidden>·</span>
-          <span>{compact(work.likes)} curtidas</span>
+          {work.clicks >= VIEWS_DISPLAY_MIN && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{compact(work.clicks)} visualizações</span>
+            </>
+          )}
         </div>
       </div>
     </article>

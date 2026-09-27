@@ -4,10 +4,14 @@ import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/auth";
+import { safeRedirect } from "@/lib/redirect";
 
 export const Route = createFileRoute("/entrar")({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
+    typeof search["redirect"] === "string" ? { redirect: search["redirect"] } : {},
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Entrar — The Beyond" },
       { name: "description", content: "Acesse sua conta no The Beyond com e-mail e senha ou Google." },
       { property: "og:title", content: "Entrar — The Beyond" },
@@ -45,11 +49,13 @@ function PasswordRules({ password }: { password: string }) {
 function EntrarPage() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
+  const redirectTo = safeRedirect(search.redirect);
   const [mode, setMode] = useState<Mode>("login");
 
   useEffect(() => {
-    if (!loading && (user ?? profile)) void navigate({ to: "/" });
-  }, [user, profile, loading, navigate]);
+    if (!loading && (user ?? profile)) void navigate({ to: redirectTo });
+  }, [user, profile, loading, navigate, redirectTo]);
 
   // login
   const [email, setEmail] = useState("");
@@ -84,7 +90,7 @@ function EntrarPage() {
           toast.error("E-mail ou senha incorretos.");
         }
       } else {
-        window.location.href = "/";
+        window.location.href = redirectTo;
       }
     } catch {
       toast.error("Erro ao entrar. Verifique suas credenciais.");
@@ -97,7 +103,7 @@ function EntrarPage() {
   async function handleGoogle() {
     setSigningGoogle(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: redirectTo });
       if (result?.error) {
         toast.error(result.error.message ?? "Erro ao entrar com Google.");
         setSigningGoogle(false);
@@ -125,7 +131,7 @@ function EntrarPage() {
         return;
       }
       setMode("forgot-otp");
-      toast.success("Código enviado! Verifique sua caixa de entrada.");
+      toast.success("Código enviado. Verifique sua caixa de entrada.");
     } catch {
       toast.error("Erro de rede. Tente novamente.");
     } finally {
@@ -176,8 +182,8 @@ function EntrarPage() {
         toast.error(data.error ?? "Erro ao definir senha.");
         return;
       }
-      toast.success("Senha definida com sucesso!");
-      window.location.href = "/";
+      toast.success("Senha definida.");
+      window.location.href = redirectTo;
     } catch {
       toast.error("Erro de rede. Tente novamente.");
     } finally {
@@ -205,7 +211,7 @@ function EntrarPage() {
         {mode === "login" && (
           <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
             <li>Conta criada automaticamente no primeiro cadastro.</li>
-            <li>Novos leitores entram com papel Leitor por padrão.</li>
+            <li>Siga seus autores favoritos.</li>
             <li>Autores aprovados pela curadoria acessam o Painel do Autor.</li>
           </ul>
         )}
@@ -303,7 +309,7 @@ function EntrarPage() {
 
             <p className="text-xs text-muted-foreground text-center">
               Não tem uma conta?{" "}
-              <Link to="/criar" className="text-gilt transition-colors hover:text-gilt/80">
+              <Link to="/criar" search={search} className="text-gilt transition-colors hover:text-gilt/80">
                 Crie aqui
               </Link>
             </p>

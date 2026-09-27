@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useEffect, useRef, useState } from "react";
 import { Clock, Paperclip, Trash2, Upload } from "lucide-react";
@@ -26,18 +26,13 @@ export const Route = createFileRoute("/candidatura-autor")({
 });
 
 function ApplicationPage() {
-  const { user, profile, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
 
   const [realName, setRealName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
-
-  useEffect(() => {
-    if (!loading && !user && !profile) void navigate({ to: "/entrar" });
-  }, [user, profile, loading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -51,18 +46,6 @@ function ApplicationPage() {
   const [fileUrls, setFileUrls] = useState<{ name: string; url: string }[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []).slice(0, 5 - fileUrls.length);
@@ -163,8 +146,60 @@ function ApplicationPage() {
         <p className="mt-6 text-xs text-muted-foreground/70">
           Prazo: <strong className="text-muted-foreground">até 15 dias úteis</strong>. Nenhuma cobrança.
         </p>
+
+        <div className="mt-10 border border-gilt/30 bg-surface p-7">
+          <h2 className="eyebrow">Como você ganha</h2>
+          <ul className="mt-5 space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Leituras:</strong> R$ 0,004 por visualização.
+            </li>
+            <li>
+              <strong className="text-foreground">Apoio direto</strong> dos leitores, no valor que eles escolherem.
+            </li>
+            <li>
+              <strong className="text-foreground">88% é seu.</strong> A plataforma fica com 12% para se manter.
+            </li>
+            <li>
+              <strong className="text-foreground">Repasse semanal</strong>, sem valor mínimo.
+            </li>
+            <li>
+              <strong className="text-foreground">A obra continua sua.</strong> O The Beyond só tem licença para exibi-la.
+            </li>
+          </ul>
+        </div>
       </div>
 
+      {loading ? (
+        <div className="flex min-h-[40vh] items-center justify-center border border-border bg-surface">
+          <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
+        </div>
+      ) : !user ? (
+        <div className="self-start border border-border bg-surface p-7 sm:p-9">
+          <p className="eyebrow">Antes de enviar</p>
+          <h2 className="mt-4 font-display text-3xl tracking-tight">Entre ou crie sua conta.</h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            A candidatura fica ligada à sua conta — é por ela que você acompanha a resposta e, se
+            aprovado, acessa o Painel do Autor. Leva menos de um minuto.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/criar"
+              search={{ redirect: "/candidatura-autor" }}
+              className="btn-type flex-1 bg-primary px-5 py-3 text-center text-xs text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Criar conta
+            </Link>
+            <Link
+              to="/entrar"
+              search={{ redirect: "/candidatura-autor" }}
+              className="btn-type flex-1 border border-border px-5 py-3 text-center text-xs transition-colors hover:border-gilt hover:text-gilt"
+            >
+              Entrar
+            </Link>
+          </div>
+          <p className="caption mt-6">Candidatar-se não custa nada.</p>
+        </div>
+      ) : (
       <form
         className="border border-border bg-surface p-7 sm:p-9"
         onSubmit={(e) => void handleSubmit(e)}
@@ -287,6 +322,7 @@ function ApplicationPage() {
           Resposta em até 15 dias úteis. Nenhuma cobrança envolvida.
         </p>
       </form>
+      )}
     </div>
   );
 }

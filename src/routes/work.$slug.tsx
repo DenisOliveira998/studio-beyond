@@ -1,12 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, absoluteUrl } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
 import { ArrowUp, BookOpen, Bookmark, Check, FileDown, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
+import { LoginPrompt } from "@/components/login-prompt";
+import { breadcrumbJsonLd, workJsonLd } from "@/lib/seo";
 import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import type { CommentData } from "@/lib/beyond-db";
@@ -41,12 +43,22 @@ export const Route = createFileRoute("/work/$slug")({
       { name: "twitter:card", content: "summary_large_image" },
     ];
     if (work.cover) {
-      meta.push({ property: "og:image", content: work.cover });
-      meta.push({ name: "twitter:image", content: work.cover });
+      meta.push({ property: "og:image", content: absoluteUrl(work.cover) });
+      meta.push({ name: "twitter:image", content: absoluteUrl(work.cover) });
     }
     meta.push({ property: "og:url", content: `${SITE_URL}/work/${work.slug}` });
+    const jsonLd: Array<Record<string, unknown>> = [
+      { "script:ld+json": workJsonLd(work) },
+      {
+        "script:ld+json": breadcrumbJsonLd([
+          { name: "Início", path: "/" },
+          { name: MEDIUM_LABEL[work.medium], path: `/explorar/${work.medium}` },
+          { name: cleanTitle, path: `/work/${work.slug}` },
+        ]),
+      },
+    ];
     return {
-      meta,
+      meta: [...meta, ...jsonLd],
       links: [{ rel: "canonical", href: `${SITE_URL}/work/${work.slug}` }],
     };
   },
@@ -102,7 +114,13 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
       {!user ? (
         <div className="border border-border bg-surface p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <a href="/entrar" className="text-gilt underline-offset-2 hover:underline">Faça login</a> para deixar um comentário.
+            <a
+              href={`/entrar?redirect=${encodeURIComponent(`/work/${workSlug}`)}`}
+              className="text-gilt underline-offset-2 hover:underline"
+            >
+              Faça login
+            </a>{" "}
+            para deixar um comentário.
           </p>
         </div>
       ) : (
@@ -155,7 +173,7 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
 
 // ── Bookmark ─────────────────────────────────────────────────────
 
-function useBookmark(slug: string, artistSlug: string) {
+function useBookmark(slug: string, artistSlug: string, onRequireLogin: () => void) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data } = useQuery<{ favorited: boolean }>({
@@ -181,7 +199,7 @@ function useBookmark(slug: string, artistSlug: string) {
   });
 
   function toggle() {
-    if (!user) { toast.error("Faça login para salvar obras."); return; }
+    if (!user) { onRequireLogin(); return; }
     mutation.mutate();
   }
 
@@ -217,6 +235,8 @@ function WorkPage() {
   const [showBackTop, setShowBackTop] = useState(false);
   const [chapterOrder, setChapterOrder] = useState<"asc" | "desc">("asc");
   const [shareCopied, setShareCopied] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const cleanTitle = stripHtml(work.title);
   const topRef = useRef<HTMLDivElement>(null);
   const views = work.clicks + 1;
 
@@ -249,7 +269,7 @@ function WorkPage() {
   });
 
   // Bookmark
-  const { saved, toggle: toggleBookmark } = useBookmark(work.slug, artistSlug);
+  const { saved, toggle: toggleBookmark } = useBookmark(work.slug, artistSlug, () => setLoginOpen(true));
 
   // Follow
   const { data: followData } = useQuery<{ followed: boolean }>({
@@ -278,7 +298,7 @@ function WorkPage() {
     : [];
 
   function handleLike() {
-    if (!user) { toast.error("Faça login para curtir."); return; }
+    if (!user) { setLoginOpen(true); return; }
     likeMutation.mutate();
   }
 
@@ -293,6 +313,8 @@ function WorkPage() {
 
   return (
     <div ref={topRef} className="px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
+      {/* Um único H1 por página; os títulos visíveis (mobile/desktop) são decorativos */}
+      <h1 className="sr-only">{cleanTitle}</h1>
       <div className="flex flex-col gap-10 lg:flex-row lg:gap-10">
 
         {/* ── SIDEBAR ───────────────────────────────────────────── */}
@@ -318,9 +340,9 @@ function WorkPage() {
           <div className="flex flex-col gap-3 flex-1 lg:hidden">
             <div>
               <p className="eyebrow">{MEDIUM_LABEL[work.medium]}</p>
-              <h1 className="mt-1 font-display text-2xl leading-tight tracking-tight">
-                {work.title}
-              </h1>
+              <p className="mt-1 font-display text-2xl leading-tight tracking-tight" aria-hidden="true">
+                {cleanTitle}
+              </p>
             </div>
             {artistName && (
               <div className="flex flex-wrap items-center gap-2">
@@ -329,7 +351,7 @@ function WorkPage() {
                 </Link>
                 <button
                   onClick={() => {
-                    if (!user) { toast.error("Faça login para seguir artistas."); return; }
+                    if (!user) { setLoginOpen(true); return; }
                     followMutation.mutate();
                   }}
                   className={`text-[10px] uppercase tracking-[0.16em] border px-2.5 py-1 transition-colors ${
@@ -406,11 +428,15 @@ function WorkPage() {
 
             {/* Stats */}
             <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Visualizações</span>
-                <span className="font-mono tabular-nums">{compact(views)}</span>
-              </div>
-              <div className="h-px bg-border" />
+              {views >= VIEWS_DISPLAY_MIN && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Visualizações</span>
+                    <span className="font-mono tabular-nums">{compact(views)}</span>
+                  </div>
+                  <div className="h-px bg-border" />
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Curtidas</span>
                 <span className="font-mono tabular-nums">{compact(likeCount)}</span>
@@ -464,9 +490,9 @@ function WorkPage() {
           {/* Header (desktop only — mobile is in sidebar row above) */}
           <div className="hidden lg:block">
             <p className="eyebrow">{MEDIUM_LABEL[work.medium]}</p>
-            <h1 className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl">
-              {work.title}
-            </h1>
+            <p className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl" aria-hidden="true">
+              {cleanTitle}
+            </p>
 
             {/* Author + follow */}
             {artistName && (
@@ -480,7 +506,7 @@ function WorkPage() {
                 </Link>
                 <button
                   onClick={() => {
-                    if (!user) { toast.error("Faça login para seguir artistas."); return; }
+                    if (!user) { setLoginOpen(true); return; }
                     followMutation.mutate();
                   }}
                   className={`text-xs uppercase tracking-[0.16em] border px-3 py-1.5 transition-colors ${
@@ -610,7 +636,7 @@ function WorkPage() {
                   <Play className="h-4 w-4" />
                 </button>
                 <div className="flex-1">
-                  <p className="text-sm">{work.title}</p>
+                  <p className="text-sm">{cleanTitle}</p>
                   <div className="mt-2 h-px w-full bg-border">
                     <div className="h-px w-1/3 bg-gilt" />
                   </div>
@@ -674,7 +700,7 @@ function WorkPage() {
             {/* Mobile donate + stats */}
             <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6 lg:hidden">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span>{compact(views)} visualizações</span>
+                {views >= VIEWS_DISPLAY_MIN && <span>{compact(views)} visualizações</span>}
                 <span>{compact(likeCount)} curtidas</span>
                 {work.pages && <span>{work.pages} páginas</span>}
               </div>
@@ -710,6 +736,8 @@ function WorkPage() {
         <p className="eyebrow mb-6">Comentários</p>
         <CommentsSection workSlug={work.slug} />
       </section>
+
+      <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/work/${work.slug}`} />
 
       {/* ── Voltar ao topo ── */}
       {showBackTop && (

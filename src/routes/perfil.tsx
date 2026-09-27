@@ -9,6 +9,7 @@ export const Route = createFileRoute("/perfil")({
   head: () => ({
     meta: [
       { title: "Meu Perfil — The Beyond" },
+      { name: "robots", content: "noindex, nofollow" },
       { name: "description", content: "Sua leitura no The Beyond: obras favoritas, páginas lidas e progresso." },
       { property: "og:title", content: "Meu Perfil — The Beyond" },
       { property: "og:type", content: "website" },

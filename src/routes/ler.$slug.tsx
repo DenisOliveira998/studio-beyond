@@ -1,12 +1,43 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { MEDIUM_LABEL } from "@/lib/beyond-data";
+import { FREE_DAILY_QUOTA, MEDIUM_LABEL } from "@/lib/beyond-data";
 import type { Work } from "@/lib/beyond-data";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Minus, Plus, ArrowUp, ImageOff } from "lucide-react";
+import { ArrowLeft, Download, ArrowUp, ImageOff } from "lucide-react";
+import { toast } from "sonner";
 import { stripHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DonateDialog } from "@/components/donate-dialog";
+
+type Quota = { consumed: number; limit: number | null; remaining: number | null };
+
+// Visitantes sem conta seguem a mesma regra diária das contas gratuitas,
+// contada neste navegador (o servidor só identifica quem está logado).
+const ANON_QUOTA_KEY = "beyond_anon_quota";
+
+function readAnonQuota(): Quota {
+  const today = new Date().toISOString().slice(0, 10);
+  let consumed = 0;
+  try {
+    const raw = localStorage.getItem(ANON_QUOTA_KEY);
+    const parsed = raw ? (JSON.parse(raw) as { date?: string; consumed?: number }) : null;
+    if (parsed?.date === today) consumed = Number(parsed.consumed) || 0;
+  } catch {}
+  return { consumed, limit: FREE_DAILY_QUOTA, remaining: Math.max(0, FREE_DAILY_QUOTA - consumed) };
+}
+
+function consumeAnonQuota(pages: number): Quota {
+  const current = readAnonQuota();
+  const consumed = current.consumed + pages;
+  try {
+    localStorage.setItem(
+      ANON_QUOTA_KEY,
+      JSON.stringify({ date: new Date().toISOString().slice(0, 10), consumed }),
+    );
+  } catch {}
+  return { consumed, limit: FREE_DAILY_QUOTA, remaining: Math.max(0, FREE_DAILY_QUOTA - consumed) };
+}
 
 export const Route = createFileRoute("/ler/$slug")({
   loader: async ({ params }) => {
@@ -129,16 +160,12 @@ function ReaderPage() {
   }, []);
 
   // Quota de leitura (mesmo sistema da página de obra)
-  const { data: quota, refetch: refetchQuota } = useQuery<{
-    consumed: number;
-    limit: number | null;
-    remaining: number | null;
-  }>({
-    queryKey: ["reading-quota"],
+  const { data: quota, refetch: refetchQuota } = useQuery<Quota>({
+    queryKey: ["reading-quota", user?.id ?? "anon"],
     queryFn: () =>
-      fetch("/api/quota").then(
-        (r) => r.json() as Promise<{ consumed: number; limit: number | null; remaining: number | null }>,
-      ),
+      user
+        ? fetch("/api/quota").then((r) => r.json() as Promise<Quota>)
+        : Promise.resolve(readAnonQuota()),
     staleTime: 60_000,
   });
   const quotaExhausted = quota ? quota.remaining !== null && quota.remaining <= 0 : false;
@@ -151,7 +178,7 @@ function ReaderPage() {
   const pagesConsumedRef = useRef(0);
 
   useEffect(() => {
-    if (!user || quotaExhausted) return;
+    if (quotaExhausted) return;
     const bodyEl = bodyRef.current;
     if (!bodyEl) return;
     const totalPages = work.pages ? Number(work.pages) : 5;
@@ -170,6 +197,11 @@ function ReaderPage() {
         const toConsume = pagesRead - pagesConsumedRef.current;
         if (toConsume <= 0) return;
         pagesConsumedRef.current = pagesRead;
+        if (!user) {
+          const next = consumeAnonQuota(toConsume);
+          if ((next.remaining ?? 1) <= 0) void refetchQuota();
+          return;
+        }
         void fetch("/api/quota/consume", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -285,17 +317,17 @@ function ReaderPage() {
           <div className="mt-0 border border-gilt/40 bg-surface px-8 py-10 text-center">
             <p className="eyebrow">Limite diário atingido</p>
             <p className="mt-4 font-display text-2xl tracking-tight">
-              Você leu suas 10 páginas de hoje
+              Você chegou ao limite de leitura de hoje
             </p>
             <p className="caption mt-3">
-              Volte amanhã para continuar — ou torne-se VIP para leitura ilimitada.
+              Volte amanhã para continuar — ou entre na lista do Leitor Assíduo para leitura ilimitada.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 to="/planos"
                 className="btn-type border border-gilt bg-gilt/10 px-5 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
               >
-                Ver planos VIP
+                Entrar na lista do Leitor Assíduo
               </Link>
               <Link
                 to="/work/$slug"
@@ -310,25 +342,7 @@ function ReaderPage() {
 
         {/* Rodapé do leitor */}
         {!quotaExhausted && (
-          <div className="mt-16 border-t border-border pt-10 text-center">
-            <p className="caption">Fim da obra</p>
-            <p className="mt-2 title-italic text-lg text-muted-foreground">Boa leitura!</p>
-            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Link
-                to="/work/$slug"
-                params={{ slug: work.slug }}
-                className="btn-type border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-              >
-                ← Página da obra
-              </Link>
-              <Link
-                to="/explorar"
-                className="btn-type border border-gilt/50 px-5 py-2.5 text-xs text-gilt/80 transition-colors hover:border-gilt hover:text-gilt"
-              >
-                Explorar mais obras →
-              </Link>
-            </div>
-          </div>
+          <EndOfWork work={work} title={cleanTitle} />
         )}
       </div>
 
@@ -350,5 +364,87 @@ function ReaderPage() {
         </button>
       )}
     </>
+  );
+}
+
+// ── Fim da obra: apoio, seguir e próximas leituras ───────────────
+
+function EndOfWork({ work, title }: { work: Work; title: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const artistName = work.artistName ?? "";
+  const artistSlug = work.artistSlug;
+  const loginHref = `/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}`)}`;
+
+  const { data: followData } = useQuery<{ followed: boolean }>({
+    queryKey: ["follow", artistSlug],
+    queryFn: () =>
+      fetch(`/api/artists/${artistSlug}/follow`).then((r) => r.json() as Promise<{ followed: boolean }>),
+    enabled: !!artistSlug && !!user,
+    staleTime: 60_000,
+  });
+  const followed = followData?.followed ?? false;
+  const follow = useMutation({
+    mutationFn: () =>
+      fetch(`/api/artists/${artistSlug}/follow`, { method: "POST" }).then(
+        (r) => r.json() as Promise<{ followed: boolean }>,
+      ),
+    onSuccess: (data) => {
+      qc.setQueryData(["follow", artistSlug], data);
+      toast.success(data.followed ? `Seguindo ${artistName}.` : `Você deixou de seguir ${artistName}.`);
+    },
+    onError: () => toast.error("Erro. Tente novamente."),
+  });
+
+  const btn =
+    "btn-type border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt";
+
+  return (
+    <div className="mt-16 border-t border-border pt-10 text-center">
+      <p className="caption">Fim da obra</p>
+      {artistName ? (
+        <>
+          <p className="mx-auto mt-3 max-w-md font-display text-2xl leading-snug tracking-tight">
+            Gostou de <span className="title-italic">{title}</span>?
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Apoie {artistName} diretamente — 88% chega a ele.
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+            <DonateDialog
+              artistName={artistName}
+              trigger={
+                <button className="btn-type bg-gilt px-5 py-2.5 text-xs font-bold text-ink transition-opacity hover:opacity-90">
+                  Apoiar {artistName.split(" ")[0]}
+                </button>
+              }
+            />
+            {user ? (
+              <button onClick={() => follow.mutate()} disabled={follow.isPending} className={btn}>
+                {followed ? "Seguindo" : `Seguir ${artistName.split(" ")[0]}`}
+              </button>
+            ) : (
+              <a href={loginHref} className={btn}>
+                Seguir {artistName.split(" ")[0]}
+              </a>
+            )}
+            <Link to="/artist/$slug" params={{ slug: artistSlug }} className={btn}>
+              Mais de {artistName.split(" ")[0]}
+            </Link>
+          </div>
+        </>
+      ) : null}
+      <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <Link to="/work/$slug" params={{ slug: work.slug }} className={btn}>
+          ← Página da obra
+        </Link>
+        <Link
+          to="/explorar"
+          className="btn-type border border-gilt/50 px-5 py-2.5 text-xs text-gilt/80 transition-colors hover:border-gilt hover:text-gilt"
+        >
+          Explorar mais obras →
+        </Link>
+      </div>
+    </div>
   );
 }

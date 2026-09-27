@@ -29,6 +29,7 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Painel do autor — The Beyond" },
+      { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content:
@@ -159,7 +160,6 @@ function Dashboard() {
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editProfileName, setEditProfileName] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
 
   const [editingWork, setEditingWork] = useState<Work | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -801,7 +801,7 @@ function Dashboard() {
             if (!entries.length) {
               return (
                 <div className="mt-8 border border-border bg-surface/40 px-6 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">Nenhuma atividade ainda. Publique sua primeira obra!</p>
+                  <p className="text-sm text-muted-foreground">Nenhuma atividade ainda. Publique sua primeira obra.</p>
                 </div>
               );
             }
@@ -985,64 +985,15 @@ function Dashboard() {
 
         {/* Modal editar perfil */}
         {showEditProfile && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-md border border-gilt/30 bg-background p-8">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display text-2xl tracking-tight">Editar perfil</h2>
-                <button
-                  onClick={() => setShowEditProfile(false)}
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Fechar"
-                >
-                  <X className="size-5" strokeWidth={1.5} />
-                </button>
-              </div>
-              <div className="mt-6 space-y-4">
-                <label className="block">
-                  <span className="eyebrow">Nome de exibição</span>
-                  <input
-                    value={editProfileName}
-                    onChange={(e) => setEditProfileName(e.target.value)}
-                    placeholder="Seu nome"
-                    className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
-                  />
-                </label>
-              </div>
-              <div className="mt-6 flex gap-3">
-                <button
-                  disabled={savingProfile || !editProfileName.trim()}
-                  onClick={() => void (async () => {
-                    setSavingProfile(true);
-                    try {
-                      const res = await fetch("/api/profile", {
-                        method: "PATCH",
-                        headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ name: editProfileName.trim() }),
-                      });
-                      if (!res.ok) throw new Error();
-                      void queryClient.invalidateQueries({ queryKey: ["author-dashboard"] });
-                      void queryClient.invalidateQueries({ queryKey: ["me"] });
-                      toast.success("Perfil atualizado.");
-                      setShowEditProfile(false);
-                    } catch {
-                      toast.error("Erro ao atualizar perfil.");
-                    } finally {
-                      setSavingProfile(false);
-                    }
-                  })()}
-                  className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
-                >
-                  {savingProfile ? "Salvando…" : "Salvar"}
-                </button>
-                <button
-                  onClick={() => setShowEditProfile(false)}
-                  className="border border-border px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
+          <AuthorProfileEditor
+            initialName={editProfileName}
+            onClose={() => setShowEditProfile(false)}
+            onSaved={() => {
+              void queryClient.invalidateQueries({ queryKey: ["author-dashboard"] });
+              void queryClient.invalidateQueries({ queryKey: ["me"] });
+              setShowEditProfile(false);
+            }}
+          />
         )}
 
         {/* Meu Perfil */}
@@ -1217,6 +1168,148 @@ function Stat({
         {value}
       </p>
       <p className="mt-3 text-xs text-muted-foreground">{note}</p>
+    </div>
+  );
+}
+
+// ── Editor do perfil público do autor (nome, bio, foto, cidade, redes) ──────
+
+type AuthorBioForm = { bio: string; avatarUrl: string; city: string; instagram: string; website: string };
+
+function AuthorProfileEditor({
+  initialName,
+  onClose,
+  onSaved,
+}: {
+  initialName: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [form, setForm] = useState<AuthorBioForm>({ bio: "", avatarUrl: "", city: "", instagram: "", website: "" });
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/profile/author-bio")
+      .then((r) => (r.ok ? (r.json() as Promise<AuthorBioForm>) : null))
+      .then((data) => { if (data) setForm(data); })
+      .catch(() => {});
+  }, []);
+
+  const set = (key: keyof AuthorBioForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  async function handleAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const { url } = (await res.json()) as { url: string };
+      setForm((prev) => ({ ...prev, avatarUrl: url }));
+      toast.success("Foto enviada. Salve para aplicar.");
+    } catch {
+      toast.error("Erro ao enviar a foto.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const [nameRes, bioRes] = await Promise.all([
+        fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: name.trim() }),
+        }),
+        fetch("/api/profile/author-bio", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(form),
+        }),
+      ]);
+      if (!nameRes.ok || !bioRes.ok) throw new Error();
+      toast.success("Perfil atualizado.");
+      onSaved();
+    } catch {
+      toast.error("Erro ao atualizar perfil.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls =
+    "mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 px-5 py-10 backdrop-blur-sm">
+      <div className="w-full max-w-lg border border-gilt/30 bg-background p-8">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl tracking-tight">Editar perfil</h2>
+          <button onClick={onClose} className="text-muted-foreground transition-colors hover:text-foreground" aria-label="Fechar">
+            <X className="size-5" strokeWidth={1.5} />
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">Essas informações aparecem na sua página pública de autor.</p>
+        <div className="mt-6 space-y-4">
+          <label className="block">
+            <span className="eyebrow">Nome de exibição</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className={inputCls} />
+          </label>
+          <label className="block">
+            <span className="eyebrow">Bio</span>
+            <textarea
+              rows={4}
+              maxLength={1200}
+              value={form.bio}
+              onChange={set("bio")}
+              placeholder="Quem você é, o que escreve ou desenha, onde já publicou."
+              className={`${inputCls} resize-y`}
+            />
+            <span className="caption mt-1 block text-right">{form.bio.length}/1200</span>
+          </label>
+          <div>
+            <span className="eyebrow block">Foto</span>
+            <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-border bg-background px-4 py-4 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
+              {uploading ? "Enviando…" : form.avatarUrl ? "Foto enviada — trocar" : "Selecionar foto"}
+              <input type="file" accept="image/*" hidden onChange={(e) => void handleAvatar(e)} />
+            </label>
+          </div>
+          <label className="block">
+            <span className="eyebrow">Cidade</span>
+            <input value={form.city} onChange={set("city")} placeholder="Ex.: Recife, PE" className={inputCls} />
+          </label>
+          <label className="block">
+            <span className="eyebrow">Instagram</span>
+            <input value={form.instagram} onChange={set("instagram")} placeholder="@seuperfil" className={inputCls} />
+          </label>
+          <label className="block">
+            <span className="eyebrow">Site</span>
+            <input value={form.website} onChange={set("website")} placeholder="https://seusite.com" className={inputCls} />
+          </label>
+        </div>
+        <div className="mt-6 flex gap-3">
+          <button
+            disabled={saving || uploading || !name.trim()}
+            onClick={() => void save()}
+            className="bg-gilt px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {saving ? "Salvando…" : "Salvar"}
+          </button>
+          <button
+            onClick={onClose}
+            className="border border-border px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

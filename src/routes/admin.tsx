@@ -36,7 +36,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import type { EmailEventData } from "@/lib/beyond-db";
+import type { EmailEventData, WaitlistRow } from "@/lib/beyond-db";
 import {
   PLATFORM_FEE,
   RATE_PER_CLICK,
@@ -51,6 +51,7 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Administração — The Beyond" },
+      { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content:
@@ -89,6 +90,7 @@ const NAV = [
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
   { id: "emails", label: "E-mails", icon: Mail },
+  { id: "lista-espera", label: "Lista de espera", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
   { id: "configuracoes", label: "Configurações", icon: Settings },
   { id: "audit-log", label: "Log de Auditoria", icon: ShieldCheck },
@@ -172,6 +174,13 @@ function AdminPage() {
     queryFn: () => fetch("/api/admin/email-events").then((r) => r.json() as Promise<EmailEventData[]>),
     staleTime: 60_000,
     refetchInterval: 60_000,
+  });
+
+  // Lista de espera do plano Leitor Assíduo
+  const { data: waitlist = [] } = useQuery<WaitlistRow[]>({
+    queryKey: ["admin-waitlist"],
+    queryFn: () => fetch("/api/admin/waitlist").then((r) => r.json() as Promise<WaitlistRow[]>),
+    staleTime: 60_000,
   });
 
   // Log de auditoria
@@ -1079,6 +1088,46 @@ function AdminPage() {
                       <td className="py-3 pr-4 text-xs max-w-[260px] truncate">{ev.subject}</td>
                       <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(ev.createdAt).toLocaleString("pt-BR")}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Lista de espera */}
+        <section id="lista-espera" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Mail}>Lista de espera — Leitor Assíduo</SectionTitle>
+          <p className="caption mt-4">
+            {waitlist.length} {waitlist.length === 1 ? "pessoa" : "pessoas"} aguardando a abertura do plano
+          </p>
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <Th>E-mail</Th>
+                  <Th>Plano de interesse</Th>
+                  <Th>Data</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {waitlist.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-xs text-muted-foreground">
+                      Ninguém na lista ainda.
+                    </td>
+                  </tr>
+                ) : (
+                  waitlist.map((row) => (
+                    <tr key={row.id} className="border-b border-border/50 hover:bg-surface/50">
+                      <td className="py-3 pr-4 text-xs">{row.email}</td>
+                      <td className="py-3 pr-4 text-xs text-muted-foreground">
+                        {row.plan === "monthly" ? "Mensal" : row.plan === "quarterly" ? "Trimestral" : row.plan === "yearly" ? "Anual" : "—"}
+                      </td>
+                      <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(row.createdAt).toLocaleString("pt-BR")}
                       </td>
                     </tr>
                   ))
