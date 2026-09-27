@@ -34,10 +34,16 @@ export const Route = createFileRoute("/")({
 });
 
 const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
+const WEBTOON_MEDIUMS: Medium[] = ["manga", "manhwa", "manhua", "hq"];
+const VIEWS_DISPLAY_MIN = 0;
+
+function isRecentWork(work: Work) {
+  try { return Date.now() - new Date(work.published).getTime() < 14 * 86_400_000; }
+  catch { return false; }
+}
 
 // ── Destaque Beyond — hero carousel full-width ──────────────────
 
-/** Obra com leitor disponível: webtoon (imagens) ou texto com corpo. */
 function isReadable(work: Work): boolean {
   return WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0;
 }
@@ -626,7 +632,7 @@ function Home() {
       </section>
 
       {/* Destaque Beyond — hero carousel */}
-      <DestaqueHero works={works} initialDestaque={initial.destaque} />
+      <DestaqueHero works={works} initialDestaque={[]} />
 
       {/* Continue lendo */}
       <ContinueReading works={works} />
