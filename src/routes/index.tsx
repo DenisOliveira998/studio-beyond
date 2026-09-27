@@ -161,12 +161,12 @@ function DestaqueHero({ works }: { works: Work[] }) {
                         <span className="text-[11px] uppercase tracking-[0.12em] text-red-400">Novo</span>
                       </div>
                     )}
-                    <div className="overflow-hidden" style={{ width: 160, height: 240 }}>
+                    <div className="overflow-hidden" style={{ width: 210, height: 315 }}>
                       {coverUrl ? (
                         <img
                           src={coverUrl}
                           alt={cleanTitle}
-                          className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-0.5"
+                          className="h-full w-full object-cover object-center transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-0.5"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-white/5">
@@ -319,7 +319,7 @@ function CatalogCard({
             src={work.cover}
             alt={cleanTitle}
             loading="lazy"
-            className="aspect-[3/4] w-full object-contain bg-surface transition-transform duration-500 group-hover:scale-[1.04]"
+            className="aspect-[3/4] w-full object-cover object-center bg-surface transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
           <div className="aspect-[3/4] flex flex-col items-center justify-center gap-1 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
