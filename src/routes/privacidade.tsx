@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/site-url";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/privacidade")({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/privacidade")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/privacidade` }],
   }),
   component: PrivacyPage,
 });

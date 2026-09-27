@@ -82,13 +82,25 @@ async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
   if (_seCache && now - _seCacheTs < 4 * 60 * 60 * 1000) return _seCache;
 
   const entries: SEBook[] = [];
-  let nextUrl: string | null = "https://standardebooks.org/feeds/opds/all";
+  // O catálogo OPDS completo exige conta Patrons Circle (401 sem login); o feed Atom
+  // de lançamentos (≈15 obras) é público e serve de alternativa.
+  const FEEDS = [
+    "https://standardebooks.org/feeds/opds/all",
+    "https://standardebooks.org/feeds/atom/new-releases",
+  ];
+  let feedIndex = 0;
+  let nextUrl: string | null = FEEDS[0]!;
 
   while (nextUrl && entries.length < 1000) {
     const res = await fetch(nextUrl, {
       headers: { "User-Agent": "TheBeyond/1.0 (https://thebeyond.art)", Accept: "application/atom+xml" },
     });
-    if (!res.ok) break;
+    if (!res.ok) {
+      // Feed bloqueado/indisponível: tenta o próximo, se ainda não achou obras
+      feedIndex += 1;
+      nextUrl = entries.length === 0 && feedIndex < FEEDS.length ? FEEDS[feedIndex]! : null;
+      continue;
+    }
     const xml = await res.text();
 
     // Encontra cada <entry>
@@ -117,6 +129,8 @@ async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
           cover = href.startsWith("http") ? href : `https://standardebooks.org${href}`;
         }
       }
+      // Feed Atom: capa em <media:thumbnail url="…">
+      if (!cover) cover = entry.match(/<media:thumbnail[^>]*url="([^"]*)"/)?.[1] ?? "";
 
       // Author
       const authorBlock = entry.match(/<author>([\s\S]*?)<\/author>/)?.[1] ?? "";
@@ -141,9 +155,49 @@ async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
     nextUrl = nextMatch ? nextMatch[1]! : null;
   }
 
-  _seCache = entries;
-  _seCacheTs = now;
+  // Não guarda resultado vazio por 4h (tenta de novo na próxima requisição)
+  if (entries.length > 0) {
+    _seCache = entries;
+    _seCacheTs = now;
+  }
   return entries;
+}
+
+
+// ── Cache e ajustes de HTML ───────────────────────────────────────────────────
+
+/** Dados públicos (iguais para todos): 60s na CDN, servindo o antigo por até 10 min enquanto atualiza. */
+const PUBLIC_API_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=600";
+
+// Páginas cujo HTML não depende de quem está logado (o login é resolvido no navegador)
+const CACHEABLE_HTML = [
+  /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/artists$/, /^\/artist\/[^/]+$/, /^\/work\/[^/]+$/,
+  /^\/biblioteca$/, /^\/planos$/, /^\/sobre$/, /^\/contato$/, /^\/termos$/, /^\/privacidade$/,
+  /^\/candidatura-autor$/,
+];
+
+async function finalizeHtmlResponse(request: Request, response: Response): Promise<Response> {
+  const type = response.headers.get("content-type") ?? "";
+  if (request.method !== "GET" || !type.includes("text/html")) return response;
+  const { pathname } = new URL(request.url);
+
+  // 404: título próprio e noindex (o head da raiz herda o título da home)
+  if (response.status === 404) {
+    const html = (await response.text())
+      .replace(/<title>[^<]*<\/title>/, "<title>Página não encontrada — The Beyond</title>")
+      .replace(/<meta name="robots" content="[^"]*"\/?>/, '<meta name="robots" content="noindex"/>')
+      .replace(/<link rel="canonical"[^>]*>/, "");
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return new Response(html, { status: 404, headers });
+  }
+
+  if (response.status === 200 && !response.headers.has("set-cookie") && CACHEABLE_HTML.some((re) => re.test(pathname))) {
+    const headers = new Headers(response.headers);
+    headers.set("cache-control", PUBLIC_API_CACHE);
+    return new Response(response.body, { status: 200, headers });
+  }
+  return response;
 }
 
 // ── Admin helpers ─────────────────────────────────────────────────────────────
@@ -320,7 +374,7 @@ export default {
         if (request.method === "GET") {
           const { getDestaqueWorks } = await import("./lib/beyond-db");
           const slugs = await getDestaqueWorks();
-          return new Response(JSON.stringify(slugs), { headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify(slugs), { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } });
         }
         if (request.method === "POST") {
           const { error } = await requireAdmin(request);
@@ -422,7 +476,15 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
-        const { submitWork } = await import("./lib/beyond-db");
+        const { prisma: prismaW } = await import("./lib/prisma");
+        const authorProfile = await prismaW.profile.findUnique({ where: { id: session.user.id }, select: { role: true, suspended: true } });
+        if (!authorProfile || authorProfile.suspended || !["author", "gerente", "admin", "owner"].includes(authorProfile.role)) {
+          return new Response(JSON.stringify({ error: "Apenas autores aprovados podem publicar obras." }), {
+            status: 403,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { submitWork, toAuthorStatus } = await import("./lib/beyond-db");
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
           excerpt?: string; body?: string; tags?: string;
@@ -438,7 +500,7 @@ export default {
           tags: body.tags ?? "",
           pdfUrl: body.pdfUrl ?? null,
           coverUrl: body.coverUrl ?? null,
-          status: body.status ?? "pending",
+          status: toAuthorStatus(body.status),
         });
         const { insertAuditLog } = await import("./lib/beyond-db");
         await insertAuditLog({
@@ -449,7 +511,7 @@ export default {
           actorEmail: session.user.email,
           note: null,
         }).catch(() => {});
-        if ((body.status ?? "pending") === "pending") {
+        if (toAuthorStatus(body.status) === "pending") {
           const { pushEvent: pushWork } = await import("./lib/pusher");
           void pushWork({ event: "work-submitted", data: { title: body.title ?? "", artistName: body.artistName ?? "" } });
         }
@@ -489,9 +551,22 @@ export default {
 
       // Formulário de contato → Resend
       if (pathname === "/api/contact" && request.method === "POST") {
-        const body = (await request.json()) as {
-          name: string; email: string; subject?: string; message: string;
+        const raw = (await request.json().catch(() => ({}))) as {
+          name?: string; email?: string; subject?: string; message?: string;
         };
+        const { escapeHtml } = await import("./lib/sanitize");
+        const body = {
+          name: String(raw.name ?? "").trim().slice(0, 120),
+          email: String(raw.email ?? "").trim().slice(0, 254),
+          subject: String(raw.subject ?? "").trim().slice(0, 160),
+          message: String(raw.message ?? "").trim().slice(0, 5000),
+        };
+        if (!body.name || !body.message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+          return new Response(JSON.stringify({ error: "Preencha nome, e-mail válido e mensagem." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
         const apiKey = process.env.RESEND_API_KEY;
         if (!apiKey) {
           return new Response(JSON.stringify({ error: "Serviço de e-mail não configurado. Escreva diretamente para contato@thebeyond.art" }), {
@@ -508,12 +583,12 @@ export default {
               from: "The Beyond <noreply@thebeyond.art>",
               to: "contato@thebeyond.art",
               reply_to: body.email,
-              subject: `[Contato] ${body.subject ?? "Mensagem"} — ${body.name}`,
-              html: `<p><strong>Nome:</strong> ${body.name}</p>
-                     <p><strong>E-mail:</strong> ${body.email}</p>
-                     <p><strong>Assunto:</strong> ${body.subject ?? "—"}</p>
+              subject: `[Contato] ${(body.subject || "Mensagem").replace(/[\r\n]/g, " ")} — ${body.name.replace(/[\r\n]/g, " ")}`,
+              html: `<p><strong>Nome:</strong> ${escapeHtml(body.name)}</p>
+                     <p><strong>E-mail:</strong> ${escapeHtml(body.email)}</p>
+                     <p><strong>Assunto:</strong> ${escapeHtml(body.subject || "—")}</p>
                      <hr/>
-                     <p>${body.message.replace(/\n/g, "<br>")}</p>`,
+                     <p>${escapeHtml(body.message).replace(/\n/g, "<br>")}</p>`,
             }),
           });
           // Confirma para o remetente
@@ -527,8 +602,8 @@ export default {
               html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
                 <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
                 <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#f6f6f6">Mensagem recebida</h1>
-                <p style="color:#9ba1ab;font-size:15px">Ol&#225;, <strong style="color:#f6f6f6">${body.name}</strong>. Recebemos sua mensagem e responderemos em breve.</p>
-                <p style="color:#9ba1ab;font-size:14px;margin-top:16px;padding:12px 16px;border-left:3px solid #a08d24">${body.message.replace(/\n/g, "<br>")}</p>
+                <p style="color:#9ba1ab;font-size:15px">Ol&#225;. Recebemos sua mensagem pelo formul&#225;rio do site e responderemos em breve.</p>
+                <p style="color:#9ba1ab;font-size:13px;margin-top:12px">Se n&#227;o foi voc&#234; quem enviou, ignore este e-mail.</p>
                 <p style="color:#9ba1ab;font-size:13px;margin-top:16px">&#8212; Equipe The Beyond</p>
               </div>`,
             }),
@@ -603,7 +678,7 @@ export default {
 - Plano Leitor Assíduo (em construção): leitura ilimitada, sem limite diário. Lista de espera aberta.
 
 ## Para autores
-- Entrada por curadoria humana: o autor envia uma candidatura e recebe resposta em até 15 dias úteis. Candidatar-se não custa nada.
+- Entrada por curadoria humana. As candidaturas de autor abrem em breve, por etapas (lista de espera aberta). Candidatar-se não custa nada.
 - Renda: R$ 0,004 por visualização + doações diretas dos leitores.
 - A plataforma retém 12%; 88% é do autor. Repasse semanal, sem valor mínimo.
 - A obra continua do autor; o The Beyond tem apenas licença para exibi-la.
@@ -614,7 +689,7 @@ export default {
 - [Autores](${SITE_URL}/artists): autores publicados
 - [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
 - [Planos](${SITE_URL}/planos): plano Leitor Assíduo (em construção)
-- [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor
+- [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
 - [Sitemap](${SITE_URL}/sitemap.xml)
 `;
@@ -627,7 +702,7 @@ export default {
       if (pathname === "/api/waitlist" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
         const email = (body.email ?? "").trim().toLowerCase();
-        const plan = ["monthly", "quarterly", "yearly"].includes(body.plan ?? "") ? body.plan! : "";
+        const plan = ["monthly", "quarterly", "yearly", "author"].includes(body.plan ?? "") ? body.plan! : "";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
           return new Response(JSON.stringify({ error: "Informe um e-mail válido." }), {
             status: 400,
@@ -709,11 +784,36 @@ export default {
           portfolioCitations?: string;
           message?: string;
         };
+        const { escapeHtml } = await import("./lib/sanitize");
+        // Candidaturas em construção: só a equipe envia enquanto estiverem fechadas
+        const candSession = await (await import("./lib/auth-server")).auth.api.getSession({ headers: request.headers });
+        if (!candSession?.user) {
+          return new Response(JSON.stringify({ error: "Faça login para enviar a candidatura." }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { CANDIDATURAS_ABERTAS } = await import("./lib/features");
+        if (!CANDIDATURAS_ABERTAS) {
+          const { prisma: prismaC } = await import("./lib/prisma");
+          const candProfile = await prismaC.profile.findUnique({ where: { id: candSession.user.id }, select: { role: true } });
+          if (!candProfile || !["owner", "admin", "gerente"].includes(candProfile.role)) {
+            return new Response(JSON.stringify({ error: "As candidaturas abrem em breve. Entre na lista de espera." }), {
+              status: 403,
+              headers: { "content-type": "application/json" },
+            });
+          }
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email ?? "")) || !String(body.artistName ?? "").trim()) {
+          return new Response(JSON.stringify({ error: "Preencha nome e um e-mail válido." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
         // Persiste no banco independente do e-mail
         const { createApplication } = await import("./lib/beyond-db");
-        const session = await (await import("./lib/auth-server")).auth.api.getSession({ headers: request.headers });
         await createApplication({
-          userId: session?.user?.id ?? null,
+          userId: candSession.user.id,
           artistName: body.artistName,
           email: body.email,
           phone: body.phone ?? "",
@@ -737,13 +837,13 @@ export default {
               from: "The Beyond <noreply@thebeyond.art>",
               to: "contato@thebeyond.art",
               reply_to: body.email,
-              subject: `[Candidatura] ${body.artistName} — ${body.field}`,
-              html: `<p><strong>Nome artístico:</strong> ${body.artistName}</p>
-                     <p><strong>E-mail:</strong> ${body.email}</p>
-                     <p><strong>Área:</strong> ${body.field}</p>
-                     <p><strong>Portfólio:</strong> <a href="${body.portfolio}">${body.portfolio}</a></p>
-                     <p><strong>Bio:</strong> ${body.bio}</p>
-                     <p><strong>Mensagem:</strong> ${body.message ?? "—"}</p>`,
+              subject: `[Candidatura] ${String(body.artistName ?? "").replace(/[\r\n]/g, " ").slice(0, 120)}`,
+              html: `<p><strong>Nome:</strong> ${escapeHtml(body.artistName)}</p>
+                     <p><strong>E-mail:</strong> ${escapeHtml(body.email)}</p>
+                     <p><strong>Telefone:</strong> ${escapeHtml(body.phone ?? "")}</p>
+                     <p><strong>Portfólio:</strong> ${escapeHtml(body.portfolio ?? "")}</p>
+                     <p><strong>Trechos:</strong> ${escapeHtml(body.portfolioCitations ?? "").replace(/\n/g, "<br>")}</p>
+                     <p>Arquivos e detalhes no painel de administração.</p>`,
             }),
           });
           // Confirma para candidato
@@ -757,7 +857,7 @@ export default {
               html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
                 <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
                 <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#f6f6f6">Candidatura recebida</h1>
-                <p style="color:#9ba1ab;font-size:15px">Recebemos a candidatura de <strong style="color:#f6f6f6">${body.artistName}</strong> em ${body.field}. A curadoria avalia por ordem de chegada.</p>
+                <p style="color:#9ba1ab;font-size:15px">Recebemos a sua candidatura. A curadoria avalia por ordem de chegada.</p>
                 <p style="color:#9ba1ab;font-size:15px;margin-top:12px">Prazo: <strong style="color:#f6f6f6">até 15 dias úteis</strong>. Você receberá uma resposta neste e-mail com aprovação ou recusa comentada.</p>
               </div>`,
             }),
@@ -865,7 +965,7 @@ export default {
           .map(dbWorkToWork);
         return new Response(
           JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) }),
-          { headers: { "content-type": "application/json" } },
+          { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } },
         );
       }
 
@@ -874,7 +974,7 @@ export default {
         const { fetchApprovedWorks, dbWorkToWork } = await import("./lib/beyond-db");
         const rows = await fetchApprovedWorks();
         return new Response(JSON.stringify(rows.map(dbWorkToWork)), {
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
         });
       }
 
@@ -918,7 +1018,7 @@ export default {
       if (pathname === "/api/artists" && request.method === "GET") {
         const { fetchDistinctArtists } = await import("./lib/beyond-db");
         const artists = await fetchDistinctArtists();
-        return new Response(JSON.stringify(artists), { headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify(artists), { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } });
       }
 
       // Perfil de artista por slug (obras publicadas)
@@ -939,7 +1039,7 @@ export default {
         const authorId = dbWorks.find((w) => w.authorId)?.authorId ?? null;
         const bio = await getAuthorBio(authorId);
         return new Response(JSON.stringify({ artistName, artistSlug, works, bio }), {
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
         });
       }
 
@@ -954,12 +1054,31 @@ export default {
 
       const accountMatch = pathname.match(/^\/api\/accounts\/([^/]+)$/);
       if (accountMatch && request.method === "PATCH") {
-        const { error } = await requireAdmin(request);
+        const { error, actorId } = await requireAdmin(request);
         if (error) return error;
         const userId = accountMatch[1]!;
         const body = (await request.json()) as { role?: string; suspended?: boolean };
         const { setUserRole, setSuspended } = await import("./lib/beyond-db");
+        const { prisma: prismaA } = await import("./lib/prisma");
+        const [actor, target] = await Promise.all([
+          prismaA.profile.findUnique({ where: { id: actorId! }, select: { role: true } }),
+          prismaA.profile.findUnique({ where: { id: userId }, select: { role: true } }),
+        ]);
+        const deny = (msg: string) =>
+          new Response(JSON.stringify({ error: msg }), { status: 403, headers: { "content-type": "application/json" } });
+        const VALID_ROLES = ["owner", "admin", "gerente", "author", "vip", "reader"];
+        const PRIVILEGED = ["owner", "admin"];
+        const actorIsOwner = actor?.role === "owner";
+        if (!target) {
+          return new Response(JSON.stringify({ error: "Conta não encontrada" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        // Só o dono mexe em contas de dono/admin ou concede esses papéis; ninguém altera o próprio papel
+        if (PRIVILEGED.includes(target.role) && !actorIsOwner) return deny("Apenas o dono pode alterar esta conta.");
         if (typeof body.role === "string") {
+          if (!VALID_ROLES.includes(body.role)) return deny("Papel inválido.");
+          if (userId === actorId) return deny("Você não pode alterar o próprio papel.");
+          if (PRIVILEGED.includes(body.role) && !actorIsOwner) return deny("Apenas o dono pode conceder este papel.");
+          if (body.role === "gerente" && actor?.role === "gerente") return deny("Gerentes não podem promover outros gerentes.");
           await setUserRole(userId, body.role as import("./lib/auth").AppRole);
         }
         if (typeof body.suspended === "boolean") {
@@ -1289,17 +1408,23 @@ export default {
           return new Response(JSON.stringify(comments), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "POST") {
-          const { author, text } = (await request.json()) as { author?: string; text: string };
+          const { text } = (await request.json()) as { author?: string; text: string };
           if (!text?.trim()) {
             return new Response(JSON.stringify({ error: "Texto obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
           }
           const { auth } = await import("./lib/auth-server");
           const session = await auth.api.getSession({ headers: request.headers });
+          if (!session?.user) {
+            return new Response(JSON.stringify({ error: "Faça login para comentar." }), {
+              status: 401,
+              headers: { "content-type": "application/json" },
+            });
+          }
           const { addWorkComment } = await import("./lib/beyond-db");
           const comment = await addWorkComment({
             workSlug: slug,
             userId: session?.user?.id ?? null,
-            author: author?.trim() || session?.user?.name || "Anônimo",
+            author: session.user.name || "Leitor",
             text: text.trim(),
           });
           const { pushEvent: pushComment } = await import("./lib/pusher");
@@ -1355,7 +1480,8 @@ export default {
             headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
           });
         }
-        return new Response(JSON.stringify({ work, bodyHtml: dbWork.body, readerMode: "text" }), {
+        const { sanitizeWorkHtml } = await import("./lib/sanitize");
+        return new Response(JSON.stringify({ work, bodyHtml: sanitizeWorkHtml(dbWork.body), readerMode: "text" }), {
           headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
         });
       }
@@ -1378,7 +1504,10 @@ export default {
           headers: {
             "content-type": result.blob.contentType,
             "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename}"`,
-            "cache-control": "private, max-age=3600",
+            // imagens (capas, fotos) no cache da CDN por 1 ano; demais arquivos seguem privados
+            "cache-control": result.blob.contentType.startsWith("image/")
+              ? "public, max-age=31536000, s-maxage=31536000, immutable"
+              : "private, max-age=3600",
           },
         });
       }
@@ -1456,9 +1585,16 @@ export default {
         return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
       }
 
+      // Barra no final → endereço sem barra, permanente (308)
+      if (pathname.length > 1 && pathname.endsWith("/") && !pathname.startsWith("/api/")) {
+        const url = new URL(request.url);
+        url.pathname = pathname.replace(/\/+$/, "") || "/";
+        return new Response(null, { status: 308, headers: { location: url.pathname + url.search } });
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await finalizeHtmlResponse(request, await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

@@ -75,6 +75,7 @@ function Suggestions() {
             <Link key={w.id} to="/work/$slug" params={{ slug: w.slug }} className="group block">
               {w.cover ? (
                 <img
+                  width={180} height={240}
                   src={w.cover}
                   alt={title}
                   loading="lazy"

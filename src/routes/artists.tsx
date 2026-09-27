@@ -12,7 +12,7 @@ export const Route = createFileRoute("/artists")({
       {
         name: "description",
         content:
-          "Conheça os escritores, mangakistas e quadrinistas que publicam no The Beyond. Obras autorais de mangá, HQ, livro e conto com curadoria independente e sem anúncios.",
+          "Conheça os escritores, mangakás e quadrinistas que publicam no The Beyond. Obras autorais brasileiras, com curadoria humana e sem anúncios.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Autores | The Beyond" },

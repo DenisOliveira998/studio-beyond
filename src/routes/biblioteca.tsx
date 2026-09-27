@@ -3,15 +3,17 @@ import { SITE_URL } from "@/lib/site-url";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Download, ExternalLink } from "lucide-react";
+import { loaderFetch } from "@/lib/loader-fetch";
 
 export const Route = createFileRoute("/biblioteca")({
+  loader: async () => ({ books: await loaderFetch<SEBook[]>("/api/biblioteca", []) }),
   head: () => ({
     meta: [
       { title: "Biblioteca Clássica | The Beyond — Obras de Domínio Público" },
       {
         name: "description",
         content:
-          "Clássicos da literatura universal em domínio público, cuidadosamente editados. Baixe EPUBs gratuitos de Machado de Assis, H.G. Wells, Jane Austen e muito mais.",
+          "Clássicos em domínio público com edição cuidadosa do Standard Ebooks. Baixe EPUBs gratuitos, sem DRM, na Biblioteca Clássica do The Beyond.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Biblioteca Clássica | The Beyond" },
@@ -99,14 +101,19 @@ function EpubDownloadButton({ book }: { book: SEBook }) {
 }
 
 function BibliotecaPage() {
-  const [filter, setFilter] = useState<Filter>("pt");
+  const initial = Route.useLoaderData();
   const [search, setSearch] = useState("");
 
   const { data: books = [], isLoading } = useQuery<SEBook[]>({
     queryKey: ["standard-ebooks"],
     queryFn: () => fetch("/api/biblioteca").then((r) => r.json() as Promise<SEBook[]>),
     staleTime: 60 * 60 * 1000,
+    // Só usa o dado do servidor se veio preenchido; vazio → busca de novo no navegador
+    ...(initial.books.length > 0 ? { initialData: initial.books } : {}),
   });
+  const hasPt = books.some((b) => b.language === "pt" || b.subjects.some((s) => SUBJECTS_PT.includes(s)));
+  // Sem obras em português no catálogo disponível, começa em "Todos"
+  const [filter, setFilter] = useState<Filter>(hasPt ? "pt" : "all");
 
   const filtered = books.filter((b) => {
     const matchSearch =
@@ -190,6 +197,7 @@ function BibliotecaPage() {
               >
                 {b.cover ? (
                   <img
+                    width={350} height={192}
                     src={b.cover}
                     alt={b.title}
                     className="h-48 w-full object-cover object-center bg-surface"

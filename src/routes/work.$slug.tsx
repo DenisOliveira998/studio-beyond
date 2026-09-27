@@ -8,7 +8,7 @@ import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
 import { LoginPrompt } from "@/components/login-prompt";
-import { breadcrumbJsonLd, workJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, workJsonLd, workSeo } from "@/lib/seo";
 import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import type { CommentData } from "@/lib/beyond-db";
@@ -32,13 +32,13 @@ export const Route = createFileRoute("/work/$slug")({
     }
     const { work } = loaderData;
     const cleanTitle = stripHtml(work.title);
-    const cleanExcerpt = stripHtml(work.excerpt);
     const artistName = work.artistName ?? "";
+    const seo = workSeo(work);
     const meta: Array<Record<string, string>> = [
-      { title: `${cleanTitle}${artistName ? `, de ${artistName}` : ""} — The Beyond` },
-      { name: "description", content: cleanExcerpt },
+      { title: seo.title },
+      { name: "description", content: seo.description },
       { property: "og:title", content: `${cleanTitle}${artistName ? `, de ${artistName}` : ""}` },
-      { property: "og:description", content: cleanExcerpt },
+      { property: "og:description", content: seo.description },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
     ];
@@ -323,6 +323,7 @@ function WorkPage() {
           {/* Cover */}
           {work.cover ? (
             <img
+              width={300} height={400}
               src={work.cover}
               alt={stripHtml(work.title)}
               className="w-28 flex-shrink-0 object-cover object-center bg-surface lg:w-full aspect-[3/4]"
@@ -649,7 +650,7 @@ function WorkPage() {
             {work.chapters && work.chapters.length > 0 && (
               <div className="mt-8 border border-border bg-surface">
                 <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
-                  <p className="eyebrow text-xs">Capítulos ({work.chapters.length})</p>
+                  <h2 className="eyebrow text-xs">Capítulos ({work.chapters.length})</h2>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setChapterOrder("asc")}
@@ -722,7 +723,7 @@ function WorkPage() {
       {/* ── Relacionados ── */}
       {related.length > 0 && (
         <section className="mt-16 border-t border-border pt-10">
-          <p className="eyebrow mb-6">Relacionados</p>
+          <h2 className="eyebrow mb-6">Relacionados</h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((w) => (
               <WorkCard key={w.id} work={w} />
@@ -733,7 +734,7 @@ function WorkPage() {
 
       {/* ── Comentários ── */}
       <section className="mt-16 border-t border-border pt-10">
-        <p className="eyebrow mb-6">Comentários</p>
+        <h2 className="eyebrow mb-6">Comentários</h2>
         <CommentsSection workSlug={work.slug} />
       </section>
 

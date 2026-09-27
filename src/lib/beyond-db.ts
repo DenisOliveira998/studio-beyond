@@ -6,6 +6,15 @@ import { prisma } from "@/lib/prisma";
 import type { AppRole } from "@/lib/auth";
 import type { AuthorBioData, Medium, Work } from "@/lib/beyond-data";
 import { stripHtml } from "@/lib/utils";
+import { sanitizeWorkHtml } from "@/lib/sanitize";
+
+/** Status que o próprio autor pode definir — aprovar é só da curadoria. */
+export const AUTHOR_SETTABLE_STATUS = ["pending", "draft"] as const;
+export type AuthorSettableStatus = (typeof AUTHOR_SETTABLE_STATUS)[number];
+
+export function toAuthorStatus(value: unknown): AuthorSettableStatus {
+  return value === "draft" ? "draft" : "pending";
+}
 
 export type ReviewStatusDb = "pending" | "approved" | "rejected" | "changes" | "draft";
 
@@ -108,11 +117,12 @@ export async function submitWork(input: {
       artistSlug: slugify(input.artistName),
       authorId: input.authorId,
       excerpt: input.excerpt.slice(0, 240),
-      body: input.body,
+      // obras de texto: HTML limpo; webtoon (manhwa/manhua): JSON com URLs de imagem
+      body: ["manhwa", "manhua"].includes(input.medium) ? input.body : sanitizeWorkHtml(input.body),
       tags: input.tags,
       pdfUrl: input.pdfUrl ?? null,
       coverUrl: input.coverUrl ?? null,
-      status: input.status,
+      status: toAuthorStatus(input.status),
     },
   });
   return { slug };
@@ -128,7 +138,7 @@ export async function updateAuthorWork(
   const patch: Parameters<typeof prisma.work.update>[0]["data"] = {};
   if (data.title !== undefined) patch["title"] = data.title;
   if (data.medium !== undefined) patch["medium"] = data.medium as import("@prisma/client").WorkMedium;
-  if (data.status !== undefined) patch["status"] = data.status as import("@prisma/client").ReviewStatus;
+  if (data.status !== undefined) patch["status"] = toAuthorStatus(data.status);
   const updated = await prisma.work.update({ where: { id }, data: patch, select: { slug: true, title: true } });
   return updated;
 }
@@ -809,7 +819,9 @@ export function dbWorkToWork(w: DbWork): Work {
     ...(w.genre ? { genre: w.genre } : {}),
     ...(w.tags ? { tags: w.tags.split(",").map((t) => t.trim()).filter(Boolean) } : {}),
     excerpt: w.excerpt,
-    body: w.body ? w.body.split("\n").filter(Boolean) : [],
+    body: w.body
+      ? (["manhwa", "manhua"].includes(w.medium) ? w.body : sanitizeWorkHtml(w.body)).split("\n").filter(Boolean)
+      : [],
     clicks: 0,
     likes: 0,
     publishedAt: new Date(w.publishedAt ?? w.createdAt).toISOString(),

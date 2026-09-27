@@ -49,7 +49,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Descubra livros, mangás, HQs e contos autorais brasileiros. O The Beyond paga autores por visualização e permite apoio direto. Sem anúncios, sem interrupções.",
+          "Livros, mangás, HQs e contos autorais brasileiros. Leia grátis, sem anúncios, e apoie direto quem escreve — 88% vai para o autor.",
       },
       { name: "robots", content: "index, follow" },
       { name: "author", content: "The Beyond" },

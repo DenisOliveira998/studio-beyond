@@ -108,3 +108,29 @@ export function instagramUrl(value: string): string {
   if (/^https?:\/\//i.test(v)) return v;
   return `https://instagram.com/${v.replace(/^@/, "")}`;
 }
+
+/** "mangá", "livro", "HQ"… para usar no meio de frases. */
+export function mediumNoun(medium: Work["medium"]): string {
+  const label = MEDIUM_LABEL[medium];
+  return label === "HQ" ? "HQ" : label.toLowerCase();
+}
+
+/** Corta no limite sem quebrar palavra, com reticências. */
+export function clampText(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 0) || cut.length).replace(/[\s,;:.—-]+$/, "")}…`;
+}
+
+/** Título e descrição da página da obra. */
+export function workSeo(work: Work): { title: string; description: string } {
+  const name = stripHtml(work.title);
+  const noun = mediumNoun(work.medium);
+  const by = work.artistName ? ` de ${work.artistName}` : "";
+  const suffix = " Leia grátis e sem anúncios no The Beyond.";
+  return {
+    title: `${name} — ${noun}${by} | Ler online | The Beyond`,
+    description: `${clampText(stripHtml(work.excerpt), 158 - suffix.length)}${suffix}`,
+  };
+}

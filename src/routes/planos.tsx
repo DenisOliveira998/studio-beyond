@@ -8,14 +8,14 @@ import { faqJsonLd } from "@/lib/seo";
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos de Assinatura | The Beyond — Apoie Autores Independentes" },
+      { title: "Plano Leitor Assíduo: leitura ilimitada | The Beyond" },
       {
         name: "description",
         content:
           "Plano Leitor Assíduo do The Beyond (em construção): leitura ilimitada de livros, mangás, HQs e contos autorais. Entre na lista de espera.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Planos | The Beyond — Apoie Autores Independentes" },
+      { property: "og:title", content: "Plano Leitor Assíduo: leitura ilimitada | The Beyond" },
       {
         property: "og:description",
         content: "Leitura ilimitada, sem anúncios. O plano Leitor Assíduo está em construção — entre na lista de espera.",

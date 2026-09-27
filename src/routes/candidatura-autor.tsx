@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useEffect, useRef, useState } from "react";
-import { Clock, Paperclip, Trash2, Upload } from "lucide-react";
+import { Clock, Hammer, Paperclip, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { CANDIDATURAS_ABERTAS } from "@/lib/features";
 
 export const Route = createFileRoute("/candidatura-autor")({
   head: () => ({
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/candidatura-autor")({
       {
         name: "description",
         content:
-          "Quer publicar livros, mangás, HQs ou contos no The Beyond? Envie sua candidatura com portfólio. Seleção por curadoria humana independente.",
+          "Quer publicar livros, mangás, HQs ou contos no The Beyond? As candidaturas de autor abrem em breve — entre na lista de espera. Seleção por curadoria humana.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Candidatura de Autor | The Beyond" },
@@ -26,7 +27,8 @@ export const Route = createFileRoute("/candidatura-autor")({
 });
 
 function ApplicationPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isStaff } = useAuth();
+  const applicationsOpen = CANDIDATURAS_ABERTAS || isStaff;
 
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -129,6 +131,17 @@ function ApplicationPage() {
   return (
     <div className="mx-auto grid max-w-6xl gap-16 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1fr_1.2fr]">
       <div>
+        {!CANDIDATURAS_ABERTAS && (
+          <div className="mb-10 flex items-center gap-3 border border-gilt/40 bg-gilt/5 px-4 py-3 text-xs">
+            <Hammer className="size-4 shrink-0 text-gilt" strokeWidth={1.5} />
+            <span>
+              <strong className="uppercase tracking-[0.18em] text-gilt">Em construção</strong>
+              <span className="text-muted-foreground">
+                {" "}— as candidaturas de autor abrem em breve, por etapas. Entre na lista de espera e avisamos você.
+              </span>
+            </span>
+          </div>
+        )}
         <p className="eyebrow">Autor · candidatura com aprovação</p>
         <h1 className="hero-type mt-5 text-5xl tracking-tight">
           A entrada é por curadoria, não por cadastro.
@@ -173,6 +186,8 @@ function ApplicationPage() {
         <div className="flex min-h-[40vh] items-center justify-center border border-border bg-surface">
           <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
         </div>
+      ) : !applicationsOpen ? (
+        <AuthorWaitlist defaultEmail={user?.email ?? ""} />
       ) : !user ? (
         <div className="self-start border border-border bg-surface p-7 sm:p-9">
           <p className="eyebrow">Antes de enviar</p>
@@ -322,6 +337,86 @@ function ApplicationPage() {
           Resposta em até 15 dias úteis. Nenhuma cobrança envolvida.
         </p>
       </form>
+      )}
+    </div>
+  );
+}
+
+// ── Lista de espera de autores (enquanto as candidaturas estão fechadas) ───
+
+function AuthorWaitlist({ defaultEmail }: { defaultEmail: string }) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [sending, setSending] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), plan: "author" }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Não foi possível entrar na lista agora.");
+      }
+      setJoined(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível entrar na lista agora.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="self-start border border-border bg-surface p-7 sm:p-9">
+      <p className="eyebrow">Lista de espera · Autores</p>
+      {joined ? (
+        <>
+          <h2 className="mt-4 font-display text-3xl tracking-tight">Você está na lista.</h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            Avisamos <span className="text-foreground">{email.trim()}</span> quando as candidaturas
+            abrirem. Enquanto isso, prepare seu portfólio: links, trechos e até 5 arquivos.
+          </p>
+          <Link
+            to="/explorar"
+            className="btn-type mt-8 inline-block border border-border px-5 py-2.5 text-xs transition-colors hover:border-gilt hover:text-gilt"
+          >
+            Explorar o acervo
+          </Link>
+        </>
+      ) : (
+        <form onSubmit={(e) => void handleJoin(e)}>
+          <h2 className="mt-4 font-display text-3xl tracking-tight">As candidaturas abrem em breve.</h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            A entrada vai acontecer por etapas. Deixe seu e-mail e avisamos quando for a sua vez de
+            enviar o portfólio.
+          </p>
+          <label className="mt-8 block">
+            <span className="eyebrow">E-mail</span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="voce@exemplo.com"
+              className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+            />
+          </label>
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+          <button
+            type="submit"
+            disabled={sending}
+            className="btn-type mt-6 w-full bg-primary py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {sending ? "Enviando…" : "Quero ser avisado"}
+          </button>
+          <p className="caption mt-4">Nenhuma cobrança. Seus dados não são vendidos.</p>
+        </form>
       )}
     </div>
   );

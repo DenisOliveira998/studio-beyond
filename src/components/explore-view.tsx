@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -60,13 +60,38 @@ export const CATEGORY_SEO: Record<Medium, { h1: string; title: string; descripti
   },
 };
 
-const ITEMS_PER_PAGE = 20;
+export const ITEMS_PER_PAGE = 20;
 
 /** Lista de obras de /explorar (todas) e /explorar/$categoria (uma categoria). */
-export function ExploreView({ medium, initialWorks }: { medium?: Medium; initialWorks: Work[] }) {
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [sort, setSort] = useState<"views" | "date">("date");
-  const [page, setPage] = useState(1);
+export function ExploreView({
+  medium,
+  initialWorks,
+  page: pageParam = 1,
+  basePath,
+}: {
+  medium?: Medium;
+  initialWorks: Work[];
+  /** Página atual (vem de ?pagina= na URL — links reais, indexáveis) */
+  page?: number;
+  /** Caminho da listagem atual, ex.: "/explorar" ou "/explorar/manga" */
+  basePath: string;
+}) {
+  const navigate = useNavigate();
+  const [tagFilter, setTagFilterState] = useState<string | null>(null);
+  const [sort, setSortState] = useState<"views" | "date">("date");
+
+  // Mudar filtro/ordem volta para a página 1
+  function resetPage() {
+    if (pageParam > 1) void navigate({ to: basePath as never, search: {} as never, replace: true });
+  }
+  function setTagFilter(value: string | null | ((prev: string | null) => string | null)) {
+    setTagFilterState(value);
+    resetPage();
+  }
+  function setSort(value: "views" | "date") {
+    setSortState(value);
+    resetPage();
+  }
 
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
@@ -75,14 +100,10 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
     initialData: initialWorks,
   });
 
-  // Reset tag filter and page when switching medium
+  // Reset tag filter when switching medium
   useEffect(() => {
-    setTagFilter(null);
-    setPage(1);
+    setTagFilterState(null);
   }, [medium]);
-
-  // Reset page when sort or tag changes
-  useEffect(() => { setPage(1); }, [sort, tagFilter]);
 
   const mediumFiltered = medium ? works.filter((w) => w.medium === medium) : works;
   const tagFiltered = tagFilter
@@ -106,6 +127,8 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
   );
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const page = Math.min(Math.max(1, pageParam), Math.max(totalPages, 1));
+  const pageSearch = (n: number) => (n > 1 ? { pagina: n } : {}) as never;
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const pillCls = (active: boolean) =>
@@ -198,6 +221,7 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
             >
               {w.cover && (
                 <img
+                  width={36} height={56}
                   src={w.cover}
                   alt=""
                   className="h-14 w-9 shrink-0 object-cover bg-surface"
@@ -242,17 +266,24 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
         )}
       </div>
 
-      {/* Paginação */}
+      {/* Paginação — links reais (?pagina=N) para o Google seguir */}
       {totalPages > 1 && (
-        <div className="mt-10 flex items-center justify-center gap-1">
-          <button
-            onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            disabled={page === 1}
-            className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-30"
-            aria-label="Página anterior"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
+        <nav aria-label="Paginação" className="mt-10 flex items-center justify-center gap-1">
+          {page > 1 ? (
+            <Link
+              to={basePath as never}
+              search={pageSearch(page - 1)}
+              rel="prev"
+              className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="size-3.5" />
+            </Link>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground opacity-30" aria-hidden>
+              <ChevronLeft className="size-3.5" />
+            </span>
+          )}
 
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
@@ -265,9 +296,11 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
               p === "…" ? (
                 <span key={`sep-${idx}`} className="px-1 text-xs text-muted-foreground/50">…</span>
               ) : (
-                <button
+                <Link
                   key={p}
-                  onClick={() => { setPage(p as number); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  to={basePath as never}
+                  search={pageSearch(p as number)}
+                  aria-current={page === p ? "page" : undefined}
                   className={`flex h-8 w-8 items-center justify-center border text-xs transition-colors ${
                     page === p
                       ? "border-gilt text-gilt"
@@ -275,20 +308,33 @@ export function ExploreView({ medium, initialWorks }: { medium?: Medium; initial
                   }`}
                 >
                   {p}
-                </button>
+                </Link>
               )
             )}
 
-          <button
-            onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            disabled={page === totalPages}
-            className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt disabled:opacity-30"
-            aria-label="Próxima página"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
-        </div>
+          {page < totalPages ? (
+            <Link
+              to={basePath as never}
+              search={pageSearch(page + 1)}
+              rel="next"
+              className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="size-3.5" />
+            </Link>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground opacity-30" aria-hidden>
+              <ChevronRight className="size-3.5" />
+            </span>
+          )}
+        </nav>
       )}
     </div>
   );
+}
+
+/** Lê ?pagina= (número inteiro ≥ 1); valores inválidos viram 1. */
+export function parsePagina(value: unknown): number {
+  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }

@@ -10,7 +10,8 @@ import { LoginPrompt } from "@/components/login-prompt";
 import { VIEWS_DISPLAY_MIN, compact } from "@/lib/beyond-data";
 import type { AuthorBioData, Work } from "@/lib/beyond-data";
 import { useAuth } from "@/lib/auth";
-import { authorProfileJsonLd, breadcrumbJsonLd, instagramUrl } from "@/lib/seo";
+import { authorProfileJsonLd, breadcrumbJsonLd, clampText, instagramUrl, mediumNoun } from "@/lib/seo";
+import { stripHtml } from "@/lib/utils";
 
 const EMPTY_BIO: AuthorBioData = { bio: "", avatarUrl: "", city: "", instagram: "", website: "" };
 
@@ -33,10 +34,18 @@ export const Route = createFileRoute("/artist/$slug")({
       };
     }
     const { artistName, artistSlug, works, bio } = loaderData;
-    const fallback = `${works.length} ${works.length === 1 ? "obra publicada" : "obras publicadas"} no The Beyond.`;
-    const description = bio.bio ? bio.bio.replace(/\s+/g, " ").slice(0, 160) : fallback;
+    // Tipo principal (o mais frequente entre as obras) para o título
+    const counts = new Map<string, number>();
+    for (const w of works) counts.set(w.medium, (counts.get(w.medium) ?? 0) + 1);
+    const mainMedium = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] as Work["medium"] | undefined;
+    const role = mainMedium ? `autor de ${mediumNoun(mainMedium)}` : "autor";
+    const first = works[0];
+    const fallback = first
+      ? `Leia ${stripHtml(first.title)}, ${mediumNoun(first.medium)} de ${artistName}, no The Beyond. Sem anúncios; apoie o autor diretamente.`
+      : `Obras de ${artistName} no The Beyond. Sem anúncios; apoie o autor diretamente.`;
+    const description = clampText(bio.bio || fallback, 160);
     const meta: Array<Record<string, unknown>> = [
-      { title: `${artistName} — The Beyond` },
+      { title: `${artistName} — ${role} | The Beyond` },
       { name: "description", content: description },
       { property: "og:title", content: `${artistName} — The Beyond` },
       { property: "og:description", content: description },
@@ -102,6 +111,7 @@ function ArtistPage() {
         <div className="flex max-w-2xl flex-col gap-6 sm:flex-row sm:items-start">
           {bio.avatarUrl ? (
             <img
+              width={96} height={96}
               src={bio.avatarUrl}
               alt={artistName}
               className="size-24 shrink-0 border border-border object-cover"

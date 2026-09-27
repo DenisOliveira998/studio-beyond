@@ -1099,16 +1099,16 @@ function AdminPage() {
 
         {/* Lista de espera */}
         <section id="lista-espera" className="mt-16 scroll-mt-24">
-          <SectionTitle icon={Mail}>Lista de espera — Leitor Assíduo</SectionTitle>
+          <SectionTitle icon={Mail}>Lista de espera</SectionTitle>
           <p className="caption mt-4">
-            {waitlist.length} {waitlist.length === 1 ? "pessoa" : "pessoas"} aguardando a abertura do plano
+            {waitlist.length} {waitlist.length === 1 ? "pessoa" : "pessoas"} aguardando — plano Leitor Assíduo ou candidatura de autor
           </p>
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <Th>E-mail</Th>
-                  <Th>Plano de interesse</Th>
+                  <Th>Interesse</Th>
                   <Th>Data</Th>
                 </tr>
               </thead>
@@ -1124,7 +1124,7 @@ function AdminPage() {
                     <tr key={row.id} className="border-b border-border/50 hover:bg-surface/50">
                       <td className="py-3 pr-4 text-xs">{row.email}</td>
                       <td className="py-3 pr-4 text-xs text-muted-foreground">
-                        {row.plan === "monthly" ? "Mensal" : row.plan === "quarterly" ? "Trimestral" : row.plan === "yearly" ? "Anual" : "—"}
+                        {row.plan === "monthly" ? "Plano mensal" : row.plan === "quarterly" ? "Plano trimestral" : row.plan === "yearly" ? "Plano anual" : row.plan === "author" ? "Candidatura de autor" : "—"}
                       </td>
                       <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(row.createdAt).toLocaleString("pt-BR")}

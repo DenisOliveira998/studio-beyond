@@ -1,3 +1,4 @@
+import { SITE_URL } from "@/lib/site-url";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/termos")({
@@ -7,16 +8,17 @@ export const Route = createFileRoute("/termos")({
       {
         name: "description",
         content:
-          "Termos de uso do The Beyond: direitos das obras, regras de curadoria, receita por visualização e doações diretas aos artistas.",
+          "Termos de uso do The Beyond: direitos das obras, regras de curadoria, receita por visualização e doações diretas aos autores.",
       },
       { property: "og:title", content: "Termos de uso — The Beyond" },
       {
         property: "og:description",
-        content: "Direitos das obras, curadoria e repasse de receita aos artistas.",
+        content: "Direitos das obras, curadoria e repasse de receita aos autores.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/termos` }],
   }),
   component: TermsPage,
 });

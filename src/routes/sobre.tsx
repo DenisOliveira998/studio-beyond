@@ -9,7 +9,7 @@ export const Route = createFileRoute("/sobre")({
       {
         name: "description",
         content:
-          "O The Beyond é uma plataforma editorial sem anúncios para autores independentes de livros, mangás, HQs e contos. 88% da receita vai para quem cria. Curadoria humana.",
+          "O The Beyond é uma plataforma editorial sem anúncios para livros, mangás, HQs e contos autorais. Curadoria humana, e 88% da receita vai para quem cria.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Quem Somos | The Beyond" },

@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Descubra livros, mangás, HQs e contos autorais brasileiros. O The Beyond paga autores por visualização e permite apoio direto. Sem anúncios, sem interrupções.",
+          "Livros, mangás, HQs e contos autorais brasileiros. Leia grátis, sem anúncios, e apoie direto quem escreve — 88% vai para o autor.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
@@ -184,6 +184,10 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
                         <img
                           src={coverUrl}
                           alt={cleanTitle}
+                          width={210}
+                          height={315}
+                          loading={i === 0 ? "eager" : "lazy"}
+                          fetchPriority={i === 0 ? "high" : "low"}
                           className="h-full w-full object-cover object-center transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-0.5"
                         />
                       ) : (
@@ -348,6 +352,7 @@ function CatalogCard({
       <div className="relative overflow-hidden">
         {work.cover ? (
           <img
+            width={180} height={240}
             src={work.cover}
             alt={cleanTitle}
             loading="lazy"

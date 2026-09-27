@@ -16,6 +16,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
         {work.cover ? (
           <div className="aspect-[3/2] overflow-hidden rounded-[3px] bg-ink">
             <img
+              width={600} height={400}
               src={work.cover}
               alt={cleanTitle}
               loading={priority ? "eager" : "lazy"}
