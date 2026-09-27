@@ -3,12 +3,28 @@ import { SITE_URL } from "@/lib/site-url";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen, Eye } from "lucide-react";
-import { MEDIUM_LABEL, type Work, type Medium } from "@/lib/beyond-data";
+import {
+  MEDIUM_LABEL,
+  VIEWS_DISPLAY_MIN,
+  WEBTOON_MEDIUMS,
+  isRecentWork,
+  type Work,
+  type Medium,
+} from "@/lib/beyond-data";
 import type { ReaderProfileStats } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
+import { loaderFetch } from "@/lib/loader-fetch";
 
 export const Route = createFileRoute("/")({
+  // Catálogo carregado no servidor: o HTML já sai com obras e links (Google/IA)
+  loader: async () => {
+    const [works, destaque] = await Promise.all([
+      loaderFetch<Work[]>("/api/works", []),
+      loaderFetch<string[]>("/api/destaque", []),
+    ]);
+    return { works, destaque };
+  },
   head: () => ({
     meta: [
       { title: "The Beyond — Leia Livros, Mangás, HQs e Contos Autorais" },
@@ -34,16 +50,9 @@ export const Route = createFileRoute("/")({
 });
 
 const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
-const WEBTOON_MEDIUMS: Medium[] = ["manga", "manhwa", "manhua", "hq"];
-const VIEWS_DISPLAY_MIN = 0;
-
-function isRecentWork(work: Work) {
-  try { return Date.now() - new Date(work.published).getTime() < 14 * 86_400_000; }
-  catch { return false; }
-}
-
 // ── Destaque Beyond — hero carousel full-width ──────────────────
 
+/** Obra com leitor disponível: webtoon (imagens) ou texto com corpo — senão, /ler dá 404. */
 function isReadable(work: Work): boolean {
   return WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0;
 }
@@ -152,7 +161,7 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
                       backgroundSize: "cover",
                       backgroundPosition: "center",
                       filter: "blur(28px) saturate(1.3) brightness(.55)",
-                      transform: "scale(1.1)",
+                      transform: "scale(1.07)",
                     }}
                   />
                 )}
@@ -567,17 +576,21 @@ function ContinueReading({ works }: { works: Work[] }) {
 // ── Home ─────────────────────────────────────────────────────────
 
 function Home() {
+  const initial = Route.useLoaderData();
   const { data: works = [] } = useQuery<Work[]>({
     queryKey: ["works"],
     queryFn: () => fetch("/api/works").then((r) => r.json() as Promise<Work[]>),
     staleTime: 60_000,
+    initialData: initial.works,
   });
 
-  // Badges: HOT = top 30% em views com pelo menos 3 visualizações | NEW = < 5 views
+  // Badges: HOT = top 30% em views (mín. VIEWS_DISPLAY_MIN) | NEW ("Novo") = publicada há < 14 dias
   const sorted = [...works].sort((a, b) => b.clicks - a.clicks);
   const hotCount = Math.max(1, Math.ceil(works.length * 0.3));
-  const hotSlugs = new Set(sorted.slice(0, hotCount).filter((w) => w.clicks >= 3).map((w) => w.slug));
-  const newSlugs = new Set(works.filter((w) => w.clicks < 5 && !hotSlugs.has(w.slug)).map((w) => w.slug));
+  const hotSlugs = new Set(
+    sorted.slice(0, hotCount).filter((w) => w.clicks >= VIEWS_DISPLAY_MIN).map((w) => w.slug),
+  );
+  const newSlugs = new Set(works.filter((w) => isRecentWork(w) && !hotSlugs.has(w.slug)).map((w) => w.slug));
 
   function badges(list: Work[]): Record<string, "HOT" | "NEW"> {
     const out: Record<string, "HOT" | "NEW"> = {};
@@ -607,8 +620,11 @@ function Home() {
 
   return (
     <div>
+      {/* H1 só para leitores de tela e buscadores — o topo visível é o Destaque */}
+      <h1 className="sr-only">The Beyond — livros, mangás, HQs e contos autorais brasileiros</h1>
+
       {/* Destaque Beyond — hero carousel */}
-      <DestaqueHero works={works} initialDestaque={[]} />
+      <DestaqueHero works={works} initialDestaque={initial.destaque} />
 
       {/* Continue lendo */}
       <ContinueReading works={works} />
