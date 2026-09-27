@@ -233,8 +233,8 @@ function Dashboard() {
       toast.error("A sinopse é obrigatória.");
       return;
     }
-    if (synopsis.trim().length < 100) {
-      toast.error("A sinopse precisa ter pelo menos 100 caracteres.");
+    if (synopsis.trim().length < 73) {
+      toast.error("A sinopse precisa ter pelo menos 73 caracteres.");
       return;
     }
     if (synopsis.trim().length > 280) {
@@ -519,11 +519,11 @@ function Dashboard() {
                   maxLength={280}
                   value={synopsis}
                   onChange={(e) => setSynopsis(e.target.value)}
-                  placeholder="Breve descrição da obra exibida no feed e na página pública (100–280 caracteres)"
+                  placeholder="Breve descrição da obra exibida no feed e na página pública (73–280 caracteres)"
                   className="w-full resize-y border border-border bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-gilt"
                 />
-                <p className={`mt-1 text-right text-xs ${synopsis.length < 100 ? "text-amber-500" : synopsis.length > 280 ? "text-red-500" : "text-muted-foreground/50"}`}>
-                  {synopsis.length}/280{synopsis.length < 100 && ` (mín. 100)`}
+                <p className={`mt-1 text-right text-xs ${synopsis.length < 73 ? "text-amber-500" : synopsis.length > 280 ? "text-red-500" : "text-muted-foreground/50"}`}>
+                  {synopsis.length}/280{synopsis.length < 73 && ` (mín. 73)`}
                 </p>
               </Field>
 
