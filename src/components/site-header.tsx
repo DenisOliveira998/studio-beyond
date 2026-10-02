@@ -134,18 +134,18 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
-      <div className="flex h-16 items-center gap-4 px-5 sm:gap-6 sm:px-10 lg:px-14">
+      <div className="flex h-16 items-center gap-3 px-4 sm:gap-6 sm:px-10 lg:px-14">
 
         {/* ── Esquerda: logo ── */}
         <Link to="/" className="flex shrink-0 items-baseline gap-2">
-          <span className="hero-type text-2xl leading-none text-white">
+          <span className="hero-type text-xl leading-none text-white sm:text-2xl">
             The <span className="text-gilt">Beyond</span>
           </span>
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
 
         {/* ── Direita: busca + links de nav + controles ── */}
-        <div className="ml-auto flex items-center gap-4 text-sm text-white/85 sm:gap-5">
+        <div className="ml-auto flex items-center gap-2.5 text-sm text-white/85 sm:gap-5">
           {/* Busca exposta no desktop — antes do primeiro link de nav */}
           <div className="hidden lg:block lg:w-48 xl:w-64">
             <SiteSearch inline />

@@ -844,7 +844,6 @@ export function dbWorkToWork(w: DbWork): Work {
     artistSlug: w.artistSlug,
     artistName: w.artistName,
     ...(w.coverUrl ? { cover: blobProxy(w.coverUrl) as string } : {}),
-    ...(w.pdfUrl ? { pdfUrl: blobProxy(w.pdfUrl) as string } : {}),
     ...(w.genre ? { genre: w.genre } : {}),
     ...(w.tags ? { tags: w.tags.split(",").map((t) => t.trim()).filter(Boolean) } : {}),
     excerpt: w.excerpt,
@@ -870,7 +869,7 @@ export function dbWorkToWork(w: DbWork): Work {
  */
 export function dbWorkToCard(w: DbWork): Work {
   const card = dbWorkToWork({ ...w, body: "" });
-  return { ...card, body: [], readable: ["manhwa", "manhua"].includes(w.medium) || !!w.body?.trim() };
+  return { ...card, body: [], readable: ["manhwa", "manhua"].includes(w.medium) || !!w.body?.trim() || !!w.pdfUrl };
 }
 
 export async function fetchWorksByArtistSlug(artistSlug: string): Promise<DbWork[]> {

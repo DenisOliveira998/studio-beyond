@@ -3,7 +3,8 @@ import { SITE_URL } from "@/lib/site-url";
 import { FREE_DAILY_QUOTA, MEDIUM_LABEL } from "@/lib/beyond-data";
 import type { Work } from "@/lib/beyond-data";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, ArrowUp, ImageOff } from "lucide-react";
+import { ArrowLeft, ArrowUp, ImageOff } from "lucide-react";
+import { PdfViewer } from "@/components/pdf-viewer";
 import { toast } from "sonner";
 import { stripHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -47,7 +48,7 @@ export const Route = createFileRoute("/ler/$slug")({
     const res = await fetch(`${base}/api/reader/${params.slug}?meta=1`);
     if (res.status === 404) throw notFound();
     if (!res.ok) throw new Error("Falha ao carregar obra");
-    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" };
+    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" | "pdf" };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Obra não encontrada | The Beyond" }] };
@@ -127,6 +128,7 @@ function ReaderPage() {
   const loaderData = Route.useLoaderData();
   const { work } = loaderData;
   const isWebtoon = loaderData.readerMode === "webtoon";
+  const isPdf = loaderData.readerMode === "pdf";
   const { user, loading: authLoading } = useAuth();
   // Texto/imagens com a sessão do leitor (o servidor confere o limite diário de contas gratuitas)
   const { data: content, isLoading: contentLoading } = useQuery<{
@@ -275,8 +277,8 @@ function ReaderPage() {
             Voltar à obra
           </Link>
 
-          <div className="flex items-center gap-1 border border-border bg-surface">
-            {!isWebtoon && FONT_SIZES.map((f) => (
+          <div className={`flex items-center gap-1 border border-border bg-surface ${isWebtoon || isPdf ? "hidden" : ""}`}>
+            {!isWebtoon && !isPdf && FONT_SIZES.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFontKey(f.key)}
@@ -294,21 +296,6 @@ function ReaderPage() {
                 A
               </button>
             ))}
-            {work.pdfUrl && (
-              <>
-                <span className="h-4 w-px bg-border" />
-                <a
-                  href={work.pdfUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  title="Baixar PDF"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-gilt"
-                >
-                  <Download className="size-3.5" strokeWidth={1.5} />
-                  PDF
-                </a>
-              </>
-            )}
           </div>
         </div>
 
@@ -325,7 +312,9 @@ function ReaderPage() {
 
         {/* Corpo da obra */}
         <div className="relative">
-          {isWebtoon ? (
+          {isPdf ? (
+            <PdfViewer slug={work.slug} bodyRef={bodyRef} enabled={!authLoading && !contentLoading && !quotaExhausted} />
+          ) : isWebtoon ? (
             <WebtoonBody images={bodyImages} bodyRef={bodyRef} loading={authLoading || contentLoading} />
           ) : (
             <>

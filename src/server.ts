@@ -217,7 +217,7 @@ async function blobAccess(request: Request, blobUrl: string): Promise<"public" |
   const { prisma } = await import("./lib/prisma");
   // 1) Público: capa ou PDF de obra publicada, ou foto de autor
   const publicWork = await prisma.work.findFirst({
-    where: { status: "approved", OR: [{ coverUrl: blobUrl }, { pdfUrl: blobUrl }] },
+    where: { status: "approved", coverUrl: blobUrl },
     select: { id: true },
   });
   if (publicWork) return "public";
@@ -577,7 +577,12 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           // Tipo real pelo conteúdo: só imagens (JPG, PNG, GIF, WebP, AVIF) e PDF — nada de SVG/HTML
           const bytes = new Uint8Array(await file.arrayBuffer());
           const kind = detectFileType(bytes.subarray(0, 80));
-          if (!kind) return uploadError("Formato não aceito. Envie JPG, PNG, WebP, GIF, AVIF, PDF ou EPUB.");
+          if (!kind) return uploadError("Formato não aceito. Envie JPG, PNG, WebP, GIF, AVIF ou PDF.");
+          // Arquivo da obra: só PDF (lido no visor do site, sem download). Capa: só imagem.
+          const purpose = String(formData.get("purpose") ?? "");
+          if (purpose === "work" && kind.type !== "application/pdf") return uploadError("O arquivo da obra precisa ser PDF.");
+          if (purpose === "cover" && !kind.type.startsWith("image/")) return uploadError("A capa precisa ser uma imagem JPG, PNG ou WebP.");
+          if (kind.ext === "epub") return uploadError("EPUB não é aceito. Envie a obra em PDF.");
           const { put } = await import("@vercel/blob");
           const base = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "arquivo";
           const blob = await put(`${base}.${kind.ext}`, new Blob([bytes], { type: kind.type }), {
@@ -1258,7 +1263,7 @@ ${catalog}
           .slice(0, 4)
           .map(dbWorkToCard);
         return new Response(
-          JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) }),
+          JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) || !!dbWork.pdfUrl }),
           { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } },
         );
       }
@@ -1765,6 +1770,46 @@ ${catalog}
 
       // ── Leitor web: dados da obra por slug ───────────────────────────────────
 
+      // Arquivo PDF da obra: entregue só para o visor do leitor (fetch do próprio site),
+      // nunca como página ou download. Obras licenciadas não têm link de download.
+      const pdfMatch = pathname.match(/^\/api\/reader\/([^/]+)\/arquivo$/);
+      if (pdfMatch && request.method === "GET") {
+        const denied = (status = 404) =>
+          new Response("Não disponível", { status, headers: { "cache-control": "private, no-store" } });
+        // Abrir o endereço direto no navegador (aba, iframe, embed) ou de outro site: bloqueado
+        const dest = request.headers.get("sec-fetch-dest");
+        const site = request.headers.get("sec-fetch-site");
+        if (!dest || !["empty"].includes(dest)) return denied(403);
+        if (site && site !== "same-origin") return denied(403);
+        const { fetchWorkBySlug } = await import("./lib/beyond-db");
+        const dbWork = await fetchWorkBySlug(decodeURIComponent(pdfMatch[1]!));
+        if (!dbWork || dbWork.status !== "approved" || !dbWork.pdfUrl) return denied();
+        // Limite diário de contas gratuitas: sem cota, sem arquivo
+        const { auth } = await import("./lib/auth-server");
+        const sessionPdf = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (sessionPdf?.user) {
+          const { prisma: prismaP } = await import("./lib/prisma");
+          const prof = await prismaP.profile.findUnique({ where: { id: sessionPdf.user.id }, select: { role: true } });
+          const unlimited = prof && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(prof.role);
+          if (!unlimited) {
+            const { getReadingQuota } = await import("./lib/beyond-db");
+            const quota = await getReadingQuota(sessionPdf.user.id);
+            if (quota.remaining <= 0) return denied(403);
+          }
+        }
+        const { get: blobGetPdf } = await import("@vercel/blob");
+        const file = await blobGetPdf(dbWork.pdfUrl, { access: "private" }).catch(() => null);
+        if (!file || file.stream === null) return denied();
+        return new Response(file.stream, {
+          headers: {
+            "content-type": "application/octet-stream",
+            "cache-control": "private, no-store",
+            "x-content-type-options": "nosniff",
+            "content-security-policy": "default-src 'none'; sandbox",
+          },
+        });
+      }
+
       if (pathname.startsWith("/api/reader/") && request.method === "GET") {
         const slug = pathname.replace("/api/reader/", "").split("/")[0];
         if (!slug) return new Response(JSON.stringify({ error: "Slug inválido" }), { status: 400, headers: { "content-type": "application/json" } });
@@ -1774,12 +1819,13 @@ ${catalog}
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
         const isWebtoon = ["manhwa", "manhua"].includes(dbWork.medium);
-        if (!isWebtoon && !dbWork.body?.trim()) {
+        const isPdf = !isWebtoon && !dbWork.body?.trim() && !!dbWork.pdfUrl;
+        if (!isWebtoon && !isPdf && !dbWork.body?.trim()) {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
         const { dbWorkToCard } = await import("./lib/beyond-db");
         const work = dbWorkToCard(dbWork);
-        const readerMode = isWebtoon ? "webtoon" : "text";
+        const readerMode = isWebtoon ? "webtoon" : isPdf ? "pdf" : "text";
         const noStore = { "content-type": "application/json", "cache-control": "private, no-store" };
 
         // ?meta=1 → só os dados da obra (usado pelo loader no servidor, sem cookies)
@@ -1801,6 +1847,10 @@ ${catalog}
             const quota = await getReadingQuota(readerSession.user.id);
             locked = quota.remaining <= 0;
           }
+        }
+
+        if (isPdf) {
+          return new Response(JSON.stringify({ work, readerMode, locked }), { headers: noStore });
         }
 
         if (isWebtoon) {

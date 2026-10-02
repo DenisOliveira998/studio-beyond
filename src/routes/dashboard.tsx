@@ -259,6 +259,7 @@ function Dashboard() {
         setUploadStep("cover");
         const fd = new FormData();
         fd.append("file", coverFile);
+        fd.append("purpose", "cover");
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const data = (await res.json()) as { url?: string; error?: string };
         if (!res.ok || !data.url) {
@@ -274,6 +275,7 @@ function Dashboard() {
         setUploadStep("pdf");
         const fd = new FormData();
         fd.append("file", pdfFile);
+        fd.append("purpose", "work");
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const data = (await res.json()) as { url?: string; error?: string };
         if (!res.ok || !data.url) {
@@ -567,7 +569,7 @@ function Dashboard() {
                   ref={pdfRef}
                   id="obra-pdf"
                   type="file"
-                  accept="application/pdf,image/png,image/jpeg,application/epub+zip,.epub"
+                  accept="application/pdf,.pdf"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
@@ -584,7 +586,7 @@ function Dashboard() {
                   {pdfName ?? "Clique para enviar o arquivo (obrigatório)"}
                 </button>
                 <p className="mt-2 text-xs text-muted-foreground/60">
-                  Formatos aceitos: PDF, PNG, JPEG, EPUB · Leitores verão um botão de download na página da obra.
+                  Formato aceito: PDF. Os leitores leem a obra dentro do site, sem opção de download.
                 </p>
               </Field>
 

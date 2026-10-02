@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, BookOpen, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import {
   MEDIUM_LABEL,
   VIEWS_DISPLAY_MIN,
@@ -15,6 +15,7 @@ import type { ReaderProfileStats } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
 import { loaderFetch } from "@/lib/loader-fetch";
+import { MEDIUM_COLOR } from "@/lib/medium-color";
 
 export const Route = createFileRoute("/")({
   // Catálogo carregado no servidor: o HTML já sai com obras e links (Google/IA)
@@ -50,12 +51,14 @@ export const Route = createFileRoute("/")({
 });
 
 const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
-// ── Destaque Beyond — hero carousel full-width ──────────────────
+// ── Destaque: vitrine compacta (uma obra por vez, contador "Nº 2") ──
 
 /** Obra com leitor disponível: webtoon (imagens) ou texto com corpo — senão, /ler dá 404. */
 function isReadable(work: Work): boolean {
   return work.readable ?? (WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0);
 }
+
+const STATUS_TEXT = { andamento: "Em andamento", finalizado: "Finalizada", paralisado: "Pausada" } as const;
 
 function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaque: string[] }) {
   const { data: destaqueSlugs = [] } = useQuery<string[]>({
@@ -65,262 +68,168 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
     initialData: initialDestaque,
   });
 
-  const [activeMedium, setActiveMedium] = useState<Medium | "all">("all");
   const [cur, setCur] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  // Works em ordem do destaque; fallback: top 5 por cliques
-  const destaqueWorks =
+  // Obras na ordem do destaque; sem destaque definido, as 5 mais lidas
+  const slides =
     destaqueSlugs.length > 0
       ? (destaqueSlugs.map((slug) => works.find((w) => w.slug === slug)).filter(Boolean) as Work[])
       : [...works].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
-
-  const availableMediums = [...new Set(destaqueWorks.map((w) => w.medium))];
-
-  const slides =
-    activeMedium === "all" ? destaqueWorks : destaqueWorks.filter((w) => w.medium === activeMedium);
   const count = slides.length;
-
-  useEffect(() => { setCur(0); }, [activeMedium]);
 
   useEffect(() => {
     if (paused || count <= 1) return;
-    const t = setInterval(() => setCur((i) => (i + 1) % count), 6000);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => setCur((i) => (i + 1) % count), 7000);
     return () => clearInterval(t);
   }, [paused, count]);
 
+  if (count === 0) return null;
   const prev = () => setCur((i) => (i - 1 + count) % count);
   const next = () => setCur((i) => (i + 1) % count);
 
-  if (works.length === 0) return null;
-
   return (
-    <section className="border-b border-border/70">
-      {/* Pills de categoria */}
-      {availableMediums.length > 1 && (
-        <div className="flex flex-wrap gap-2 border-b border-border/40 px-5 py-3 sm:px-10 lg:px-14">
-          <button
-            onClick={() => setActiveMedium("all")}
-            className={`border px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors ${
-              activeMedium === "all"
-                ? "border-gilt bg-gilt text-ink"
-                : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
-            }`}
+    <section
+      aria-roledescription="carrossel"
+      aria-label="Destaques"
+      className="relative overflow-hidden border-b border-border/70"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      {slides.map((work, i) => {
+        const title = stripHtml(work.title);
+        const tags = (Array.isArray(work.tags) ? work.tags : []).slice(0, 5);
+        const color = MEDIUM_COLOR[work.medium];
+        const status = STATUS_TEXT[work.workStatus ?? "andamento"] ?? "Em andamento";
+        const active = i === cur;
+        return (
+          <div
+            key={work.id}
+            aria-hidden={!active}
+            className={`transition-opacity duration-500 ${active ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"}`}
           >
-            Todos
-          </button>
-          {availableMediums.map((m) => (
-            <button
-              key={m}
-              onClick={() => setActiveMedium(m)}
-              className={`border px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors ${
-                activeMedium === m
-                  ? "border-gilt bg-gilt text-ink"
-                  : "border-border text-muted-foreground hover:border-gilt/50 hover:text-foreground"
-              }`}
-            >
-              {MEDIUM_LABEL[m]}
-            </button>
-          ))}
-        </div>
-      )}
+            {/* Faixa da capa, desfocada, só no alto do bloco */}
+            {work.cover && (
+              <div aria-hidden className="absolute inset-x-0 top-0 h-full overflow-hidden">
+                <div
+                  className="absolute inset-0 scale-110"
+                  style={{
+                    backgroundImage: `url(${work.cover})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center 30%",
+                    filter: "blur(24px) brightness(.35) saturate(1.1)",
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background" />
+              </div>
+            )}
 
-      {slides.length === 0 ? (
-        <div className="flex h-48 items-center justify-center">
-          <span className="text-sm text-muted-foreground">Nenhuma obra nesta categoria.</span>
-        </div>
-      ) : (
-        <div
-          className="relative select-none overflow-hidden"
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-        >
-          {/* Slides */}
-          {slides.map((work, i) => {
-            const cleanTitle = stripHtml(work.title);
-            const coverUrl = work.cover ?? "";
-            const tags = Array.isArray(work.tags)
-              ? work.tags
-              : (work.tags as unknown as string | undefined ?? "").split(",").filter(Boolean);
+            <div className="relative px-5 pb-6 pt-6 sm:px-10 lg:px-14">
+              <h2 className="font-display text-lg font-bold text-white/90">Destaques</h2>
 
-            return (
-              <div
-                key={work.id}
-                aria-hidden={i !== cur}
-                className={`flex flex-col justify-center transition-opacity duration-700 min-h-[670px] lg:min-h-0 lg:h-[500px] ${
-                  i === cur ? "relative opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-                }`}
-              >
-                {/* Background blur */}
-                {coverUrl && (
-                  <div
-                    aria-hidden
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `url(${coverUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      filter: "blur(28px) saturate(1.3) brightness(.55)",
-                      transform: "scale(1.07)",
-                    }}
-                  />
-                )}
-                {!coverUrl && <div className="absolute inset-0 bg-surface/90" />}
-
-                {/* Conteúdo */}
-                <div className="relative z-10 flex flex-col items-center gap-8 px-12 py-10 lg:flex-row lg:items-center lg:gap-14 lg:px-24">
-                  {/* Capa */}
-                  <div className="flex shrink-0 flex-col items-start gap-2">
-                    <div className="flex h-5 items-center gap-1.5">
-                      {isRecentWork(work) && (
-                        <>
-                          <span className="size-2 rounded-full bg-red-500" />
-                          <span className="text-[11px] uppercase tracking-[0.12em] text-red-400">Novo</span>
-                        </>
-                      )}
+              <div className="mt-4 flex gap-4 sm:gap-6">
+                <Link
+                  to="/work/$slug"
+                  params={{ slug: work.slug }}
+                  tabIndex={active ? 0 : -1}
+                  className="relative w-[104px] shrink-0 overflow-hidden rounded-md sm:w-[150px] lg:w-[170px]"
+                >
+                  {work.cover ? (
+                    <img
+                      src={work.cover}
+                      alt={`Capa de ${title}`}
+                      width={170}
+                      height={240}
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : "low"}
+                      className="aspect-[17/24] w-full bg-surface object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-[17/24] items-center justify-center bg-surface text-xs text-muted-foreground">
+                      {MEDIUM_LABEL[work.medium]}
                     </div>
-                    <div className="overflow-hidden" style={{ width: 210, height: 315 }}>
-                      {coverUrl ? (
-                        <img
-                          src={coverUrl}
-                          alt={cleanTitle}
-                          width={210}
-                          height={315}
-                          loading={i === 0 ? "eager" : "lazy"}
-                          fetchPriority={i === 0 ? "high" : "low"}
-                          className="h-full w-full object-cover object-center transition-transform duration-500 hover:scale-[1.03] hover:-translate-y-0.5"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-white/5">
-                          <span className="font-display text-2xl text-white/20">
-                            {MEDIUM_LABEL[work.medium].slice(0, 2).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  )}
+                </Link>
+
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <Link
+                    to="/work/$slug"
+                    params={{ slug: work.slug }}
+                    tabIndex={active ? 0 : -1}
+                    className="font-display text-xl font-bold leading-tight text-white line-clamp-3 hover:underline sm:text-3xl lg:text-4xl"
+                  >
+                    {title}
+                  </Link>
+
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[11px] font-bold leading-tight"
+                      style={{ backgroundColor: color.bg, color: color.ink }}
+                    >
+                      {MEDIUM_LABEL[work.medium]}
+                    </span>
+                    {isRecentWork(work) && (
+                      <span className="rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-bold leading-tight text-ink">Novo</span>
+                    )}
+                    {tags.map((t) => (
+                      <span key={t} className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] leading-tight text-white/80">
+                        {t}
+                      </span>
+                    ))}
                   </div>
 
-                  {/* Info */}
-                  <div className="min-w-0 flex-1 text-center lg:text-left">
-                    {/* Status + autor */}
-                    <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                      <span
-                        className="border border-gilt/40 text-center text-[10px] uppercase tracking-[0.1em] text-gilt/80"
-                        style={{ width: 120, padding: "3px 0" }}
-                      >
-                        {work.workStatus === "finalizado"
-                          ? "Finalizado"
-                          : work.workStatus === "paralisado"
-                          ? "Paralisado"
-                          : "Em andamento"}
-                      </span>
-                      {work.artistName && (
-                        <span className="text-xs italic text-white/60">{work.artistName}</span>
-                      )}
-                    </div>
+                  <p className="mt-3 hidden max-w-2xl text-sm leading-relaxed text-white/75 line-clamp-3 sm:block">
+                    {stripHtml(work.excerpt)}
+                  </p>
 
-                    {/* Tags */}
-                    {tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap justify-center gap-1.5 lg:justify-start">
-                        {tags.slice(0, 4).map((t) => (
-                          <span
-                            key={t}
-                            className="border border-white/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-white/60"
-                          >
-                            {t.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Título */}
-                    <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-white line-clamp-2 sm:text-4xl" style={{ minHeight: "2.5em" }}>
-                      {cleanTitle}
-                    </h2>
-
-                    {/* Excerpt */}
-                    <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/70 line-clamp-3 mx-auto lg:mx-0" style={{ minHeight: "4.875em" }}>
-                      {stripHtml(work.excerpt)}
+                  <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-4">
+                    <p className="text-sm italic text-white/70">
+                      {work.artistName}
+                      <span className="not-italic text-white/45">. {status}</span>
                     </p>
-
-                    {/* Visualizações — só a partir de VIEWS_DISPLAY_MIN */}
-                    {work.clicks >= VIEWS_DISPLAY_MIN && (
-                      <div className="mt-3 flex items-center justify-center gap-1.5 lg:justify-start">
-                        <Eye className="size-3.5 text-white/40" strokeWidth={1.5} />
-                        <span className="text-xs text-white/40">
-                          {work.clicks.toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Botões */}
-                    <div className="mt-5 flex flex-wrap justify-center gap-3 lg:justify-start">
-                      {isReadable(work) ? (
-                        <Link
-                          to="/ler/$slug"
-                          params={{ slug: work.slug }}
-                          className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
-                        >
-                          Começar a ler
-                        </Link>
-                      ) : (
-                        <Link
-                          to="/work/$slug"
-                          params={{ slug: work.slug }}
-                          className="bg-gilt px-6 py-2.5 text-sm font-medium text-ink transition-opacity hover:opacity-90"
-                        >
-                          Começar a ler
-                        </Link>
-                      )}
-                      <Link
-                        to="/work/$slug"
-                        params={{ slug: work.slug }}
-                        className="border border-white/30 px-6 py-2.5 text-sm text-white/80 transition-colors hover:border-gilt hover:text-gilt"
-                      >
-                        Ver detalhes
-                      </Link>
-                    </div>
+                    <Link
+                      to={isReadable(work) ? "/ler/$slug" : "/work/$slug"}
+                      params={{ slug: work.slug }}
+                      tabIndex={active ? 0 : -1}
+                      className="hidden rounded-full bg-gilt px-5 py-2 text-sm font-bold text-ink transition-opacity hover:opacity-90 sm:inline-block"
+                    >
+                      Começar a ler
+                    </Link>
                   </div>
                 </div>
               </div>
-            );
-          })}
 
-          {/* Setas */}
-          {count > 1 && (
-            <>
-              <button
-                onClick={prev}
-                aria-label="Anterior"
-                className="absolute left-3 top-1/2 z-20 -translate-y-1/2 border border-white/20 bg-black/30 p-2 text-white/60 backdrop-blur-sm transition-colors hover:border-gilt hover:text-gilt sm:left-5"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
-              <button
-                onClick={next}
-                aria-label="Próximo"
-                className="absolute right-3 top-1/2 z-20 -translate-y-1/2 border border-white/20 bg-black/30 p-2 text-white/60 backdrop-blur-sm transition-colors hover:border-gilt hover:text-gilt sm:right-5"
-              >
-                <ChevronRight className="size-5" />
-              </button>
-            </>
-          )}
-
-          {/* Dots */}
-          {count > 1 && (
-            <div className="relative z-20 flex items-center justify-center gap-2 pb-5">
-              {slides.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCur(i)}
-                  aria-label={`Slide ${i + 1}`}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === cur ? "w-5 bg-gilt" : "w-1.5 bg-white/30 hover:bg-white/50"
-                  }`}
-                />
-              ))}
+              <p className="mt-3 text-sm leading-relaxed text-white/75 line-clamp-3 sm:hidden">{stripHtml(work.excerpt)}</p>
             </div>
-          )}
+          </div>
+        );
+      })}
+
+      {/* Contador e setas, como na MangaDex */}
+      {count > 1 && (
+        <div className="absolute right-5 top-6 z-10 flex items-center gap-1 sm:right-10 lg:right-14">
+          <span className="mr-2 text-sm font-bold tabular-nums text-white/85" aria-live="polite">
+            Nº {cur + 1}
+          </span>
+          <button
+            type="button"
+            onClick={prev}
+            aria-label="Destaque anterior"
+            className="flex size-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            aria-label="Próximo destaque"
+            className="flex size-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <ChevronRight className="size-5" />
+          </button>
         </div>
       )}
     </section>
@@ -328,6 +237,8 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
 }
 
 // ── Card compacto (retrato 3/4) ──────────────────────────────────
+
+const BADGE_LABEL = { HOT: "Em alta", NEW: "Novo", NOVO: "Atualizado" } as const;
 
 function CatalogCard({
   work,
@@ -339,170 +250,155 @@ function CatalogCard({
   pagesRead?: number;
 }) {
   const cleanTitle = stripHtml(work.title);
-  const badgeCls = {
-    HOT: "border-red-500/50 bg-red-950/80 text-red-300",
-    NEW: "border-gilt/50 bg-background/80 text-gilt",
-    NOVO: "border-gilt bg-gilt text-ink font-bold",
-  };
-  // NEW = publicada há < 14 dias · NOVO = obra em leitura com atualização
-  const badgeLabel = { HOT: "HOT", NEW: "Novo", NOVO: "Atualizado" };
+  const color = MEDIUM_COLOR[work.medium];
 
   return (
     <Link to="/work/$slug" params={{ slug: work.slug }} className="group block">
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-md">
         {work.cover ? (
           <img
             width={180} height={240}
             src={work.cover}
-            alt={cleanTitle}
+            alt={`Capa de ${cleanTitle}`}
             loading="lazy"
-            className="aspect-[3/4] w-full object-cover object-center bg-surface transition-transform duration-500 group-hover:scale-[1.04]"
+            className="aspect-[3/4] w-full object-cover object-center bg-surface"
           />
         ) : (
-          <div className="aspect-[3/4] flex flex-col items-center justify-center gap-1 border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent">
-            <span className="font-display text-2xl font-bold text-gilt/20">
-              {MEDIUM_LABEL[work.medium].slice(0, 2).toUpperCase()}
-            </span>
-            <span className="text-[9px] uppercase tracking-[0.12em] text-gilt/25">
-              {MEDIUM_LABEL[work.medium]}
-            </span>
+          <div className="aspect-[3/4] flex items-center justify-center bg-surface">
+            <span className="font-display text-sm text-muted-foreground/50">{MEDIUM_LABEL[work.medium]}</span>
           </div>
         )}
+        {/* Selo da categoria, na cor dela */}
+        <span
+          className="absolute left-2 top-2 rounded px-1.5 py-0.5 text-[11px] font-bold leading-tight shadow-sm"
+          style={{ backgroundColor: color.bg, color: color.ink }}
+        >
+          {MEDIUM_LABEL[work.medium]}
+        </span>
         {badge && (
-          <span className={`absolute left-2 top-2 border px-1.5 py-0.5 text-[9px] uppercase tracking-[0.1em] ${badgeCls[badge]}`}>
-            {badgeLabel[badge]}
+          <span className="absolute right-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[11px] leading-tight text-white">
+            {BADGE_LABEL[badge]}
           </span>
         )}
         {pagesRead !== undefined && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-border/50">
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
             <div
-              className="h-full bg-gilt transition-all"
+              className="h-full bg-white"
               style={{ width: `${work.pages ? Math.min(Math.round((pagesRead / work.pages) * 100), 100) : Math.min(pagesRead, 100)}%` }}
             />
           </div>
         )}
       </div>
       <div className="mt-2 px-0.5">
-        <p className="text-xs font-bold leading-tight text-foreground line-clamp-2 transition-colors group-hover:text-gilt">
+        <p className="text-sm font-bold leading-tight text-foreground line-clamp-2 group-hover:underline">
           {cleanTitle}
         </p>
         {work.artistName && (
-          <p className="mt-0.5 text-[10px] text-muted-foreground">{work.artistName}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{work.artistName}</p>
         )}
       </div>
     </Link>
   );
 }
 
-// ── Linha de categoria ───────────────────────────────────────────
+// ── Catálogo: um bloco só, com as categorias como filtro ─────────
 
-function CategoryRow({
-  label,
-  works,
-  to,
-  badges = {},
-}: {
-  label: string;
-  works: Work[];
-  to?: string;
-  badges?: Record<string, "HOT" | "NEW" | "NOVO">;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-  const dragDist = useRef(0);
+const PAGE_SIZE = 32;
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => {
-      setCanLeft(el.scrollLeft > 2);
-      setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-    };
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
-  }, [works]);
+function CatalogGrid({ works, badges }: { works: Work[]; badges: Record<string, "HOT" | "NEW"> }) {
+  const [filter, setFilter] = useState<Medium | "all">("all");
+  const [page, setPage] = useState(1);
 
-  const SCROLL_STEP = 340;
+  const counts = new Map<Medium, number>();
+  for (const w of works) counts.set(w.medium, (counts.get(w.medium) ?? 0) + 1);
+  const mediums = MEDIA.filter((m) => counts.has(m));
 
-  const arrowCls =
-    "absolute top-[calc(50%-12px)] z-10 flex h-7 w-7 items-center justify-center border border-border bg-surface/95 text-muted-foreground shadow-sm transition-colors hover:border-gilt hover:text-gilt";
+  const list = [...(filter === "all" ? works : works.filter((w) => w.medium === filter))].sort((a, b) =>
+    (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""),
+  );
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const shown = list.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+  function choose(f: Medium | "all") {
+    setFilter(f);
+    setPage(1);
+  }
+
+  function goTo(n: number) {
+    setPage(n);
+    document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   if (works.length === 0) return null;
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold tracking-tight">{label}</h2>
-        {to && (
-          <a
-            href={to}
-            className="text-xs uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-gilt"
-          >
-            Ver tudo →
-          </a>
-        )}
-      </div>
+    <section id="catalogo" className="scroll-mt-20 px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
+      <h2 className="font-display text-2xl font-bold tracking-tight">Catálogo</h2>
 
-      <div className="relative">
-        {canLeft && (
-          <button
-            onClick={() => scrollRef.current?.scrollBy({ left: -SCROLL_STEP, behavior: "smooth" })}
-            className={`${arrowCls} -left-3 lg:-left-4`}
-            aria-label="Anterior"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-        )}
-
-        <div
-          ref={scrollRef}
-          className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-3 select-none sm:-mx-10 sm:px-10 lg:mx-0 lg:px-0 lg:pb-0 lg:gap-4"
-          style={{ scrollbarWidth: "none", cursor: dragging ? "grabbing" : "grab" }}
-          onMouseDown={(e) => {
-            isDragging.current = true;
-            dragDist.current = 0;
-            setDragging(true);
-            dragStartX.current = e.clientX;
-            dragScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
-          }}
-          onMouseMove={(e) => {
-            if (!isDragging.current || !scrollRef.current) return;
-            const dx = e.clientX - dragStartX.current;
-            dragDist.current = Math.abs(dx);
-            scrollRef.current.scrollLeft = dragScrollLeft.current - dx;
-          }}
-          onMouseUp={() => { isDragging.current = false; setDragging(false); }}
-          onMouseLeave={() => { isDragging.current = false; setDragging(false); }}
-          onClickCapture={(e) => { if (dragDist.current > 5) e.stopPropagation(); }}
+      <div role="group" aria-label="Filtrar por categoria" className="mt-5 flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-pressed={filter === "all"}
+          onClick={() => choose("all")}
+          className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+            filter === "all"
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
         >
-          {works.slice(0, 12).map((work) => {
-            const b = badges[work.slug];
-            return (
-              <div key={work.id} className="w-[140px] shrink-0 sm:w-[160px] lg:w-[180px]">
-                {b ? <CatalogCard work={work} badge={b} /> : <CatalogCard work={work} />}
-              </div>
-            );
-          })}
-        </div>
-
-        {canRight && (
-          <button
-            onClick={() => scrollRef.current?.scrollBy({ left: SCROLL_STEP, behavior: "smooth" })}
-            className={`${arrowCls} -right-3 lg:-right-4`}
-            aria-label="Próximo"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
-        )}
+          Todas
+        </button>
+        {mediums.map((m) => {
+          const active = filter === m;
+          const color = MEDIUM_COLOR[m];
+          return (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={active}
+              onClick={() => choose(active ? "all" : m)}
+              className="flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-colors"
+              style={
+                active
+                  ? { backgroundColor: color.bg, borderColor: color.bg, color: color.ink }
+                  : { borderColor: "var(--border)" }
+              }
+            >
+              {!active && <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: color.bg }} />}
+              <span className={active ? "font-bold" : "text-muted-foreground"}>{MEDIUM_LABEL[m]}</span>
+            </button>
+          );
+        })}
       </div>
-    </div>
+
+      <div className="mt-8 grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+        {shown.map((w) => (
+          <CatalogCard key={w.id} work={w} {...(badges[w.slug] ? { badge: badges[w.slug] } : {})} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <nav aria-label="Páginas do catálogo" className="mt-10 flex flex-wrap items-center justify-center gap-1.5">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => goTo(n)}
+              aria-current={n === current ? "page" : undefined}
+              aria-label={`Página ${n}`}
+              className={`flex size-9 items-center justify-center rounded-full text-sm tabular-nums transition-colors ${
+                n === current
+                  ? "bg-foreground font-bold text-background"
+                  : "text-muted-foreground hover:bg-surface hover:text-foreground"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </nav>
+      )}
+    </section>
   );
 }
 
@@ -606,23 +502,6 @@ function Home() {
     return out;
   }
 
-  const sections = [
-    ...MEDIA.map((m) => ({
-      key: m,
-      label: MEDIUM_LABEL[m],
-      works: works.filter((w) => w.medium === m),
-      to: `/explorar/${m}`,
-    })),
-    {
-      key: "novidades",
-      label: "★ Novidades",
-      works: [...works]
-        .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
-        .slice(0, 6),
-      to: "/explorar" as const,
-    },
-  ].filter((s) => s.works.length > 0);
-
   return (
     <div>
       {/* H1 só para leitores de tela e buscadores — o topo visível é o Destaque */}
@@ -634,20 +513,8 @@ function Home() {
       {/* Continue lendo */}
       <ContinueReading works={works} />
 
-      {/* Catálogo por categoria */}
-      <section className="px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
-        <div className="flex flex-col gap-12">
-          {sections.map((s) => (
-            <CategoryRow
-              key={s.key}
-              label={s.label}
-              works={s.works}
-              to={s.to}
-              badges={badges(s.works)}
-            />
-          ))}
-        </div>
-      </section>
+      {/* Catálogo: um bloco só, filtrado por categoria */}
+      <CatalogGrid works={works} badges={badges(works)} />
 
     </div>
   );
