@@ -313,7 +313,7 @@ function ReaderPage() {
         {/* Corpo da obra */}
         <div className="relative">
           {isPdf ? (
-            <PdfViewer slug={work.slug} bodyRef={bodyRef} enabled={!authLoading && !contentLoading && !quotaExhausted} />
+            <PdfViewer slug={work.slug} bodyRef={bodyRef} enabled={!authLoading && !contentLoading && !quotaExhausted} defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"} />
           ) : isWebtoon ? (
             <WebtoonBody images={bodyImages} bodyRef={bodyRef} loading={authLoading || contentLoading} />
           ) : (

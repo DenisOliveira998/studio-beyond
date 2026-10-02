@@ -1,5 +1,27 @@
 import { useEffect, useRef, useState } from "react";
-import { FileWarning } from "lucide-react";
+import { FileWarning, Minus, Plus } from "lucide-react";
+
+type PdfTheme = "original" | "sepia" | "escuro";
+
+/** Tema de leitura aplicado como filtro sobre a página desenhada (o arquivo não muda). */
+const THEMES: Record<PdfTheme, { label: string; filter: string; paper: string }> = {
+  original: { label: "Original", filter: "none", paper: "#ffffff" },
+  sepia: { label: "Sépia", filter: "sepia(0.5) saturate(0.85) brightness(0.96)", paper: "#efe4cc" },
+  escuro: { label: "Escuro", filter: "invert(0.9) hue-rotate(180deg) contrast(0.92)", paper: "#262626" },
+};
+const THEME_KEY = "beyond_pdf_theme";
+const ZOOM_KEY = "beyond_pdf_zoom";
+const ZOOM_MIN = 0.8;
+const ZOOM_MAX = 2;
+const ZOOM_STEP = 0.2;
+
+function readTheme(fallback: PdfTheme): PdfTheme {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    if (v === "original" || v === "sepia" || v === "escuro") return v;
+  } catch {}
+  return fallback;
+}
 
 /**
  * Visor de PDF das obras licenciadas: cada página é desenhada como imagem (canvas),
@@ -10,14 +32,41 @@ export function PdfViewer({
   slug,
   bodyRef,
   enabled,
+  defaultTheme = "original",
 }: {
   slug: string;
   bodyRef: React.RefObject<HTMLDivElement | null>;
   enabled: boolean;
+  /** Prosa abre no escuro; quadrinhos, no original (não altera a arte). */
+  defaultTheme?: PdfTheme;
 }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [numPages, setNumPages] = useState(0);
+  const [theme, setTheme] = useState<PdfTheme>(defaultTheme);
+  const [zoom, setZoom] = useState(1);
   const docRef = useRef<import("pdfjs-dist").PDFDocumentProxy | null>(null);
+
+  // Preferência salva só depois de montar (evita diferença entre servidor e navegador)
+  useEffect(() => { setTheme(readTheme(defaultTheme)); }, [defaultTheme]);
+  useEffect(() => {
+    try {
+      const z = Number(localStorage.getItem(ZOOM_KEY));
+      if (z >= ZOOM_MIN && z <= ZOOM_MAX) setZoom(z);
+    } catch {}
+  }, []);
+
+  function changeZoom(delta: number) {
+    setZoom((z) => {
+      const next = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + delta)) * 10) / 10;
+      try { localStorage.setItem(ZOOM_KEY, String(next)); } catch {}
+      return next;
+    });
+  }
+
+  function chooseTheme(t: PdfTheme) {
+    setTheme(t);
+    try { localStorage.setItem(THEME_KEY, t); } catch {}
+  }
 
   useEffect(() => {
     if (!enabled) return;
@@ -61,26 +110,90 @@ export function PdfViewer({
     );
   }
   const doc = docRef.current;
+  const t = THEMES[theme];
   return (
-    <div
-      ref={bodyRef}
-      className="flex select-none flex-col items-center gap-3"
-      onContextMenu={(e) => e.preventDefault()}
-      onDragStart={(e) => e.preventDefault()}
-    >
-      {Array.from({ length: numPages }, (_, i) => (
-        <PdfPage key={i} doc={doc} pageNumber={i + 1} />
-      ))}
+    <div>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <div role="group" aria-label="Tamanho da página" className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => changeZoom(-ZOOM_STEP)}
+          disabled={zoom <= ZOOM_MIN}
+          aria-label="Diminuir"
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface hover:text-foreground disabled:opacity-30"
+        >
+          <Minus className="size-4" />
+        </button>
+        <span className="w-12 text-center tabular-nums text-muted-foreground" aria-live="polite">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => changeZoom(ZOOM_STEP)}
+          disabled={zoom >= ZOOM_MAX}
+          aria-label="Aumentar"
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface hover:text-foreground disabled:opacity-30"
+        >
+          <Plus className="size-4" />
+        </button>
+      </div>
+      <div role="group" aria-label="Cor do fundo" className="flex items-center gap-1">
+        <span className="mr-2 text-muted-foreground">Fundo</span>
+        {(Object.keys(THEMES) as PdfTheme[]).map((k) => (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={theme === k}
+            onClick={() => chooseTheme(k)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${
+              theme === k ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span
+              aria-hidden
+              className="size-3 rounded-full border border-black/20"
+              style={{ backgroundColor: k === "original" ? "#fff" : k === "sepia" ? "#e9dcbd" : "#1e1e1e" }}
+            />
+            {THEMES[k].label}
+          </button>
+        ))}
+      </div>
+      </div>
+      {/* Com zoom acima de 100%, a página passa da coluna: rola para o lado */}
+      <div className="overflow-x-auto">
+        <div
+          ref={bodyRef}
+          className="mx-auto flex select-none flex-col items-center gap-3"
+          style={{ width: `${zoom * 100}%` }}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+        >
+          {Array.from({ length: numPages }, (_, i) => (
+            <PdfPage key={i} doc={doc} pageNumber={i + 1} filter={t.filter} paper={t.paper} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-/** Uma página: só desenha quando chega perto da tela. */
-function PdfPage({ doc, pageNumber }: { doc: import("pdfjs-dist").PDFDocumentProxy; pageNumber: number }) {
+/** Uma página: só desenha quando chega perto da tela, em alta resolução, e redesenha se a largura mudar. */
+function PdfPage({
+  doc,
+  pageNumber,
+  filter,
+  paper,
+}: {
+  doc: import("pdfjs-dist").PDFDocumentProxy;
+  pageNumber: number;
+  filter: string;
+  paper: string;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visible, setVisible] = useState(pageNumber <= 2);
   const [ratio, setRatio] = useState(1.414);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -98,20 +211,31 @@ function PdfPage({ doc, pageNumber }: { doc: import("pdfjs-dist").PDFDocumentPro
     return () => io.disconnect();
   }, [visible]);
 
+  // Largura real na tela (muda com zoom, giro do celular, janela)
   useEffect(() => {
-    if (!visible) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = Math.round(entry?.contentRect.width ?? 0);
+      setWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || width === 0) return;
     let cancelled = false;
     let task: { cancel: () => void } | null = null;
     (async () => {
       const page = await doc.getPage(pageNumber);
       const canvas = canvasRef.current;
-      const wrap = wrapRef.current;
-      if (cancelled || !canvas || !wrap) return;
+      if (cancelled || !canvas) return;
       const base = page.getViewport({ scale: 1 });
       setRatio(base.height / base.width);
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const scale = (wrap.clientWidth / base.width) * dpr;
-      const viewport = page.getViewport({ scale });
+      // Desenha com folga de resolução (mín. 2x) para o texto não serrilhar
+      const density = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
+      const viewport = page.getViewport({ scale: (width / base.width) * density });
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const render = page.render({ canvas, viewport });
@@ -122,11 +246,20 @@ function PdfPage({ doc, pageNumber }: { doc: import("pdfjs-dist").PDFDocumentPro
       cancelled = true;
       task?.cancel();
     };
-  }, [visible, doc, pageNumber]);
+  }, [visible, width, doc, pageNumber]);
 
   return (
-    <div ref={wrapRef} className="w-full max-w-[800px] bg-white" style={{ aspectRatio: `1 / ${ratio}` }}>
-      <canvas ref={canvasRef} aria-label={`Página ${pageNumber}`} className="block h-full w-full" />
+    <div
+      ref={wrapRef}
+      className="w-full overflow-hidden rounded-sm transition-colors"
+      style={{ aspectRatio: `1 / ${ratio}`, backgroundColor: paper }}
+    >
+      <canvas
+        ref={canvasRef}
+        aria-label={`Página ${pageNumber}`}
+        className="block h-full w-full transition-[filter]"
+        style={{ filter }}
+      />
     </div>
   );
 }
