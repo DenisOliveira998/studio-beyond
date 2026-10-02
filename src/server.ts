@@ -2,6 +2,17 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  INLINE_SAFE_TYPES,
+  MAX_UPLOAD_BYTES,
+  WEAK_PASSWORD_MESSAGE,
+  clientIp,
+  detectFileType,
+  isStrongPassword,
+  rateLimit,
+  tooManyRequests,
+  withSecurityHeaders,
+} from "./lib/security";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -263,6 +274,28 @@ async function requireAdmin(request: Request): Promise<{ error?: Response; actor
   return { actorId: session.user.id, actorEmail: session.user.email };
 }
 
+// ── Idade: interações exigem data de nascimento informada ────────────────────
+// Leitores (reader/vip) precisam ter informado a data de nascimento (mín. 13 anos)
+// antes de curtir, salvar, seguir ou comentar. Autores e equipe ficam liberados.
+const BIRTH_EXEMPT_ROLES = ["author", "gerente", "admin", "owner"];
+
+async function hasBirthDate(userId: string): Promise<boolean> {
+  const { prisma } = await import("./lib/prisma");
+  const row = await prisma.userBirth.findUnique({ where: { userId }, select: { userId: true } }).catch(() => null);
+  return !!row;
+}
+
+async function birthGate(userId: string): Promise<Response | null> {
+  const { prisma } = await import("./lib/prisma");
+  const profile = await prisma.profile.findUnique({ where: { id: userId }, select: { role: true } });
+  if (profile && BIRTH_EXEMPT_ROLES.includes(profile.role)) return null;
+  if (await hasBirthDate(userId)) return null;
+  return new Response(
+    JSON.stringify({ error: "Confirme sua data de nascimento para continuar.", code: "birthdate_required" }),
+    { status: 403, headers: { "content-type": "application/json" } },
+  );
+}
+
 // Endpoint para buscar o perfil do usuário autenticado
 async function handleMe(request: Request): Promise<Response> {
   const { auth } = await import("./lib/auth-server");
@@ -284,33 +317,47 @@ async function handleMe(request: Request): Promise<Response> {
     });
   }
 
-  return new Response(JSON.stringify(profile), {
+  const birthOk = BIRTH_EXEMPT_ROLES.includes(profile.role) || (await hasBirthDate(session.user.id));
+  return new Response(JSON.stringify({ ...profile, hasBirthDate: birthOk }), {
     headers: { "content-type": "application/json" },
   });
 }
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    return withSecurityHeaders(await route(request, env, ctx));
+  },
+};
+
+async function route(request: Request, env: unknown, ctx: unknown): Promise<Response> {
     try {
       const { pathname } = new URL(request.url);
 
       // OTP bypass — chama auth.api diretamente (evita bug de 404 no plugin emailOTP)
       if (pathname === "/api/otp/send" && request.method === "POST") {
         const { auth } = await import("./lib/auth-server");
-        const body = (await request.json()) as { email: string; type: string };
-        try {
-          await (auth.api as Record<string, (opts: unknown) => Promise<unknown>>).sendVerificationOTP({ body });
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { "content-type": "application/json" },
-          });
-        } catch (e: unknown) {
-          const err = e as { statusCode?: number; message?: string };
-          const status = typeof err?.statusCode === "number" ? err.statusCode : 400;
-          return new Response(JSON.stringify({ error: err?.message ?? String(e) }), {
-            status,
+        const body = (await request.json().catch(() => ({}))) as { email?: string; type?: string };
+        const otpEmail = String(body.email ?? "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail)) {
+          return new Response(JSON.stringify({ error: "Informe um e-mail válido." }), {
+            status: 400,
             headers: { "content-type": "application/json" },
           });
         }
+        if (!(await rateLimit(`otp:ip:${clientIp(request)}`, 10, 15 * 60)) || !(await rateLimit(`otp:email:${otpEmail}`, 3, 15 * 60))) {
+          return tooManyRequests("Muitos códigos pedidos. Aguarde 15 minutos e tente de novo.");
+        }
+        try {
+          await (auth.api as Record<string, (opts: unknown) => Promise<unknown>>).sendVerificationOTP({
+            body: { email: otpEmail, type: body.type ?? "sign-in" },
+          });
+        } catch (e: unknown) {
+          // Não revela se o e-mail existe: registra e responde igual
+          console.error("otp/send:", (e as { message?: string })?.message ?? e);
+        }
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { "content-type": "application/json" },
+        });
       }
 
       if (pathname === "/api/otp/verify" && request.method === "POST") {
@@ -341,12 +388,17 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
+        // Só com login recente (ex.: pelo código de "Esqueci minha senha"): uma sessão
+        // antiga ou roubada não consegue trocar a senha e tomar a conta.
+        const sessionCreated = new Date((session as { session?: { createdAt?: string | Date } }).session?.createdAt ?? 0).getTime();
+        if (!sessionCreated || Date.now() - sessionCreated > 15 * 60 * 1000) {
+          return new Response(
+            JSON.stringify({ error: "Por segurança, peça um código em “Esqueci minha senha” e defina a nova senha em seguida." }),
+            { status: 403, headers: { "content-type": "application/json" } },
+          );
+        }
         const { newPassword } = (await request.json()) as { newPassword: string };
-        const valid =
-          newPassword?.length >= 8 &&
-          /[A-Z]/.test(newPassword) &&
-          /[a-z]/.test(newPassword) &&
-          /[0-9]/.test(newPassword);
+        const valid = isStrongPassword(newPassword);
         if (!valid) {
           return new Response(JSON.stringify({ error: "Senha não atende os requisitos de segurança." }), {
             status: 400,
@@ -380,6 +432,24 @@ export default {
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json" },
         });
+      }
+
+      // Cadastro e troca de senha pelo Better Auth: mesmas regras do formulário + limite
+      if (
+        request.method === "POST" &&
+        ["/api/auth/sign-up/email", "/api/auth/reset-password", "/api/auth/change-password"].includes(pathname)
+      ) {
+        const payload = (await request.clone().json().catch(() => ({}))) as { password?: string; newPassword?: string };
+        const pw = pathname === "/api/auth/sign-up/email" ? payload.password : payload.newPassword;
+        if (!isStrongPassword(pw)) {
+          return new Response(JSON.stringify({ message: WEAK_PASSWORD_MESSAGE, code: "WEAK_PASSWORD" }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (pathname === "/api/auth/sign-up/email" && !(await rateLimit(`signup:ip:${clientIp(request)}`, 10, 60 * 60))) {
+          return tooManyRequests("Muitos cadastros a partir desta conexão. Tente de novo mais tarde.");
+        }
       }
 
       // Better Auth intercepta /api/auth/*
@@ -487,27 +557,33 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
+        if (!(await rateLimit(`upload:user:${session.user.id}`, 40, 60 * 60))) {
+          return tooManyRequests("Muitos envios em pouco tempo. Aguarde e tente de novo.");
+        }
+        const uploadError = (msg: string, status = 400) =>
+          new Response(JSON.stringify({ error: msg }), { status, headers: { "content-type": "application/json" } });
         try {
           const formData = await request.formData();
           const file = formData.get("file") as File | null;
-          if (!file) {
-            return new Response(JSON.stringify({ error: "Nenhum arquivo enviado" }), {
-              status: 400,
-              headers: { "content-type": "application/json" },
-            });
-          }
+          if (!file) return uploadError("Nenhum arquivo enviado.");
+          if (file.size > MAX_UPLOAD_BYTES) return uploadError("Arquivo grande demais. O limite é 4,5 MB.");
+          // Tipo real pelo conteúdo: só imagens (JPG, PNG, GIF, WebP, AVIF) e PDF — nada de SVG/HTML
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const kind = detectFileType(bytes.subarray(0, 80));
+          if (!kind) return uploadError("Formato não aceito. Envie JPG, PNG, WebP, GIF, AVIF, PDF ou EPUB.");
           const { put } = await import("@vercel/blob");
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-          const blob = await put(safeName, file, { access: "private", addRandomSuffix: true });
+          const base = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "arquivo";
+          const blob = await put(`${base}.${kind.ext}`, new Blob([bytes], { type: kind.type }), {
+            access: "private",
+            addRandomSuffix: true,
+            contentType: kind.type,
+          });
           return new Response(JSON.stringify({ url: blob.url }), {
             headers: { "content-type": "application/json" },
           });
         } catch (e: unknown) {
-          const err = e as { message?: string };
-          return new Response(JSON.stringify({ error: err?.message ?? "Erro no upload" }), {
-            status: 500,
-            headers: { "content-type": "application/json" },
-          });
+          console.error("upload falhou:", e);
+          return uploadError("Não foi possível enviar o arquivo agora. Tente de novo.", 500);
         }
       }
 
@@ -606,6 +682,9 @@ export default {
           subject: String(raw.subject ?? "").trim().slice(0, 160),
           message: String(raw.message ?? "").trim().slice(0, 5000),
         };
+        if (!(await rateLimit(`contact:ip:${clientIp(request)}`, 5, 60 * 60))) {
+          return tooManyRequests("Você enviou várias mensagens seguidas. Tente de novo em uma hora.");
+        }
         if (!body.name || !body.message || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
           return new Response(JSON.stringify({ error: "Preencha nome, e-mail válido e mensagem." }), {
             status: 400,
@@ -790,6 +869,9 @@ export default {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
         const email = (body.email ?? "").trim().toLowerCase();
         const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author"].includes(body.plan ?? "") ? body.plan! : "";
+        if (!(await rateLimit(`waitlist:ip:${clientIp(request)}`, 10, 60 * 60))) {
+          return tooManyRequests();
+        }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
           return new Response(JSON.stringify({ error: "Informe um e-mail válido." }), {
             status: 400,
@@ -826,6 +908,14 @@ export default {
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) {
           return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        const { prisma: prismaBio } = await import("./lib/prisma");
+        const bioProfile = await prismaBio.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
+        if (!bioProfile || !["author", "gerente", "admin", "owner"].includes(bioProfile.role)) {
+          return new Response(JSON.stringify({ error: "Apenas autores podem editar o perfil público." }), {
+            status: 403,
+            headers: { "content-type": "application/json" },
+          });
         }
         if (request.method === "GET") {
           const { getOwnAuthorBio } = await import("./lib/beyond-db");
@@ -879,6 +969,9 @@ export default {
             status: 401,
             headers: { "content-type": "application/json" },
           });
+        }
+        if (!(await rateLimit(`candidatura:user:${candSession.user.id}`, 5, 24 * 60 * 60))) {
+          return tooManyRequests("Limite de envios atingido por hoje. Tente amanhã.");
         }
         const { CANDIDATURAS_ABERTAS } = await import("./lib/features");
         if (!CANDIDATURAS_ABERTAS) {
@@ -982,6 +1075,8 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
+        const gateFav = await birthGate(session.user.id);
+        if (gateFav) return gateFav;
         const { workSlug, artistSlug } = (await request.json()) as {
           workSlug: string;
           artistSlug: string;
@@ -1481,6 +1576,8 @@ export default {
           if (!session?.user) {
             return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
           }
+          const gateLike = await birthGate(session.user.id);
+          if (gateLike) return gateLike;
           const { toggleWorkLike } = await import("./lib/beyond-db");
           const result = await toggleWorkLike(session.user.id, slug);
           return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
@@ -1501,6 +1598,9 @@ export default {
           if (!text?.trim()) {
             return new Response(JSON.stringify({ error: "Texto obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
           }
+          if (text.trim().length > 500) {
+            return new Response(JSON.stringify({ error: "O comentário pode ter no máximo 500 caracteres." }), { status: 400, headers: { "content-type": "application/json" } });
+          }
           const { auth } = await import("./lib/auth-server");
           const session = await auth.api.getSession({ headers: request.headers });
           if (!session?.user) {
@@ -1508,6 +1608,11 @@ export default {
               status: 401,
               headers: { "content-type": "application/json" },
             });
+          }
+          const gateComment = await birthGate(session.user.id);
+          if (gateComment) return gateComment;
+          if (!(await rateLimit(`comment:user:${session.user.id}`, 10, 5 * 60))) {
+            return tooManyRequests("Você comentou muitas vezes seguidas. Aguarde alguns minutos.");
           }
           const { addWorkComment } = await import("./lib/beyond-db");
           const comment = await addWorkComment({
@@ -1540,6 +1645,8 @@ export default {
           if (!session?.user) {
             return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
           }
+          const gateFollow = await birthGate(session.user.id);
+          if (gateFollow) return gateFollow;
           const { toggleArtistFollow } = await import("./lib/beyond-db");
           const result = await toggleArtistFollow(session.user.id, artistSlug);
           return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
@@ -1623,11 +1730,17 @@ export default {
           return new Response("Arquivo não encontrado", { status: 404 });
         }
         const filename = decodeURIComponent(blobUrl.split("/").pop()?.split("?")[0] ?? "arquivo");
-        const isInline = result.blob.contentType.startsWith("image/") || result.blob.contentType === "application/pdf";
+        // Só imagens comuns e PDF aparecem na página; qualquer outro tipo (ex.: SVG antigo) vira download
+        const isInline = INLINE_SAFE_TYPES.includes(result.blob.contentType);
         return new Response(result.stream, {
           headers: {
-            "content-type": result.blob.contentType,
-            "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename}"`,
+            "content-type": isInline ? result.blob.contentType : "application/octet-stream",
+            "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename.replace(/["\\\r\n]/g, "")}"`,
+            "x-content-type-options": "nosniff",
+            // imagens não executam nada; PDF fica sem sandbox para o leitor do navegador funcionar
+            ...(result.blob.contentType === "application/pdf"
+              ? {}
+              : { "content-security-policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" }),
             // arquivos públicos: cache da CDN (imagens por 1 ano); privados: sem cache compartilhado
             "cache-control":
               access === "public"
@@ -1729,5 +1842,4 @@ export default {
         headers: { "content-type": "text/html; charset=utf-8" },
       });
     }
-  },
-};
+}

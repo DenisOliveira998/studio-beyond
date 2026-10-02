@@ -38,9 +38,7 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:8080"),
 
-  advanced: {
-    disableCSRFCheck: true,
-  },
+  // Proteção CSRF do Better Auth ligada (confere a origem das requisições com trustedOrigins)
 
   accountLinking: {
     enabled: true,
@@ -52,6 +50,8 @@ export const auth = betterAuth({
     "http://localhost:3001",
     "http://localhost:8080",
     "https://studio-beyond-phi.vercel.app",
+    "https://thebeyond.art",
+    "https://www.thebeyond.art",
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
     ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
   ],

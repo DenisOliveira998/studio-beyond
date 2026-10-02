@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { RichEditor } from "@/components/RichEditor";
 import { toast } from "sonner";
@@ -544,7 +544,7 @@ function Dashboard() {
                   ref={fileRef}
                   id="obra-capa"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
@@ -1278,7 +1278,7 @@ function AuthorProfileEditor({
             <span className="eyebrow block">Foto</span>
             <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-border bg-background px-4 py-4 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
               {uploading ? "Enviando…" : form.avatarUrl ? "Foto enviada — trocar" : "Selecionar foto"}
-              <input type="file" accept="image/*" hidden onChange={(e) => void handleAvatar(e)} />
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden onChange={(e) => void handleAvatar(e)} />
             </label>
           </div>
           <label className="block">

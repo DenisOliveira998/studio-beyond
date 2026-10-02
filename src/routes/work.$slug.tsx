@@ -130,11 +130,13 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
           <textarea
             required
             rows={3}
+            maxLength={500}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="O que achou da obra?"
             className="mt-2 w-full resize-y border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
           />
+          <span className="caption mt-1 block text-right">{draft.length}/500</span>
         </label>
         <button
           type="submit"

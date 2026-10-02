@@ -96,7 +96,7 @@ function CriarPage() {
       if (result?.error) {
         const msg = result.error.message ?? "";
         if (/exist|already|exists/i.test(msg)) {
-          toast.error("Esse e-mail já possui uma conta. Entre em /entrar ou use 'Esqueci minha senha'.");
+          toast.error("Não foi possível criar a conta com esse e-mail. Se você já tem conta, entre ou use “Esqueci minha senha”.");
         } else {
           toast.error(msg || "Erro ao criar conta.");
         }

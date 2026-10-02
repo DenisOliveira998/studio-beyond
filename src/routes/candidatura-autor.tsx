@@ -304,7 +304,7 @@ function ApplicationPage() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*,.pdf"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,application/pdf"
               multiple
               hidden
               onChange={(e) => void handleFileChange(e)}

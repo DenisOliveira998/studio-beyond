@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -1234,7 +1234,7 @@ function AdminPage() {
                     {uploadingImg ? "Enviando…" : newSlide.imageUrl ? "Trocar imagem" : "Selecionar imagem"}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                       className="sr-only"
                       onChange={(e) => {
                         const f = e.target.files?.[0];

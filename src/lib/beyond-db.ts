@@ -965,7 +965,8 @@ export async function addToWaitlist(input: { email: string; plan: string; userId
   await prisma.waitlistEntry.upsert({
     where: { email: input.email },
     create: { email: input.email, plan: input.plan, userId: input.userId ?? null },
-    update: { plan: input.plan },
+    // Inscrição já existente não é alterada (ninguém troca o plano de outra pessoa)
+    update: {},
   });
 }
 

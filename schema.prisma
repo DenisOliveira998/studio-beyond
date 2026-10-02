@@ -411,3 +411,12 @@ model UserBirth {
 
   @@map("user_births")
 }
+
+// Limite de requisições (anti-spam/força bruta) — chave ex.: "otp:email:x@y.com"
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@map("rate_limits")
+}

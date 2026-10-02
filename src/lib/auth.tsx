@@ -28,6 +28,8 @@ export type Profile = {
   email: string;
   role: AppRole;
   suspended: boolean;
+  /** Data de nascimento já informada (ou papel isento: autor/equipe) */
+  hasBirthDate?: boolean;
 };
 
 type AuthValue = {
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data);
 
       if (data?.user?.id) {
-        void flushPendingBirth();
+        await flushPendingBirth();
         const res = await fetch("/api/me");
         if (res.ok) {
           const p = (await res.json()) as Profile;

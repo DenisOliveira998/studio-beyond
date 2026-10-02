@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
 import { ErrorScreen, NotFoundScreen } from "@/components/error-screens";
+import { BirthdatePrompt } from "@/components/birthdate-prompt";
 import { DEFAULT_OG_IMAGE, siteUrl } from "@/lib/site-url";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
@@ -118,6 +119,7 @@ function RootComponent() {
             <SiteFooter />
           </div>
           <Toaster />
+          <BirthdatePrompt />
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>
