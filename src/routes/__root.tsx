@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   createRootRouteWithContext,
+  type ErrorComponentProps,
   useRouter,
   HeadContent,
   Scripts,
@@ -22,7 +23,7 @@ function NotFoundComponent() {
   return <NotFoundScreen />;
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
