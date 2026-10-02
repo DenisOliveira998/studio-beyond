@@ -835,6 +835,15 @@ export function dbWorkToWork(w: DbWork): Work {
   };
 }
 
+/**
+ * Obra para listagens públicas (home, explorar, autor, relacionadas): sem o texto
+ * completo — ele só é entregue pelo leitor (/api/reader), que confere o limite diário.
+ */
+export function dbWorkToCard(w: DbWork): Work {
+  const card = dbWorkToWork({ ...w, body: "" });
+  return { ...card, body: [], readable: ["manhwa", "manhua"].includes(w.medium) || !!w.body?.trim() };
+}
+
 export async function fetchWorksByArtistSlug(artistSlug: string): Promise<DbWork[]> {
   const rows = await prisma.work.findMany({
     where: { artistSlug, status: "approved" },

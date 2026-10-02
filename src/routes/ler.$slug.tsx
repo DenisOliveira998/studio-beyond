@@ -42,13 +42,12 @@ function consumeAnonQuota(pages: number): Quota {
 export const Route = createFileRoute("/ler/$slug")({
   loader: async ({ params }) => {
     const base = typeof window === "undefined" ? SITE_URL : "";
-    const res = await fetch(`${base}/api/reader/${params.slug}`);
+    // Só os dados da obra; o texto é buscado no navegador, com a sessão do leitor,
+    // para o servidor conferir o limite diário (a página é noindex, não precisa do texto no HTML)
+    const res = await fetch(`${base}/api/reader/${params.slug}?meta=1`);
     if (res.status === 404) throw notFound();
     if (!res.ok) throw new Error("Falha ao carregar obra");
-    const data = await res.json() as
-      | { work: Work; bodyHtml: string; readerMode: "text" }
-      | { work: Work; bodyImages: string[]; readerMode: "webtoon" };
-    return data;
+    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Obra não encontrada — The Beyond" }] };
@@ -84,7 +83,22 @@ function readFontPref(): FontKey {
   return "md";
 }
 
-function WebtoonBody({ images, bodyRef }: { images: string[]; bodyRef: React.RefObject<HTMLDivElement> }) {
+function WebtoonBody({
+  images,
+  bodyRef,
+  loading,
+}: {
+  images: string[];
+  bodyRef: React.RefObject<HTMLDivElement | null>;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div ref={bodyRef} className="flex justify-center py-24">
+        <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
+      </div>
+    );
+  }
   if (images.length === 0) {
     return (
       <div ref={bodyRef} className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
@@ -113,9 +127,21 @@ function ReaderPage() {
   const loaderData = Route.useLoaderData();
   const { work } = loaderData;
   const isWebtoon = loaderData.readerMode === "webtoon";
-  const bodyHtml = !isWebtoon ? (loaderData as { work: Work; bodyHtml: string; readerMode: "text" }).bodyHtml : "";
-  const bodyImages = isWebtoon ? (loaderData as { work: Work; bodyImages: string[]; readerMode: "webtoon" }).bodyImages : [];
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  // Texto/imagens com a sessão do leitor (o servidor confere o limite diário de contas gratuitas)
+  const { data: content, isLoading: contentLoading } = useQuery<{
+    bodyHtml?: string;
+    bodyImages?: string[];
+    locked?: boolean;
+  }>({
+    queryKey: ["reader-content", work.slug, user?.id ?? "anon"],
+    queryFn: () => fetch(`/api/reader/${work.slug}`).then((r) => r.json()),
+    enabled: !authLoading,
+    staleTime: 0,
+  });
+  const bodyHtml = content?.bodyHtml ?? "";
+  const bodyImages = content?.bodyImages ?? [];
+  const lockedByServer = content?.locked === true;
   const bodyRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -168,7 +194,7 @@ function ReaderPage() {
         : Promise.resolve(readAnonQuota()),
     staleTime: 60_000,
   });
-  const quotaExhausted = quota ? quota.remaining !== null && quota.remaining <= 0 : false;
+  const quotaExhausted = lockedByServer || (quota ? quota.remaining !== null && quota.remaining <= 0 : false);
   const showQuotaWarning =
     quota &&
     quota.remaining !== null &&
@@ -191,6 +217,8 @@ function ReaderPage() {
         throttleTimer = null;
         if (!bodyEl) return;
         const { top, height } = bodyEl.getBoundingClientRect();
+        // texto ainda carregando (altura ~0): não conta páginas
+        if (height < 200) return;
         const scrolled = Math.max(0, window.innerHeight - top);
         const fraction = Math.min(scrolled / height, 1);
         const pagesRead = Math.floor(fraction * segments);
@@ -218,7 +246,7 @@ function ReaderPage() {
       window.removeEventListener("scroll", onScroll);
       if (throttleTimer) clearTimeout(throttleTimer);
     };
-  }, [user, quotaExhausted, work.pages, refetchQuota]);
+  }, [user, quotaExhausted, work.pages, refetchQuota, bodyHtml, bodyImages.length]);
 
   const cleanTitle = stripHtml(work.title);
 
@@ -298,13 +326,20 @@ function ReaderPage() {
         {/* Corpo da obra */}
         <div className="relative">
           {isWebtoon ? (
-            <WebtoonBody images={bodyImages} bodyRef={bodyRef} />
+            <WebtoonBody images={bodyImages} bodyRef={bodyRef} loading={authLoading || contentLoading} />
           ) : (
+            <>
+            {(authLoading || contentLoading) && (
+              <div className="flex justify-center py-24">
+                <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
+              </div>
+            )}
             <div
               ref={bodyRef}
               className={`prose prose-invert max-w-none ${fontCss} [&_p]:mb-[1.4em] [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:font-display [&_h2]:text-2xl [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:font-display [&_blockquote]:border-l-2 [&_blockquote]:border-gilt/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground`}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
+            </>
           )}
 
           {/* Paywall overlay */}

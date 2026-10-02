@@ -200,6 +200,51 @@ async function finalizeHtmlResponse(request: Request, response: Response): Promi
   return response;
 }
 
+// ── Acesso a arquivos privados do Blob ───────────────────────────────────────
+
+async function blobAccess(request: Request, blobUrl: string): Promise<"public" | "private" | "denied"> {
+  const { prisma } = await import("./lib/prisma");
+  // 1) Público: capa ou PDF de obra publicada, ou foto de autor
+  const publicWork = await prisma.work.findFirst({
+    where: { status: "approved", OR: [{ coverUrl: blobUrl }, { pdfUrl: blobUrl }] },
+    select: { id: true },
+  });
+  if (publicWork) return "public";
+  // páginas de webtoon publicado (ficam no corpo, como lista JSON de URLs)
+  const webtoonPage = await prisma.work.findFirst({
+    where: { status: "approved", medium: { in: ["manhwa", "manhua"] }, body: { contains: blobUrl } },
+    select: { id: true },
+  });
+  if (webtoonPage) return "public";
+  const avatar = await prisma.authorBio.findFirst({ where: { avatarUrl: blobUrl }, select: { userId: true } }).catch(() => null);
+  if (avatar) return "public";
+
+  // Daqui em diante, só com login
+  const { auth } = await import("./lib/auth-server");
+  const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+  if (!session?.user) return "denied";
+  const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
+  const isStaff = !!profile && ["owner", "admin", "gerente"].includes(profile.role);
+  if (isStaff) return "private";
+
+  // 2) Portfólio de candidatura: só o próprio candidato
+  const application = await prisma.authorApplication.findFirst({
+    where: { portfolioFiles: { contains: blobUrl } },
+    select: { userId: true },
+  });
+  if (application) return application.userId === session.user.id ? "private" : "denied";
+
+  // 3) Arquivo de obra ainda não publicada: só o autor
+  const draftWork = await prisma.work.findFirst({
+    where: { OR: [{ coverUrl: blobUrl }, { pdfUrl: blobUrl }] },
+    select: { authorId: true },
+  });
+  if (draftWork) return draftWork.authorId === session.user.id ? "private" : "denied";
+
+  // 4) Upload recém-feito, ainda sem dono registrado: qualquer pessoa logada
+  return "private";
+}
+
 // ── Admin helpers ─────────────────────────────────────────────────────────────
 
 const ADMIN_ROLES = ["owner", "admin", "gerente"] as const;
@@ -949,7 +994,7 @@ export default {
       const workSlugApiMatch = pathname.match(/^\/api\/work\/([^/]+)$/);
       if (workSlugApiMatch && request.method === "GET") {
         const slug = workSlugApiMatch[1];
-        const { fetchWorkBySlug, fetchApprovedWorks, dbWorkToWork } = await import("./lib/beyond-db");
+        const { fetchWorkBySlug, fetchApprovedWorks, dbWorkToWork, dbWorkToCard } = await import("./lib/beyond-db");
         const dbWork = await fetchWorkBySlug(slug);
         if (!dbWork || dbWork.status !== "approved") {
           return new Response(JSON.stringify({ error: "not_found" }), {
@@ -957,12 +1002,14 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
-        const work = dbWorkToWork(dbWork);
+        // Só o 1º parágrafo (prévia); o texto completo vem do leitor
+        const full = dbWorkToWork(dbWork);
+        const work = { ...full, body: full.body.slice(0, 1), readable: dbWorkToCard(dbWork).readable };
         const allWorks = await fetchApprovedWorks();
         const related = allWorks
           .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
           .slice(0, 4)
-          .map(dbWorkToWork);
+          .map(dbWorkToCard);
         return new Response(
           JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) }),
           { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } },
@@ -971,9 +1018,9 @@ export default {
 
       // Listar obras aprovadas (público)
       if (pathname === "/api/works" && request.method === "GET") {
-        const { fetchApprovedWorks, dbWorkToWork } = await import("./lib/beyond-db");
+        const { fetchApprovedWorks, dbWorkToCard } = await import("./lib/beyond-db");
         const rows = await fetchApprovedWorks();
-        return new Response(JSON.stringify(rows.map(dbWorkToWork)), {
+        return new Response(JSON.stringify(rows.map(dbWorkToCard)), {
           headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
         });
       }
@@ -1025,7 +1072,7 @@ export default {
       const artistProfileMatch = pathname.match(/^\/api\/artists\/([^/]+)$/);
       if (artistProfileMatch && request.method === "GET") {
         const artistSlug = decodeURIComponent(artistProfileMatch[1]!);
-        const { fetchWorksByArtistSlug, dbWorkToWork } = await import("./lib/beyond-db");
+        const { fetchWorksByArtistSlug, dbWorkToCard } = await import("./lib/beyond-db");
         const dbWorks = await fetchWorksByArtistSlug(artistSlug);
         if (!dbWorks.length) {
           return new Response(JSON.stringify({ error: "Artista não encontrado" }), {
@@ -1033,7 +1080,7 @@ export default {
             headers: { "content-type": "application/json" },
           });
         }
-        const works = dbWorks.map(dbWorkToWork);
+        const works = dbWorks.map(dbWorkToCard);
         const artistName = dbWorks[0]!.artistName;
         const { getAuthorBio } = await import("./lib/beyond-db");
         const authorId = dbWorks.find((w) => w.authorId)?.authorId ?? null;
@@ -1471,19 +1518,47 @@ export default {
         if (!isWebtoon && !dbWork.body?.trim()) {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
-        const work = dbWorkToWork(dbWork);
+        const { dbWorkToCard } = await import("./lib/beyond-db");
+        const work = dbWorkToCard(dbWork);
+        const readerMode = isWebtoon ? "webtoon" : "text";
+        const noStore = { "content-type": "application/json", "cache-control": "private, no-store" };
+
+        // ?meta=1 → só os dados da obra (usado pelo loader no servidor, sem cookies)
+        if (new URL(request.url).searchParams.get("meta") === "1") {
+          return new Response(JSON.stringify({ work, readerMode }), { headers: noStore });
+        }
+
+        // Limite diário conferido no servidor para contas gratuitas logadas.
+        // (Visitantes sem conta: controle no navegador por enquanto.)
+        let locked = false;
+        const { auth } = await import("./lib/auth-server");
+        const readerSession = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (readerSession?.user) {
+          const { prisma: prismaR } = await import("./lib/prisma");
+          const readerProfile = await prismaR.profile.findUnique({ where: { id: readerSession.user.id }, select: { role: true } });
+          const unlimited = readerProfile && ["vip", "author", "gerente", "admin", "owner"].includes(readerProfile.role);
+          if (!unlimited) {
+            const { getReadingQuota } = await import("./lib/beyond-db");
+            const quota = await getReadingQuota(readerSession.user.id);
+            locked = quota.remaining <= 0;
+          }
+        }
+
         if (isWebtoon) {
           // body armazena JSON com array de URLs de imagem para obras webtoon
           let bodyImages: string[] = [];
           try { bodyImages = JSON.parse(dbWork.body ?? "[]"); } catch {}
-          return new Response(JSON.stringify({ work, bodyImages, readerMode: "webtoon" }), {
-            headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
-          });
+          if (locked) bodyImages = bodyImages.slice(0, 2);
+          return new Response(JSON.stringify({ work, bodyImages, readerMode, locked }), { headers: noStore });
         }
         const { sanitizeWorkHtml } = await import("./lib/sanitize");
-        return new Response(JSON.stringify({ work, bodyHtml: sanitizeWorkHtml(dbWork.body), readerMode: "text" }), {
-          headers: { "content-type": "application/json", "cache-control": "private, max-age=60" },
-        });
+        let bodyHtml = sanitizeWorkHtml(dbWork.body);
+        if (locked) {
+          // prévia: só o primeiro parágrafo
+          const end = bodyHtml.indexOf("</p>");
+          bodyHtml = end >= 0 ? bodyHtml.slice(0, end + 4) : bodyHtml.slice(0, 600);
+        }
+        return new Response(JSON.stringify({ work, bodyHtml, readerMode, locked }), { headers: noStore });
       }
 
       // ── Proxy de arquivos do Vercel Blob (private store) ─────────────────────
@@ -1492,6 +1567,13 @@ export default {
         const blobUrl = new URL(request.url).searchParams.get("url");
         if (!blobUrl || !blobUrl.includes("blob.vercel-storage.com")) {
           return new Response("Forbidden", { status: 403 });
+        }
+        // Quem pode abrir: arquivos públicos (capa/PDF de obra publicada, foto de autor) para todos;
+        // portfólios de candidatura só para a equipe ou o próprio candidato; arquivos de obras
+        // em revisão só para a equipe ou o autor; uploads ainda não salvos, só para quem está logado.
+        const access = await blobAccess(request, blobUrl);
+        if (access === "denied") {
+          return new Response("Arquivo não encontrado", { status: 404, headers: { "cache-control": "private, no-store" } });
         }
         const { get: blobGet } = await import("@vercel/blob");
         const result = await blobGet(blobUrl, { access: "private" }).catch(() => null);
@@ -1504,10 +1586,13 @@ export default {
           headers: {
             "content-type": result.blob.contentType,
             "content-disposition": `${isInline ? "inline" : "attachment"}; filename="${filename}"`,
-            // imagens (capas, fotos) no cache da CDN por 1 ano; demais arquivos seguem privados
-            "cache-control": result.blob.contentType.startsWith("image/")
-              ? "public, max-age=31536000, s-maxage=31536000, immutable"
-              : "private, max-age=3600",
+            // arquivos públicos: cache da CDN (imagens por 1 ano); privados: sem cache compartilhado
+            "cache-control":
+              access === "public"
+                ? result.blob.contentType.startsWith("image/")
+                  ? "public, max-age=31536000, s-maxage=31536000, immutable"
+                  : "public, max-age=3600, s-maxage=3600"
+                : "private, no-store",
           },
         });
       }

@@ -54,7 +54,7 @@ const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa"
 
 /** Obra com leitor disponível: webtoon (imagens) ou texto com corpo — senão, /ler dá 404. */
 function isReadable(work: Work): boolean {
-  return WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0;
+  return work.readable ?? (WEBTOON_MEDIUMS.includes(work.medium) || work.body.length > 0);
 }
 
 function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaque: string[] }) {

@@ -29,6 +29,8 @@ export type Work = {
   published: string;
   /** Data ISO de publicação (usada para o selo "Novo") */
   publishedAt?: string;
+  /** Tem leitor disponível (texto ou imagens) — usado nas listas, que não trazem o texto */
+  readable?: boolean;
   readTime?: string;
   genre?: string;
   pages?: number;

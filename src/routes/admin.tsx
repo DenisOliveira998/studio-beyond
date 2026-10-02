@@ -779,7 +779,7 @@ function AdminPage() {
                       return (
                         <div className="mt-4 flex flex-wrap gap-2">
                           {files.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noreferrer"
+                            <a key={i} href={url.includes("blob.vercel-storage.com") ? `/api/blob-proxy?url=${encodeURIComponent(url)}` : url} target="_blank" rel="noreferrer"
                               className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
                               <FileDown className="size-3.5" strokeWidth={1.5} />
                               Arquivo {i + 1}
