@@ -22,6 +22,17 @@ const NOTE: Record<Medium, string> = {
 };
 
 /** Títulos e descrições das páginas de categoria (/explorar/$categoria). */
+/** Texto de apresentação de cada categoria (aparece abaixo do título). */
+const INTRO: Record<Medium, string> = {
+  livro: "Todos os livros aqui foram escritos por autores independentes e passaram pela curadoria da equipe. Dá para ler online e de graça, direto no navegador, sem baixar nada.",
+  manga: "Mangás criados por autores brasileiros, com história e desenho próprios. Cada obra passa pela curadoria antes de ir ao ar, e a leitura é gratuita.",
+  hq: "Quadrinhos nacionais de autores independentes, de vários estilos e gêneros. A leitura é online e gratuita, e você pode apoiar quem desenhou.",
+  conto: "Histórias curtas para ler numa pausa do dia. Todas são autorais, passaram pela curadoria e podem ser lidas de graça.",
+  lightnovel: "Novels e webnovels publicadas por capítulos, para acompanhar a história conforme sai. Leitura online, gratuita e com curadoria.",
+  manhwa: "Quadrinhos no formato webtoon, feitos para ler rolando a tela. Leitura online e gratuita, com obras escolhidas pela equipe.",
+  manhua: "Quadrinhos no estilo chinês, em formato webtoon ou paginado. Todas as obras passam pela curadoria e podem ser lidas de graça.",
+};
+
 export const CATEGORY_SEO: Record<Medium, { h1: string; title: string; description: string }> = {
   livro: {
     h1: "Livros autorais",
@@ -149,6 +160,7 @@ export function ExploreView({
           ? NOTE[medium]
           : "Livros, mangás, HQs e contos autorais — nenhuma recomendação automática. Escolha por onde entrar."}
       </p>
+      {medium && <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground/80">{INTRO[medium]}</p>}
 
       {/* Categorias — links reais (indexáveis) */}
       <nav aria-label="Categorias" className="mt-10 flex flex-wrap gap-2">
@@ -204,7 +216,10 @@ export function ExploreView({
         </div>
       </div>
 
-      <div className="mt-10 divide-y divide-border border-y border-border">
+      <h2 className="mt-10 font-display text-lg font-bold">
+        {medium ? `Catálogo de ${CATEGORY_SEO[medium].h1}` : "Catálogo completo"}
+      </h2>
+      <div className="mt-4 divide-y divide-border border-y border-border">
         {paginated.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             {tagFilter
@@ -223,14 +238,14 @@ export function ExploreView({
                 <img
                   width={36} height={56}
                   src={w.cover}
-                  alt=""
+                  alt={`Capa de ${stripHtml(w.title)}`}
                   className="h-14 w-9 shrink-0 object-cover bg-surface"
                   loading="lazy"
                 />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-3">
-                  <span className="title-italic text-xl group-hover:text-gilt">{stripHtml(w.title)}</span>
+                  <h3 className="title-italic text-xl group-hover:text-gilt">{stripHtml(w.title)}</h3>
                   {!medium && (
                     <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/50">
                       {MEDIUM_LABEL[w.medium]}

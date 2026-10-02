@@ -29,7 +29,7 @@ export const Route = createFileRoute("/artist/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Autor não encontrado — The Beyond" },
+          { title: "Autor não encontrado | The Beyond" },
           { name: "robots", content: "noindex" },
         ],
       };
@@ -46,9 +46,9 @@ export const Route = createFileRoute("/artist/$slug")({
       : `Obras de ${artistName} no The Beyond. Leia de graça e apoie o autor diretamente.`;
     const description = clampText(bio.bio || fallback, 160);
     const meta: Array<Record<string, unknown>> = [
-      { title: `${artistName} — ${role} | The Beyond` },
+      { title: `${artistName}: obras e biografia | The Beyond` },
       { name: "description", content: description },
-      { property: "og:title", content: `${artistName} — The Beyond` },
+      { property: "og:title", content: `${artistName} | The Beyond` },
       { property: "og:description", content: description },
       { property: "og:type", content: "profile" },
       { name: "twitter:card", content: "summary_large_image" },

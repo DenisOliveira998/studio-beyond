@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Privacidade — The Beyond" },
+      { title: "Política de privacidade | The Beyond" },
       {
         name: "description",
         content:

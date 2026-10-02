@@ -47,7 +47,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Beyond — Leia Livros, Mangás, HQs, Contos e Novels Autorais" },
+      { title: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
       {
         name: "description",
         content:
@@ -55,8 +55,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "robots", content: "index, follow" },
       { name: "author", content: "The Beyond" },
+      { name: "theme-color", content: "#121519" },
       { property: "og:site_name", content: "The Beyond" },
-      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs, Contos e Novels Autorais" },
+      { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
       {
         property: "og:description",
         content:
@@ -65,14 +66,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "The Beyond — Livros, Mangás, HQs, Contos e Novels Autorais" },
+      { name: "twitter:title", content: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
       {
         name: "twitter:description",
         content: "Leia de graça obras autorais de novos talentos e apoie direto quem escreve.",
       },
       { property: "og:image", content: siteUrl(DEFAULT_OG_IMAGE) },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
       { name: "twitter:image", content: siteUrl(DEFAULT_OG_IMAGE) },
       { "script:ld+json": organizationJsonLd() },
       { "script:ld+json": websiteJsonLd() },
@@ -81,6 +80,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,

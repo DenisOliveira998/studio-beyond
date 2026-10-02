@@ -52,7 +52,7 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Administração — The Beyond" },
+      { title: "Administração | The Beyond" },
       { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",

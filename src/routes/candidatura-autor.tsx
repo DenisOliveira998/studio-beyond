@@ -9,7 +9,7 @@ import { CANDIDATURAS_ABERTAS } from "@/lib/features";
 export const Route = createFileRoute("/candidatura-autor")({
   head: () => ({
     meta: [
-      { title: "Candidatura de Autor | The Beyond — Publique sua Obra" },
+      { title: "Publique sua obra: candidatura de autor | The Beyond" },
       {
         name: "description",
         content:

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/criar")({
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, follow" },
-      { title: "Criar conta — The Beyond" },
+      { title: "Criar conta | The Beyond" },
       { name: "description", content: "Crie sua conta de leitor no The Beyond e comece a ler agora." },
       { property: "og:title", content: "Criar conta — The Beyond" },
       { property: "og:type", content: "website" },

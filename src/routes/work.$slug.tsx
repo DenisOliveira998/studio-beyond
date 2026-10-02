@@ -26,7 +26,7 @@ export const Route = createFileRoute("/work/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Obra não encontrada — The Beyond" },
+          { title: "Obra não encontrada | The Beyond" },
           { name: "robots", content: "noindex" },
         ],
       };
@@ -40,9 +40,17 @@ export const Route = createFileRoute("/work/$slug")({
       { name: "description", content: seo.description },
       { property: "og:title", content: `${cleanTitle}${artistName ? `, de ${artistName}` : ""}` },
       { property: "og:description", content: seo.description },
-      { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
     ];
+    // Prosa (livro, conto, novel) é "book" no Open Graph; quadrinhos ficam como "website"
+    if (["livro", "conto", "lightnovel"].includes(work.medium)) {
+      meta.push({ property: "og:type", content: "book" });
+      if (work.artistSlug) meta.push({ property: "book:author", content: `${SITE_URL}/artist/${work.artistSlug}` });
+      if (work.publishedAt) meta.push({ property: "book:release_date", content: work.publishedAt.slice(0, 10) });
+      for (const tag of (work.tags ?? []).slice(0, 5)) meta.push({ property: "book:tag", content: tag });
+    } else {
+      meta.push({ property: "og:type", content: "website" });
+    }
     if (work.cover) {
       meta.push({ property: "og:image", content: absoluteUrl(work.cover) });
       meta.push({ name: "twitter:image", content: absoluteUrl(work.cover) });

@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import type { Work } from "@/lib/beyond-data";
 import { loaderFetch } from "@/lib/loader-fetch";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, workListJsonLd } from "@/lib/seo";
 import { CATEGORY_SEO, ExploreView, ITEMS_PER_PAGE, isMedium, parsePagina } from "@/components/explore-view";
 
 // /explorar/$categoria — página própria (indexável) por categoria
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/explorar_/$categoria")({
   },
   head: ({ loaderData, params, match }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Categoria não encontrada — The Beyond" }, { name: "robots", content: "noindex" }] };
+      return { meta: [{ title: "Categoria não encontrada | The Beyond" }, { name: "robots", content: "noindex" }] };
     }
     const seo = CATEGORY_SEO[loaderData.medium];
     // Página além da última → trata como a última existente
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/explorar_/$categoria")({
     const total = Math.max(1, Math.ceil(count / ITEMS_PER_PAGE));
     const pagina = Math.min((match.search as { pagina?: number }).pagina ?? 1, total);
     const url = `${SITE_URL}/explorar/${params.categoria}${pagina > 1 ? `?pagina=${pagina}` : ""}`;
-    const title = pagina > 1 ? seo.title.replace(" | The Beyond", ` — página ${pagina} | The Beyond`) : seo.title;
+    const title = pagina > 1 ? seo.title.replace(" | The Beyond", `, página ${pagina} | The Beyond`) : seo.title;
     return {
       meta: [
         { title },
@@ -40,6 +40,16 @@ export const Route = createFileRoute("/explorar_/$categoria")({
             { name: "Explorar", path: "/explorar" },
             { name: seo.h1, path: `/explorar/${params.categoria}` },
           ]),
+        },
+        {
+          "script:ld+json": workListJsonLd(
+            seo.h1,
+            `/explorar/${params.categoria}${pagina > 1 ? `?pagina=${pagina}` : ""}`,
+            loaderData.works
+              .filter((w) => w.medium === loaderData.medium)
+              .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
+              .slice((pagina - 1) * ITEMS_PER_PAGE, pagina * ITEMS_PER_PAGE),
+          ),
         },
       ],
       links: [{ rel: "canonical", href: url }],

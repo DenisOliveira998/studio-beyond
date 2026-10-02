@@ -120,7 +120,7 @@ function RankingPage() {
                   {w.cover ? (
                     <img
                       src={w.cover}
-                      alt=""
+                      alt={`Capa de ${title}`}
                       width={40}
                       height={60}
                       loading={i < 6 ? "eager" : "lazy"}
@@ -160,7 +160,7 @@ function RankingPage() {
                 {a.avatarUrl ? (
                   <img
                     src={a.avatarUrl}
-                    alt=""
+                    alt={`Foto de ${a.name}`}
                     width={48}
                     height={48}
                     loading={i < 8 ? "eager" : "lazy"}

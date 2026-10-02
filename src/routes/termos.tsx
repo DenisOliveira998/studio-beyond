@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: "Termos de uso — The Beyond" },
+      { title: "Termos de uso | The Beyond" },
       {
         name: "description",
         content:

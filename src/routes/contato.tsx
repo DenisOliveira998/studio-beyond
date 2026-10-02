@@ -9,7 +9,7 @@ import type { SiteConfigData } from "@/lib/beyond-db";
 export const Route = createFileRoute("/contato")({
   head: () => ({
     meta: [
-      { title: "Contato | The Beyond — Fale Conosco" },
+      { title: "Contato | The Beyond" },
       {
         name: "description",
         content:

@@ -28,7 +28,7 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Painel do autor — The Beyond" },
+      { title: "Painel do autor | The Beyond" },
       { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",

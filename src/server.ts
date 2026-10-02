@@ -195,7 +195,7 @@ async function finalizeHtmlResponse(request: Request, response: Response): Promi
   // 404: título próprio e noindex (o head da raiz herda o título da home)
   if (response.status === 404) {
     const html = (await response.text())
-      .replace(/<title>[^<]*<\/title>/, "<title>Página não encontrada — The Beyond</title>")
+      .replace(/<title>[^<]*<\/title>/, "<title>Página não encontrada | The Beyond</title>")
       .replace(/<meta name="robots" content="[^"]*"\/?>/, '<meta name="robots" content="noindex"/>')
       .replace(/<link rel="canonical"[^>]*>/, "");
     const headers = new Headers(response.headers);

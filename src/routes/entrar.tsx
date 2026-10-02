@@ -12,7 +12,7 @@ export const Route = createFileRoute("/entrar")({
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, follow" },
-      { title: "Entrar — The Beyond" },
+      { title: "Entrar | The Beyond" },
       { name: "description", content: "Acesse sua conta no The Beyond com e-mail e senha ou Google." },
       { property: "og:title", content: "Entrar — The Beyond" },
       { property: "og:type", content: "website" },

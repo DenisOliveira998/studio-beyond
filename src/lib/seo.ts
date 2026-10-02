@@ -12,9 +12,9 @@ export function organizationJsonLd() {
     "@id": ORGANIZATION_ID,
     name: "The Beyond",
     url: `${SITE_URL}/`,
-    logo: siteUrl("/favicon.svg"),
+    logo: siteUrl("/icon-512.png"),
     description:
-      "Plataforma digital de leitura e publicação autoral — livros, mangás, HQs, contos e novels — com foco em novos talentos brasileiros.",
+      "Plataforma digital de leitura e publicação autoral de livros, mangás, HQs, contos e novels, com foco em novos talentos brasileiros.",
   };
 }
 
@@ -123,14 +123,60 @@ export function clampText(text: string, max: number): string {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 0) || cut.length).replace(/[\s,;:.—-]+$/, "")}…`;
 }
 
-/** Título e descrição da página da obra. */
+/** Título e descrição da página da obra. O título cabe em 60 caracteres sempre que possível. */
 export function workSeo(work: Work): { title: string; description: string } {
   const name = stripHtml(work.title);
   const noun = mediumNoun(work.medium);
-  const by = work.artistName ? ` de ${work.artistName}` : "";
+  const brand = " | The Beyond";
+  const options = [
+    work.artistName ? `${name}: ${noun} de ${work.artistName}` : `${name}: ${noun}`,
+    work.artistName ? `${name}, de ${work.artistName}` : "",
+    name,
+  ].filter(Boolean);
+  const head = options.find((t) => t.length + brand.length <= 60) ?? name;
   const suffix = " Leia grátis no The Beyond.";
   return {
-    title: `${name} — ${noun}${by} | Ler online | The Beyond`,
+    title: `${head}${brand}`,
     description: `${clampText(stripHtml(work.excerpt), 158 - suffix.length)}${suffix}`,
+  };
+}
+
+/** Lista de obras de uma página de catálogo (Explorar e categorias). */
+export function workListJsonLd(name: string, path: string, works: Pick<Work, "slug" | "title">[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    url: siteUrl(path),
+    numberOfItems: works.length,
+    itemListElement: works.map((w, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: siteUrl(`/work/${w.slug}`),
+      name: stripHtml(w.title),
+    })),
+  };
+}
+
+/** Lista de livros da Biblioteca clássica (domínio público, links externos). */
+export function bookListJsonLd(books: { title: string; author: string; url: string; cover?: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Biblioteca clássica",
+    url: siteUrl("/biblioteca"),
+    numberOfItems: books.length,
+    itemListElement: books.map((b, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Book",
+        name: b.title,
+        url: b.url,
+        author: { "@type": "Person", name: b.author },
+        isAccessibleForFree: true,
+        ...(b.cover ? { image: b.cover } : {}),
+      },
+    })),
   };
 }

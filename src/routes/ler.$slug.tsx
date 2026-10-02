@@ -50,13 +50,13 @@ export const Route = createFileRoute("/ler/$slug")({
     return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" };
   },
   head: ({ loaderData }) => {
-    if (!loaderData) return { meta: [{ title: "Obra não encontrada — The Beyond" }] };
+    if (!loaderData) return { meta: [{ title: "Obra não encontrada | The Beyond" }] };
     const { work } = loaderData;
     const cleanTitle = stripHtml(work.title);
     const artistName = work.artistName ?? "";
     return {
       meta: [
-        { title: `Ler: ${cleanTitle}${artistName ? `, de ${artistName}` : ""} — The Beyond` },
+        { title: `Ler ${cleanTitle}${artistName ? `, de ${artistName}` : ""} | The Beyond` },
         { name: "description", content: stripHtml(work.excerpt) },
         { property: "og:type", content: "article" },
         { name: "robots", content: "noindex" },

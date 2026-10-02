@@ -4,11 +4,11 @@ import { SITE_URL } from "@/lib/site-url";
 export const Route = createFileRoute("/sobre")({
   head: () => ({
     meta: [
-      { title: "Quem Somos | The Beyond — Plataforma Editorial Independente" },
+      { title: "Quem somos: plataforma editorial independente | The Beyond" },
       {
         name: "description",
         content:
-          "O The Beyond é uma plataforma digital de leitura e publicação autoral — editora, distribuidora e produtora digital para novos talentos. Leia de graça e apoie quem escreve.",
+          "Plataforma brasileira de leitura e publicação autoral: editora, distribuidora e produtora digital para novos talentos. Leia de graça e apoie quem escreve.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Quem Somos | The Beyond" },

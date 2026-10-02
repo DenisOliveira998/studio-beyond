@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import type { Work } from "@/lib/beyond-data";
 import { loaderFetch } from "@/lib/loader-fetch";
+import { workListJsonLd } from "@/lib/seo";
 import { ExploreView, ITEMS_PER_PAGE, isMedium, parsePagina } from "@/components/explore-view";
 
 export const Route = createFileRoute("/explorar")({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/explorar")({
     const total = Math.max(1, Math.ceil((loaderData?.works.length ?? 0) / ITEMS_PER_PAGE));
     const pagina = Math.min((match.search as { pagina?: number }).pagina ?? 1, total);
     const url = `${SITE_URL}/explorar${pagina > 1 ? `?pagina=${pagina}` : ""}`;
-    const title = `Explorar livros, mangás, HQs e contos${pagina > 1 ? ` — página ${pagina}` : ""} | The Beyond`;
+    const title = `Explorar livros, mangás, HQs e contos${pagina > 1 ? `, página ${pagina}` : ""} | The Beyond`;
     const description =
       "Explore livros, mangás, HQs, contos e novels autorais por categoria, com foco em autores brasileiros. Leia de graça no The Beyond.";
     return {
@@ -34,6 +35,15 @@ export const Route = createFileRoute("/explorar")({
         { property: "og:type", content: "website" },
         { property: "og:url", content: url },
         { name: "twitter:card", content: "summary_large_image" },
+        {
+          "script:ld+json": workListJsonLd(
+            "Catálogo completo",
+            `/explorar${pagina > 1 ? `?pagina=${pagina}` : ""}`,
+            [...(loaderData?.works ?? [])]
+              .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
+              .slice((pagina - 1) * ITEMS_PER_PAGE, pagina * ITEMS_PER_PAGE),
+          ),
+        },
       ],
       links: [{ rel: "canonical", href: url }],
     };

@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Download, ExternalLink } from "lucide-react";
 import { loaderFetch } from "@/lib/loader-fetch";
+import { bookListJsonLd } from "@/lib/seo";
 
 export const Route = createFileRoute("/biblioteca")({
   loader: async () => ({ books: await loaderFetch<SEBook[]>("/api/biblioteca", []) }),
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
-      { title: "Biblioteca Clássica | The Beyond — Obras de Domínio Público" },
+      { title: "Biblioteca clássica: obras em domínio público | The Beyond" },
       {
         name: "description",
         content:
@@ -20,6 +21,15 @@ export const Route = createFileRoute("/biblioteca")({
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/biblioteca` },
       { name: "twitter:card", content: "summary_large_image" },
+      ...(loaderData?.books.length
+        ? [
+            {
+              "script:ld+json": bookListJsonLd(
+                loaderData.books.slice(0, 50).map((b) => ({ title: b.title, author: b.author, url: b.url, cover: b.cover })),
+              ),
+            },
+          ]
+        : []),
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/biblioteca` }],
   }),
