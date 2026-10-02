@@ -143,7 +143,7 @@ function CriarPage() {
         </p>
         <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
           <li>Salve obras e continue de onde parou.</li>
-          <li>Quer publicar? Candidate-se como autor após criar a conta.</li>
+          <li>Quer publicar? Entre na lista de espera de autores em “Publique aqui”.</li>
           <li className="text-xs text-muted-foreground/60">
             Seus dados não são compartilhados ou vendidos.
           </li>

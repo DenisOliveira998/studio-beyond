@@ -27,14 +27,14 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "The Beyond — Leia Livros, Mangás, HQs e Contos Autorais" },
+      { title: "The Beyond — Leia Livros, Mangás, HQs, Contos e Novels Autorais" },
       {
         name: "description",
         content:
           "Livros, mangás, HQs, contos e novels autorais, com foco em autores brasileiros. Leia de graça e apoie direto quem escreve.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
+      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs, Contos e Novels Autorais" },
       {
         property: "og:description",
         content:

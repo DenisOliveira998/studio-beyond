@@ -210,7 +210,7 @@ function EntrarPage() {
         </p>
         {mode === "login" && (
           <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
-            <li>Conta criada automaticamente no primeiro cadastro.</li>
+            <li>Ainda não tem conta? Crie em menos de um minuto.</li>
             <li>Siga seus autores favoritos.</li>
             <li>Autores aprovados pela curadoria acessam o Painel do Autor.</li>
           </ul>

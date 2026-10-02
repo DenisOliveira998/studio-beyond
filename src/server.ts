@@ -1117,7 +1117,7 @@ export default {
         const { fetchWorksByArtistSlug, dbWorkToCard } = await import("./lib/beyond-db");
         const dbWorks = await fetchWorksByArtistSlug(artistSlug);
         if (!dbWorks.length) {
-          return new Response(JSON.stringify({ error: "Artista não encontrado" }), {
+          return new Response(JSON.stringify({ error: "Autor não encontrado" }), {
             status: 404,
             headers: { "content-type": "application/json" },
           });

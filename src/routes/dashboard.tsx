@@ -485,7 +485,7 @@ function Dashboard() {
                 />
               </Field>
 
-              <Field label="Nome do artista" htmlFor="obra-artista">
+              <Field label="Nome do autor" htmlFor="obra-artista">
                 <input
                   id="obra-artista"
                   value={artistNameInput}

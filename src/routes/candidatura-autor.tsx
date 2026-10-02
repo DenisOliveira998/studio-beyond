@@ -13,7 +13,7 @@ export const Route = createFileRoute("/candidatura-autor")({
       {
         name: "description",
         content:
-          "Quer publicar livros, mangás, HQs ou contos no The Beyond? As candidaturas de autor abrem em breve — entre na lista de espera. Seleção por curadoria humana.",
+          "Quer publicar livros, mangás, HQs, contos ou novels no The Beyond? As candidaturas de autor abrem em breve — entre na lista de espera. Seleção por curadoria.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Candidatura de Autor | The Beyond" },

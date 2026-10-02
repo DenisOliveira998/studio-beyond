@@ -1212,7 +1212,7 @@ function AdminPage() {
                   type="text"
                   value={newSlide.subtitle}
                   onChange={(e) => setNewSlide((p) => ({ ...p, subtitle: e.target.value }))}
-                  placeholder="Ex: por Nome do Artista"
+                  placeholder="Ex: por Nome do Autor"
                   className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gilt focus:outline-none"
                 />
               </div>

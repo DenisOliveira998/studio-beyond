@@ -112,6 +112,11 @@ function BibliotecaPage() {
     ...(initial.books.length > 0 ? { initialData: initial.books } : {}),
   });
   const hasPt = books.some((b) => b.language === "pt" || b.subjects.some((s) => SUBJECTS_PT.includes(s)));
+  const hasCurated = books.some((b) => b.subjects.some((s) => SUBJECTS_CURATED.includes(s)));
+  // Só mostra filtros que têm obras ("Todos" sempre)
+  const visibleFilters = (["pt", "classic", "all"] as Filter[]).filter(
+    (f) => f === "all" || (f === "pt" ? hasPt : hasCurated),
+  );
   // Sem obras em português no catálogo disponível, começa em "Todos"
   const [filter, setFilter] = useState<Filter>(hasPt ? "pt" : "all");
 
@@ -146,11 +151,16 @@ function BibliotecaPage() {
         </a>
         {" "}— obras de domínio público com tipografia profissional. Baixe o EPUB gratuitamente.
       </p>
+      {books.length > 0 && !hasPt && (
+        <p className="mt-3 max-w-xl text-sm text-muted-foreground/80">
+          Por enquanto, a coleção tem apenas obras em inglês.
+        </p>
+      )}
 
       {/* Filtros + busca */}
       <div className="mt-10 flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
-          {(["pt", "classic", "all"] as Filter[]).map((f) => (
+          {visibleFilters.length > 1 && visibleFilters.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}

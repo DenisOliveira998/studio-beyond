@@ -46,7 +46,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Beyond — Leia Livros, Mangás, HQs e Contos Autorais" },
+      { title: "The Beyond — Leia Livros, Mangás, HQs, Contos e Novels Autorais" },
       {
         name: "description",
         content:
@@ -55,7 +55,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "robots", content: "index, follow" },
       { name: "author", content: "The Beyond" },
       { property: "og:site_name", content: "The Beyond" },
-      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
+      { property: "og:title", content: "The Beyond — Livros, Mangás, HQs, Contos e Novels Autorais" },
       {
         property: "og:description",
         content:
@@ -64,7 +64,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
+      { name: "twitter:title", content: "The Beyond — Livros, Mangás, HQs, Contos e Novels Autorais" },
       {
         name: "twitter:description",
         content: "Leia de graça obras autorais de novos talentos e apoie direto quem escreve.",

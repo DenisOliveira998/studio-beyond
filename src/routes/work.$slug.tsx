@@ -293,6 +293,11 @@ function WorkPage() {
     onError: () => toast.error("Erro. Tente novamente."),
   });
 
+  // A prévia (1º parágrafo) costuma começar igual à sinopse — nesse caso, não repetir
+  const normalize = (t: string) => stripHtml(t).replace(/\s+/g, " ").trim().toLowerCase();
+  const excerptStart = normalize(work.excerpt).slice(0, 60);
+  const teaserRepeatsExcerpt = !!work.body[0] && excerptStart.length > 0 && normalize(work.body[0]).startsWith(excerptStart);
+
   const genreTags = work.genre
     ? work.genre.split(",").map((g) => g.trim()).filter(Boolean)
     : [];
@@ -438,10 +443,12 @@ function WorkPage() {
                   <div className="h-px bg-border" />
                 </>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Curtidas</span>
-                <span className="font-mono tabular-nums">{compact(likeCount)}</span>
-              </div>
+              {likeCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Curtidas</span>
+                  <span className="font-mono tabular-nums">{compact(likeCount)}</span>
+                </div>
+              )}
             </div>
 
             {/* Meta */}
@@ -566,7 +573,7 @@ function WorkPage() {
               }`}
             >
               <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
-              {compact(likeCount)}
+              {likeCount > 0 ? compact(likeCount) : "Curtir"}
             </button>
             <button
               onClick={toggleBookmark}
@@ -596,7 +603,7 @@ function WorkPage() {
             </p>
 
             {/* Body preview — prose teaser only; webtoon works have no readable body here */}
-            {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && (
+            {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && !teaserRepeatsExcerpt && (
               <div className="mt-6 prose max-w-none">
                 <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
                 {hasBody && (
@@ -606,7 +613,7 @@ function WorkPage() {
                     className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-gilt hover:underline"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
-                    Continuar lendo
+                    Começar a ler
                   </Link>
                 )}
               </div>
@@ -702,7 +709,7 @@ function WorkPage() {
             <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6 lg:hidden">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {views >= VIEWS_DISPLAY_MIN && <span>{compact(views)} visualizações</span>}
-                <span>{compact(likeCount)} curtidas</span>
+                {likeCount > 0 && <span>{compact(likeCount)} {likeCount === 1 ? "curtida" : "curtidas"}</span>}
                 {work.pages && <span>{work.pages} páginas</span>}
               </div>
               {artistName && (

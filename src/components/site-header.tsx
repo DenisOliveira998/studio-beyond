@@ -296,7 +296,7 @@ export function SiteFooter() {
         <div>
           <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
-            Um espaço para obras que merecem ser lidas com calma.
+            Novos talentos, lidos e apoiados.
           </p>
           <div className="mt-6 flex items-center gap-4">
             {cfg.instagram && (

@@ -8,7 +8,7 @@ export const Route = createFileRoute("/privacidade")({
       {
         name: "description",
         content:
-          "Como o The Beyond trata os seus dados: sem rastreadores publicitários, sem venda de dados, apenas o necessário para contabilizar visualizações.",
+          "Como o The Beyond trata os seus dados: o que guardamos, anúncios de parceiros na leitura gratuita e proteção a menores. Não vendemos dados.",
       },
       { property: "og:title", content: "Privacidade — The Beyond" },
       {

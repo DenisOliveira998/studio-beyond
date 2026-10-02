@@ -246,7 +246,6 @@ function ContactPage() {
             <p className="eyebrow mb-3">Tempo de resposta</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Respondemos todos os contatos em até <strong className="text-foreground">2 dias úteis</strong>.
-              Para candidaturas de autor, o prazo de análise é de até 15 dias.
             </p>
           </div>
 
