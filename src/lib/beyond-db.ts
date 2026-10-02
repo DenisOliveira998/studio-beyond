@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // beyond-db.ts — camada de acesso ao banco (Prisma + TiDB Cloud)
 // ---------------------------------------------------------------------------
 
@@ -293,6 +293,15 @@ export async function registerWorkView(slug: string): Promise<number | null> {
       update: { views: { increment: 1 } },
       create: { workSlug: slug, views: 1 },
     });
+    // Contagem do dia (ranking semanal); falha aqui não impede a contagem total
+    const date = new Date().toISOString().slice(0, 10);
+    await prisma.workViewDaily
+      .upsert({
+        where: { workSlug_date: { workSlug: slug, date } },
+        update: { views: { increment: 1 } },
+        create: { workSlug: slug, date, views: 1 },
+      })
+      .catch(() => {});
     return Number(row.views);
   } catch {
     return null;
@@ -948,7 +957,7 @@ function appToDb(a: any): DbApplication {
   };
 }
 
-/* ---------- lista de espera (plano Leitor Assíduo) ---------- */
+/* ---------- lista de espera (planos Fã/Super Fã e autores) ---------- */
 
 export type WaitlistRow = { id: string; email: string; plan: string; createdAt: string };
 
@@ -1004,5 +1013,95 @@ export async function saveAuthorBio(userId: string, data: AuthorBioData): Promis
     where: { userId },
     create: { userId, ...data },
     update: data,
+  });
+}
+
+/* ---------- ranking semanal (Top 50) ---------- */
+
+export type RankedWork = Work & { weekViews: number; totalViews: number };
+export type RankedAuthor = {
+  name: string;
+  slug: string;
+  workCount: number;
+  weekViews: number;
+  totalViews: number;
+  followers: number;
+  avatarUrl: string;
+  topWork: { slug: string; title: string } | null;
+};
+export type RankingData = { since: string; works: RankedWork[]; authors: RankedAuthor[] };
+
+/**
+ * Obras e autores mais lidos nos últimos 7 dias. Desempate: leituras totais e,
+ * por último, data de publicação (mais recentes primeiro) — assim o ranking nunca
+ * fica vazio enquanto as leituras da semana ainda são poucas.
+ */
+export async function fetchRanking(limit = 50): Promise<RankingData> {
+  const since = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+  const [works, weekRows, totalRows, followRows] = await Promise.all([
+    fetchApprovedWorks(),
+    prisma.workViewDaily
+      .groupBy({ by: ["workSlug"], where: { date: { gte: since } }, _sum: { views: true } })
+      .catch(() => [] as { workSlug: string; _sum: { views: number | null } }[]),
+    prisma.workView.findMany({ select: { workSlug: true, views: true } }),
+    prisma.artistFollow.groupBy({ by: ["artistSlug"], _count: { id: true } }).catch(() => [] as { artistSlug: string; _count: { id: number } }[]),
+  ]);
+  const week = new Map(weekRows.map((r) => [r.workSlug, r._sum.views ?? 0]));
+  const total = new Map(totalRows.map((r) => [r.workSlug, Number(r.views)]));
+  const follows = new Map(followRows.map((r) => [r.artistSlug, r._count.id]));
+
+  const ranked: RankedWork[] = works.map((w) => ({
+    ...dbWorkToCard(w),
+    weekViews: week.get(w.slug) ?? 0,
+    totalViews: total.get(w.slug) ?? 0,
+  }));
+  const byRank = (a: { weekViews: number; totalViews: number }, b: { weekViews: number; totalViews: number }) =>
+    b.weekViews - a.weekViews || b.totalViews - a.totalViews;
+  ranked.sort((a, b) => byRank(a, b) || (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+
+  // Autores: soma das obras; foto do perfil público quando houver
+  const authorMap = new Map<string, RankedAuthor & { authorId: string | null }>();
+  for (const w of works) {
+    if (!w.artistSlug) continue;
+    const cur = authorMap.get(w.artistSlug) ?? {
+      name: w.artistName,
+      slug: w.artistSlug,
+      workCount: 0,
+      weekViews: 0,
+      totalViews: 0,
+      followers: follows.get(w.artistSlug) ?? 0,
+      avatarUrl: "",
+      topWork: null,
+      authorId: w.authorId,
+    };
+    const wv = week.get(w.slug) ?? 0;
+    const tv = total.get(w.slug) ?? 0;
+    cur.workCount += 1;
+    cur.weekViews += wv;
+    cur.totalViews += tv;
+    const topScore = cur.topWork ? (week.get(cur.topWork.slug) ?? 0) * 1e9 + (total.get(cur.topWork.slug) ?? 0) : -1;
+    if (wv * 1e9 + tv > topScore) cur.topWork = { slug: w.slug, title: stripHtml(w.title) };
+    if (!cur.authorId && w.authorId) cur.authorId = w.authorId;
+    authorMap.set(w.artistSlug, cur);
+  }
+  const authorIds = [...authorMap.values()].map((a) => a.authorId).filter(Boolean) as string[];
+  const bios = authorIds.length
+    ? await prisma.authorBio.findMany({ where: { userId: { in: authorIds } }, select: { userId: true, avatarUrl: true } }).catch(() => [])
+    : [];
+  const avatarById = new Map(bios.map((b) => [b.userId, blobProxy(b.avatarUrl) ?? ""]));
+  const authors: RankedAuthor[] = [...authorMap.values()]
+    .map(({ authorId, ...a }) => ({ ...a, avatarUrl: authorId ? avatarById.get(authorId) ?? "" : "" }))
+    .sort((a, b) => byRank(a, b) || b.followers - a.followers || a.name.localeCompare(b.name));
+
+  return { since, works: ranked.slice(0, limit), authors: authors.slice(0, limit) };
+}
+
+/* ---------- idade informada no cadastro ---------- */
+
+export async function saveUserBirth(userId: string, birthDate: string, guardianConsent: boolean): Promise<void> {
+  await prisma.userBirth.upsert({
+    where: { userId },
+    create: { userId, birthDate, guardianConsent },
+    update: { birthDate, guardianConsent },
   });
 }

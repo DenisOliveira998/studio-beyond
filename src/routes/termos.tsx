@@ -8,7 +8,7 @@ export const Route = createFileRoute("/termos")({
       {
         name: "description",
         content:
-          "Termos de uso do The Beyond: direitos das obras, regras de curadoria, receita por visualização e doações diretas aos autores.",
+          "Termos de uso do The Beyond: direitos e exclusividade das obras, curadoria, receita do autor, anúncios, idade mínima e regras de convivência.",
       },
       { property: "og:title", content: "Termos de uso — The Beyond" },
       {
@@ -34,17 +34,33 @@ function TermsPage() {
           para exibi-las no site e nos materiais de curadoria.
         </p>
         <p>
-          A entrada de autores acontece por candidatura avaliada pela curadoria, e cada obra passa
-          por revisão antes de aparecer no feed. Podemos solicitar ajustes ou recusar uma obra,
-          sempre com comentário.
+          <strong className="text-foreground">Exclusividade.</strong> Cada obra fica em exclusividade
+          no The Beyond por 6 meses a partir da publicação, renováveis por acordo. Terminado o
+          período, o autor pode publicá-la em outros lugares.
         </p>
         <p>
-          A receita é composta por visualizações contabilizadas e doações diretas. A plataforma
-          retém 12% e repassa o restante ao autor, semanalmente e sem valor mínimo.
+          <strong className="text-foreground">Curadoria.</strong> A entrada de autores e cada obra
+          passam pela avaliação da equipe: qualidade, respeito aos direitos autorais e às regras da
+          plataforma. Podemos solicitar ajustes ou recusar uma obra, sempre com comentário.
         </p>
         <p>
-          Contas que publiquem material de terceiros sem autorização podem ser suspensas sem aviso
-          prévio.
+          <strong className="text-foreground">Receita.</strong> O autor recebe pelas visualizações
+          contabilizadas e pelo apoio direto dos leitores; a plataforma retém uma parte para se
+          manter, informada ao autor no Painel do Autor. Repasses semanais, sem valor mínimo.
+        </p>
+        <p>
+          <strong className="text-foreground">Leitura e anúncios.</strong> A leitura gratuita tem
+          limite diário e exibe anúncios de parceiros. Os planos pagos removem o limite e os
+          anúncios. É proibido incentivar ou simular cliques em anúncios.
+        </p>
+        <p>
+          <strong className="text-foreground">Idade mínima.</strong> É preciso ter pelo menos 13 anos
+          para criar uma conta. Menores de 18 anos precisam da autorização dos pais ou responsáveis.
+        </p>
+        <p>
+          <strong className="text-foreground">Convivência.</strong> São proibidos golpes, assédio,
+          discurso de ódio, conteúdo ilegal e a publicação de material de terceiros sem autorização.
+          Contas que descumprirem estas regras podem ser suspensas sem aviso prévio.
         </p>
         <p className="caption">Documento de demonstração, sem valor contratual.</p>
       </div>

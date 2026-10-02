@@ -355,14 +355,14 @@ function ReaderPage() {
               Você chegou ao limite de leitura de hoje
             </p>
             <p className="caption mt-3">
-              Volte amanhã para continuar — ou entre na lista do Leitor Assíduo para leitura ilimitada.
+              Volte amanhã para continuar — ou entre na lista dos planos Fã e Super Fã para ler sem limite e sem anúncios.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 to="/planos"
                 className="btn-type border border-gilt bg-gilt/10 px-5 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
               >
-                Entrar na lista do Leitor Assíduo
+                Ver os planos Fã e Super Fã
               </Link>
               <Link
                 to="/work/$slug"
@@ -443,7 +443,7 @@ function EndOfWork({ work, title }: { work: Work; title: string }) {
             Gostou de <span className="title-italic">{title}</span>?
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Apoie {artistName} diretamente — 88% chega a ele.
+            Apoie {artistName} diretamente — o apoio vai para quem escreveu.
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <DonateDialog

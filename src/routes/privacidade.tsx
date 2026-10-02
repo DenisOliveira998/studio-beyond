@@ -30,16 +30,24 @@ function PrivacyPage() {
       <h1 className="hero-type mt-5 text-4xl tracking-tight">Privacidade</h1>
       <div className="mt-10 space-y-6 leading-relaxed text-muted-foreground">
         <p>
-          Não usamos rastreadores publicitários. Não vendemos, alugamos nem compartilhamos dados
-          pessoais com terceiros para fins de marketing.
+          Não vendemos nem alugamos dados pessoais. A leitura gratuita exibe anúncios de parceiros
+          (como o Google), que podem usar cookies para medir e personalizar anúncios; você poderá
+          ajustar essa escolha no aviso de cookies. Quem assina os planos Fã e Super Fã não vê
+          anúncios.
         </p>
         <p>
           Registramos apenas o necessário para contabilizar visualizações e repassar a receita ao
           autor correto: identificador da obra, data e um contador agregado.
         </p>
         <p>
-          Contas armazenam nome, e-mail e preferências de leitura. Dados de pagamento, quando
-          houver, são processados pelo provedor de pagamentos e nunca ficam nos nossos servidores.
+          Contas armazenam nome, e-mail, data de nascimento e preferências de leitura. Dados de
+          pagamento, quando houver, são processados pelo provedor de pagamentos e nunca ficam nos
+          nossos servidores.
+        </p>
+        <p>
+          <strong className="text-foreground">Menores de idade.</strong> A conta exige pelo menos 13
+          anos. Para usuários de 13 a 17 anos, o cadastro depende da autorização dos pais ou
+          responsáveis, e não exibimos anúncios personalizados a eles.
         </p>
         <p>
           Para solicitar exportação ou exclusão dos seus dados, escreva para

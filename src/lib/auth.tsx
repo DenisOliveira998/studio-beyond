@@ -18,7 +18,7 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   admin: "Administrador",
   gerente: "Gerente",
   author: "Autor",
-  vip: "Leitor Assíduo",
+  vip: "Fã",
   reader: "Leitor",
 };
 
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data);
 
       if (data?.user?.id) {
+        void flushPendingBirth();
         const res = await fetch("/api/me");
         if (res.ok) {
           const p = (await res.json()) as Profile;
@@ -159,4 +160,34 @@ export function useAuth() {
 export function highestRole(roles: AppRole[]): AppRole {
   const order: AppRole[] = ["owner", "admin", "gerente", "author", "vip", "reader"];
   return order.find((r) => roles.includes(r)) ?? "reader";
+}
+
+// ── Data de nascimento informada no cadastro ─────────────────────────────────
+// Guardada no navegador antes do cadastro (e-mail ou Google) e enviada ao servidor
+// assim que a sessão existe.
+const PENDING_BIRTH_KEY = "beyond_pending_birth";
+
+export function savePendingBirth(birthDate: string, guardianConsent: boolean) {
+  try {
+    localStorage.setItem(PENDING_BIRTH_KEY, JSON.stringify({ birthDate, guardianConsent }));
+  } catch {}
+}
+
+async function flushPendingBirth() {
+  type PendingBirth = { birthDate?: string; guardianConsent?: boolean };
+  let pending: PendingBirth | null = null;
+  try {
+    const raw = localStorage.getItem(PENDING_BIRTH_KEY);
+    pending = raw ? (JSON.parse(raw) as PendingBirth) : null;
+  } catch {}
+  if (!pending?.birthDate) return;
+  try {
+    const res = await fetch("/api/profile/birthdate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(pending),
+    });
+    // Sucesso ou dado inválido: não tenta de novo; erro de rede: tenta no próximo carregamento
+    if (res.ok || res.status === 400) localStorage.removeItem(PENDING_BIRTH_KEY);
+  } catch {}
 }

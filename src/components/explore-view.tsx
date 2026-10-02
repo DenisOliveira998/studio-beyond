@@ -16,7 +16,7 @@ const NOTE: Record<Medium, string> = {
   manga: "Mangás autorais com roteiro e traço originais — nenhuma adaptação.",
   hq: "Histórias em quadrinhos brasileiras, do noir ao documental, do autobiográfico ao fantástico.",
   conto: "Contos curtos e longas histórias breves — leitura de uma sentada.",
-  lightnovel: "Histórias em prosa de origem japonesa — textos longos com ilustrações ocasionais.",
+  lightnovel: "Histórias longas em prosa publicadas por capítulos — webnovels e light novels autorais.",
   manhwa: "Quadrinhos coreanos em formato webtoon — leitura vertical em scroll contínuo.",
   manhua: "Quadrinhos chineses em formato webtoon ou paginado — arte detalhada e narrativa visual.",
 };
@@ -26,37 +26,37 @@ export const CATEGORY_SEO: Record<Medium, { h1: string; title: string; descripti
   livro: {
     h1: "Livros autorais",
     title: "Livros autorais brasileiros para ler online | The Beyond",
-    description: "Leia livros autorais brasileiros online, de graça e sem anúncios. Romances e ficção independente com curadoria humana no The Beyond.",
+    description: "Leia livros autorais online, de graça, com foco em autores brasileiros. Romances e ficção independente com curadoria no The Beyond.",
   },
   manga: {
     h1: "Mangás brasileiros",
     title: "Mangás brasileiros autorais para ler online | The Beyond",
-    description: "Leia mangás brasileiros autorais online, sem anúncios. Roteiro e traço originais de mangakás independentes, com curadoria humana.",
+    description: "Leia mangás brasileiros autorais online, de graça. Roteiro e traço originais de mangakás independentes, com curadoria do The Beyond.",
   },
   hq: {
     h1: "HQs nacionais",
     title: "HQs nacionais independentes para ler online | The Beyond",
-    description: "Leia HQs nacionais independentes online, sem anúncios. Quadrinhos brasileiros autorais selecionados pela curadoria do The Beyond.",
+    description: "Leia HQs nacionais independentes online, de graça. Quadrinhos brasileiros autorais selecionados pela curadoria do The Beyond.",
   },
   conto: {
     h1: "Contos",
     title: "Contos autorais brasileiros para ler online | The Beyond",
-    description: "Leia contos autorais brasileiros online, de graça e sem anúncios. Histórias curtas para ler de uma sentada, com curadoria humana.",
+    description: "Leia contos autorais online, de graça, com foco em autores brasileiros. Histórias curtas para ler de uma sentada, com curadoria.",
   },
   lightnovel: {
-    h1: "Light novels",
-    title: "Light novels autorais para ler online | The Beyond",
-    description: "Leia light novels autorais online, sem anúncios. Histórias longas em prosa de autores independentes no The Beyond.",
+    h1: "Novels",
+    title: "Novels e webnovels autorais para ler online | The Beyond",
+    description: "Leia novels e webnovels autorais online, de graça. Histórias longas em prosa, por capítulos, de autores independentes no The Beyond.",
   },
   manhwa: {
     h1: "Manhwas",
     title: "Manhwas em formato webtoon para ler online | The Beyond",
-    description: "Leia manhwas em formato webtoon online, sem anúncios, com leitura vertical em scroll contínuo no The Beyond.",
+    description: "Leia manhwas em formato webtoon online, de graça, com leitura vertical em scroll contínuo no The Beyond.",
   },
   manhua: {
     h1: "Manhuas",
     title: "Manhuas para ler online | The Beyond",
-    description: "Leia manhuas online, sem anúncios, em formato webtoon ou paginado no The Beyond.",
+    description: "Leia manhuas online, de graça, em formato webtoon ou paginado no The Beyond.",
   },
 };
 

@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BibliotecaRouteImport } from './routes/biblioteca'
 import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor'
@@ -23,6 +22,7 @@ import { Route as ExplorarRouteImport } from './routes/explorar'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
@@ -39,11 +39,6 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArtistsRoute = ArtistsRouteImport.update({
-  id: '/artists',
-  path: '/artists',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -101,6 +96,11 @@ const PrivacidadeRoute = PrivacidadeRouteImport.update({
   path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RankingRoute = RankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
   path: '/sobre',
@@ -140,7 +140,6 @@ const WorkSlugRoute = WorkSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
   '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
@@ -152,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -163,7 +163,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
   '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
@@ -175,6 +174,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -187,7 +187,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/artists': typeof ArtistsRoute
   '/auth': typeof AuthRouteWithChildren
   '/biblioteca': typeof BibliotecaRoute
   '/candidatura-autor': typeof CandidaturaAutorRoute
@@ -199,6 +198,7 @@ export interface FileRoutesById {
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -212,7 +212,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/artists'
     | '/auth'
     | '/biblioteca'
     | '/candidatura-autor'
@@ -224,6 +223,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/planos'
     | '/privacidade'
+    | '/ranking'
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
@@ -235,7 +235,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
-    | '/artists'
     | '/auth'
     | '/biblioteca'
     | '/candidatura-autor'
@@ -247,6 +246,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/planos'
     | '/privacidade'
+    | '/ranking'
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
@@ -258,7 +258,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
-    | '/artists'
     | '/auth'
     | '/biblioteca'
     | '/candidatura-autor'
@@ -270,6 +269,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/planos'
     | '/privacidade'
+    | '/ranking'
     | '/sobre'
     | '/termos'
     | '/artist/$slug'
@@ -282,7 +282,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  ArtistsRoute: typeof ArtistsRoute
   AuthRoute: typeof AuthRouteWithChildren
   BibliotecaRoute: typeof BibliotecaRoute
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
@@ -294,6 +293,7 @@ export interface RootRouteChildren {
   PerfilRoute: typeof PerfilRoute
   PlanosRoute: typeof PlanosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  RankingRoute: typeof RankingRoute
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
@@ -316,13 +316,6 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/artists': {
-      id: '/artists'
-      path: '/artists'
-      fullPath: '/artists'
-      preLoaderRoute: typeof ArtistsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -402,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ranking': {
+      id: '/ranking'
+      path: '/ranking'
+      fullPath: '/ranking'
+      preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sobre': {
       id: '/sobre'
       path: '/sobre'
@@ -467,7 +467,6 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  ArtistsRoute: ArtistsRoute,
   AuthRoute: AuthRouteWithChildren,
   BibliotecaRoute: BibliotecaRoute,
   CandidaturaAutorRoute: CandidaturaAutorRoute,
@@ -479,6 +478,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilRoute: PerfilRoute,
   PlanosRoute: PlanosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  RankingRoute: RankingRoute,
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
   ArtistSlugRoute: ArtistSlugRoute,

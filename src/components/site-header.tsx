@@ -24,7 +24,7 @@ const DEFAULT_CONFIG: SiteConfigData = {
 
 const nav = [
   { to: "/explorar", label: "Explorar" },
-  { to: "/artists", label: "Autores" },
+  { to: "/ranking", label: "Ranking" },
   { to: "/biblioteca", label: "Biblioteca" },
   { to: "/planos", label: "Planos" },
   { to: "/candidatura-autor", label: "Publique aqui" },
@@ -77,7 +77,7 @@ function UserMenu() {
                  profile.role === "admin" ? "Administrador" :
                  profile.role === "gerente" ? "Gerente" :
                  profile.role === "author" ? "Autor" :
-                 profile.role === "vip" ? "Leitor Assíduo" : "Leitor"}
+                 profile.role === "vip" ? "Fã" : "Leitor"}
               </p>
             )}
           </div>
@@ -260,7 +260,7 @@ export function SiteHeader() {
 const navLinks = [
   { to: "/", label: "Início" },
   { to: "/explorar", label: "Explorar categorias" },
-  { to: "/artists", label: "Autores" },
+  { to: "/ranking", label: "Ranking da semana" },
   { to: "/biblioteca", label: "Biblioteca clássica" },
   { to: "/planos", label: "Planos de leitura" },
   { to: "/sobre", label: "Quem somos" },
@@ -393,7 +393,7 @@ export function SiteFooter() {
 
       <div className="border-t border-border/70">
         <div className="flex flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-14">
-          <p className="caption">© 2026 The Beyond. Sem anúncios, sem interrupções.</p>
+          <p className="caption">© 2026 The Beyond. Literatura e arte autoral, de graça.</p>
           <div className="flex items-center gap-6">
             <Link to="/privacidade" className="caption transition-colors hover:text-foreground">
               Privacidade

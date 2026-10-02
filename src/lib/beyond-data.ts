@@ -58,7 +58,7 @@ export const MEDIUM_LABEL: Record<Medium, string> = {
   manga: "Mangá",
   hq: "HQ",
   conto: "Conto",
-  lightnovel: "Light Novel",
+  lightnovel: "Novel",
   manhwa: "Manhwa",
   manhua: "Manhua",
 };
@@ -67,7 +67,16 @@ export const artists: Artist[] = [];
 
 export const works: Work[] = [];
 
+/**
+ * Taxa da plataforma sobre cliques e doações (plano de negócio: 5–15%).
+ * NÃO exibir ao público: só autores e equipe veem o valor (ver canSeePlatformFee).
+ */
 export const PLATFORM_FEE = 0.12;
+
+/** Papéis que podem ver a taxa da plataforma (autor e acima). */
+export function canSeePlatformFee(role: string | null | undefined): boolean {
+  return !!role && ["author", "gerente", "admin", "owner"].includes(role);
+}
 export const RATE_PER_CLICK = 0.004;
 
 /** Contadores de visualização só aparecem a partir deste número (evita "0 visualizações"). */
@@ -117,7 +126,7 @@ export type AccountType = "free" | "vip" | "author" | "gerente" | "admin" | "own
 
 export const ACCOUNT_LABEL: Record<AccountType, string> = {
   free: "Gratuito",
-  vip: "VIP",
+  vip: "Fã",
   author: "Autor",
   gerente: "Gerente",
   admin: "Administrador",

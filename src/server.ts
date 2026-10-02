@@ -1,4 +1,4 @@
-﻿import "./lib/error-capture";
+import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -171,7 +171,7 @@ const PUBLIC_API_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate
 
 // Páginas cujo HTML não depende de quem está logado (o login é resolvido no navegador)
 const CACHEABLE_HTML = [
-  /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/artists$/, /^\/artist\/[^/]+$/, /^\/work\/[^/]+$/,
+  /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/ranking$/, /^\/artist\/[^/]+$/, /^\/work\/[^/]+$/,
   /^\/biblioteca$/, /^\/planos$/, /^\/sobre$/, /^\/contato$/, /^\/termos$/, /^\/privacidade$/,
   /^\/candidatura-autor$/,
 ];
@@ -694,7 +694,7 @@ export default {
           url("/"),
           url("/explorar"),
           ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m}`)),
-          url("/artists"),
+          url("/ranking"),
           url("/biblioteca"),
           url("/planos"),
           url("/sobre"),
@@ -715,25 +715,26 @@ export default {
         const { SITE_URL } = await import("./lib/site-url");
         const body = `# The Beyond
 
-> Plataforma editorial independente, sem anúncios, para ler e publicar livros, mangás, HQs e contos autorais brasileiros. 88% da receita vai para o autor.
+> Plataforma digital de leitura e publicação autoral — livros, mangás, HQs, contos e novels — com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
 
 ## Para leitores
-- Leitura gratuita, sem anúncios e sem interrupções.
-- Apoio direto: o leitor pode doar para o autor; 88% do valor chega a ele.
-- Plano Leitor Assíduo (em construção): leitura ilimitada, sem limite diário. Lista de espera aberta.
+- Leitura gratuita, com limite diário e anúncios; os planos Fã e Super Fã removem o limite e os anúncios.
+- Apoio direto: o leitor pode doar para o autor que gostar; o apoio vai para quem escreveu.
+- Planos Fã e Super Fã (em construção): sem anúncios, sem limite diário; o Super Fã inclui acesso antecipado e clube de fãs. Lista de espera aberta.
 
 ## Para autores
 - Entrada por curadoria humana. As candidaturas de autor abrem em breve, por etapas (lista de espera aberta). Candidatar-se não custa nada.
 - Renda: R$ 0,004 por visualização + doações diretas dos leitores.
-- A plataforma retém 12%; 88% é do autor. Repasse semanal, sem valor mínimo.
+- A maior parte da receita é do autor; repasse semanal, sem valor mínimo.
+- Exclusividade de 6 meses por obra, renovável; depois o autor pode publicar onde quiser.
 - A obra continua do autor; o The Beyond tem apenas licença para exibi-la.
 
 ## Páginas principais
 - [Início](${SITE_URL}/): destaques e catálogo por categoria
 - [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
-- [Autores](${SITE_URL}/artists): autores publicados
 - [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
-- [Planos](${SITE_URL}/planos): plano Leitor Assíduo (em construção)
+- [Ranking](${SITE_URL}/ranking): Top 50 da semana — obras e autores mais lidos
+- [Planos](${SITE_URL}/planos): planos Fã e Super Fã (em construção)
 - [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
 - [Sitemap](${SITE_URL}/sitemap.xml)
@@ -743,11 +744,52 @@ export default {
         });
       }
 
-      // Lista de espera do plano Leitor Assíduo
+      // Ranking semanal (Top 50) de obras e autores — público, igual para todos
+      if (pathname === "/api/ranking" && request.method === "GET") {
+        const { fetchRanking } = await import("./lib/beyond-db");
+        const data = await fetchRanking(50);
+        return new Response(JSON.stringify(data), {
+          headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
+        });
+      }
+
+      // Página de autores foi substituída pelo ranking
+      if (pathname === "/artists") {
+        return new Response(null, { status: 301, headers: { location: "/ranking?aba=autores" } });
+      }
+
+      // Data de nascimento informada no cadastro (mínimo 13 anos)
+      if (pathname === "/api/profile/birthdate" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        const body = (await request.json().catch(() => ({}))) as { birthDate?: string; guardianConsent?: boolean };
+        const { ageFromBirthDate } = await import("./lib/age");
+        const age = ageFromBirthDate(body.birthDate ?? "");
+        if (age === null || age < 13 || age > 120) {
+          return new Response(JSON.stringify({ error: "Data de nascimento inválida. É preciso ter pelo menos 13 anos." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (age < 18 && body.guardianConsent !== true) {
+          return new Response(JSON.stringify({ error: "Menores de 18 anos precisam da autorização dos responsáveis." }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        const { saveUserBirth } = await import("./lib/beyond-db");
+        await saveUserBirth(session.user.id, body.birthDate!, age < 18);
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
+      // Lista de espera dos planos (Fã/Super Fã) e de autores
       if (pathname === "/api/waitlist" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
         const email = (body.email ?? "").trim().toLowerCase();
-        const plan = ["monthly", "quarterly", "yearly", "author"].includes(body.plan ?? "") ? body.plan! : "";
+        const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author"].includes(body.plan ?? "") ? body.plan! : "";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
           return new Response(JSON.stringify({ error: "Informe um e-mail válido." }), {
             status: 400,

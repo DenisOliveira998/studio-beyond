@@ -50,7 +50,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Livros, mangás, HQs e contos autorais brasileiros. Leia grátis, sem anúncios, e apoie direto quem escreve — 88% vai para o autor.",
+          "Livros, mangás, HQs, contos e novels autorais, com foco em autores brasileiros. Leia de graça e apoie direto quem escreve.",
       },
       { name: "robots", content: "index, follow" },
       { name: "author", content: "The Beyond" },
@@ -59,7 +59,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Plataforma de publicação independente: livros, mangás, HQs e contos autorais com curadoria humana e zero anúncios.",
+          "Plataforma de leitura e publicação autoral: livros, mangás, HQs, contos e novels, com curadoria da equipe. Leia de graça.",
       },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_BR" },
@@ -67,7 +67,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
       {
         name: "twitter:description",
-        content: "Plataforma de publicação independente sem anúncios. 88% da receita vai para quem cria.",
+        content: "Leia de graça obras autorais de novos talentos e apoie direto quem escreve.",
       },
       { property: "og:image", content: siteUrl(DEFAULT_OG_IMAGE) },
       { property: "og:image:width", content: "1200" },

@@ -176,7 +176,7 @@ function AdminPage() {
     refetchInterval: 60_000,
   });
 
-  // Lista de espera do plano Leitor Assíduo
+  // Lista de espera dos planos Fã/Super Fã e de autores
   const { data: waitlist = [] } = useQuery<WaitlistRow[]>({
     queryKey: ["admin-waitlist"],
     queryFn: () => fetch("/api/admin/waitlist").then((r) => r.json() as Promise<WaitlistRow[]>),
@@ -1101,7 +1101,7 @@ function AdminPage() {
         <section id="lista-espera" className="mt-16 scroll-mt-24">
           <SectionTitle icon={Mail}>Lista de espera</SectionTitle>
           <p className="caption mt-4">
-            {waitlist.length} {waitlist.length === 1 ? "pessoa" : "pessoas"} aguardando — plano Leitor Assíduo ou candidatura de autor
+            {waitlist.length} {waitlist.length === 1 ? "pessoa" : "pessoas"} aguardando — planos Fã/Super Fã ou candidatura de autor
           </p>
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
@@ -1124,7 +1124,7 @@ function AdminPage() {
                     <tr key={row.id} className="border-b border-border/50 hover:bg-surface/50">
                       <td className="py-3 pr-4 text-xs">{row.email}</td>
                       <td className="py-3 pr-4 text-xs text-muted-foreground">
-                        {row.plan === "monthly" ? "Plano mensal" : row.plan === "quarterly" ? "Plano trimestral" : row.plan === "yearly" ? "Plano anual" : row.plan === "author" ? "Candidatura de autor" : "—"}
+                        {row.plan === "fa" ? "Plano Fã" : row.plan === "superfa" ? "Plano Super Fã" : row.plan === "author" ? "Candidatura de autor" : ["monthly", "quarterly", "yearly"].includes(row.plan) ? "Plano (antigo Leitor Assíduo)" : "—"}
                       </td>
                       <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(row.createdAt).toLocaleString("pt-BR")}

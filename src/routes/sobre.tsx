@@ -1,6 +1,5 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
-import { PLATFORM_FEE } from "@/lib/beyond-data";
 
 export const Route = createFileRoute("/sobre")({
   head: () => ({
@@ -9,13 +8,13 @@ export const Route = createFileRoute("/sobre")({
       {
         name: "description",
         content:
-          "O The Beyond é uma plataforma editorial sem anúncios para livros, mangás, HQs e contos autorais. Curadoria humana, e 88% da receita vai para quem cria.",
+          "O The Beyond é uma plataforma digital de leitura e publicação autoral — editora, distribuidora e produtora digital para novos talentos. Leia de graça e apoie quem escreve.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Quem Somos | The Beyond" },
       {
         property: "og:description",
-        content: "Plataforma editorial independente: curadoria humana, zero anúncios e 88% da receita para quem cria.",
+        content: "Uma vitrine para novos talentos autorais: leitura gratuita, curadoria da equipe e apoio direto a quem escreve.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/sobre` },
@@ -31,31 +30,32 @@ function AboutPage() {
     <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
       <p className="eyebrow">O projeto</p>
       <h1 className="hero-type mt-5 text-5xl tracking-tight">
-        Uma galeria que não quer a sua atenção — quer o seu tempo.
+        Um lugar para novos talentos serem lidos — e apoiados.
       </h1>
 
       <div className="mt-10 space-y-6 leading-relaxed text-muted-foreground">
         <p>
-          O The Beyond nasceu de uma recusa simples: nenhum anúncio, nenhum banner, nenhuma
-          interrupção entre quem lê e o que foi escrito. A página existe para a obra.
+          O The Beyond começou como um projeto de estudos e de uma constatação: muita gente escreve
+          bem no Brasil e não publica, porque o caminho tradicional fica com a maior parte do lucro.
+          Aqui, a obra é do autor — e a maior parte da receita também.
         </p>
         <p>
-          Cada visualização contabilizada gera receita para o autor. Quem quiser ir além pode
-          doar diretamente a quem escreveu. A plataforma retém {Math.round(PLATFORM_FEE * 100)}% para se
-          manter — o resto é de quem cria.
+          A leitura é gratuita. O modo grátis é mantido por anúncios; quem assina os planos Fã e
+          Super Fã lê sem anúncios. E quem gostar de um autor pode apoiá-lo diretamente, para que
+          ele continue criando.
         </p>
         <p>
-          A entrada é por curadoria. Autores se candidatam, e cada obra passa por revisão antes de
-          aparecer no feed. Não é um filtro de gosto: é um compromisso com o silêncio editorial do
-          espaço.
+          A entrada é por curadoria: a equipe avalia cada obra — qualidade, respeito aos direitos
+          autorais e às regras da plataforma — antes de ela ir ao ar. Somos editora, distribuidora
+          e produtora digital ao mesmo tempo, com um objetivo: dar perspectiva a quem cria.
         </p>
       </div>
 
       <div className="mt-12 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
         {[
-          { k: "Zero", v: "anúncios, sempre" },
-          { k: "88%", v: "da receita ao autor" },
-          { k: "Semanal", v: "pagamentos sem mínimo" },
+          { k: "Grátis", v: "para ler" },
+          { k: "6 meses", v: "de exclusividade, renovável" },
+          { k: "Semanal", v: "repasse ao autor, sem mínimo" },
         ].map((s) => (
           <div key={s.k} className="bg-background p-7">
             <p className="font-display text-3xl tracking-tight text-gilt">{s.k}</p>

@@ -8,17 +8,17 @@ import { faqJsonLd } from "@/lib/seo";
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Plano Leitor Assíduo: leitura ilimitada | The Beyond" },
+      { title: "Planos Fã e Super Fã: leia sem anúncios | The Beyond" },
       {
         name: "description",
         content:
-          "Plano Leitor Assíduo do The Beyond (em construção): leitura ilimitada de livros, mangás, HQs e contos autorais. Entre na lista de espera.",
+          "Planos Fã e Super Fã do The Beyond (em construção): leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs. Entre na lista de espera.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Plano Leitor Assíduo: leitura ilimitada | The Beyond" },
+      { property: "og:title", content: "Planos Fã e Super Fã | The Beyond" },
       {
         property: "og:description",
-        content: "Leitura ilimitada, sem anúncios. O plano Leitor Assíduo está em construção — entre na lista de espera.",
+        content: "Leia sem anúncios e sem limite diário. Os planos Fã e Super Fã estão em construção — entre na lista de espera.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/planos` },
@@ -37,60 +37,40 @@ const TAHOMA = "Tahoma, Verdana, Geneva, sans-serif";
 type Plan = {
   id: string;
   name: string;
-  monthlyPrice: string;
-  totalPrice: string;
-  billing: string;
-  months: number;
+  /** Preço ainda em definição — mostrado como "Preço em breve" */
+  price: string | null;
   featured: boolean;
   badge: string | null;
   benefits: string[];
   buttonStyle: "ghost" | "secondary" | "primary";
 };
 
+// Planos do plano de negócio: níveis escalonados (Fã → Super Fã). Preços a definir.
 const PLANS: Plan[] = [
   {
-    id: "monthly",
-    name: "Mensal",
-    monthlyPrice: "19,90",
-    totalPrice: "19,90",
-    billing: "R$ 19,90 por mês",
-    months: 1,
+    id: "fa",
+    name: "Fã",
+    price: null,
     featured: false,
     badge: null,
     benefits: [
+      "Leitura sem anúncios",
       "Leitura ilimitada, sem limite diário",
-      "Selo de Leitor Assíduo no perfil",
-    ],
-    buttonStyle: "ghost",
-  },
-  {
-    id: "quarterly",
-    name: "Trimestral",
-    monthlyPrice: "16,90",
-    totalPrice: "50,70",
-    billing: "R$ 50,70 por 3 meses",
-    months: 3,
-    featured: false,
-    badge: "Economize 15%",
-    benefits: [
-      "Leitura ilimitada, sem limite diário",
-      "Selo de Leitor Assíduo no perfil",
+      "Selo de Fã no perfil",
     ],
     buttonStyle: "secondary",
   },
   {
-    id: "yearly",
-    name: "Anual",
-    monthlyPrice: "12,90",
-    totalPrice: "154,80",
-    billing: "R$ 154,80 por ano",
-    months: 12,
+    id: "superfa",
+    name: "Super Fã",
+    price: null,
     featured: true,
-    badge: "Economize R$ 84 por ano",
+    badge: "Mais completo",
     benefits: [
-      "Leitura ilimitada, sem limite diário",
-      "Selo de Leitor Assíduo no perfil",
+      "Tudo do plano Fã",
       "Acesso antecipado a obras em lançamento",
+      "Clube de fãs dos seus autores favoritos",
+      "Selo de Super Fã no perfil",
       "Seu nome na lista de apoiadores da plataforma",
     ],
     buttonStyle: "primary",
@@ -99,7 +79,7 @@ const PLANS: Plan[] = [
 
 const FAQ = [
   {
-    q: "Quando o plano Leitor Assíduo abre?",
+    q: "Quando os planos abrem?",
     a: "Assim que os pagamentos forem ativados. Quem está na lista de espera é avisado primeiro, por e-mail.",
   },
   {
@@ -108,11 +88,11 @@ const FAQ = [
   },
   {
     q: "Preciso assinar para ler?",
-    a: "Não. A leitura gratuita continua aberta. O plano remove o limite diário de leitura.",
+    a: "Não. A leitura gratuita continua aberta, com limite diário. Os planos removem o limite e os anúncios.",
   },
   {
-    q: "O plano remove anúncios?",
-    a: "O The Beyond não tem anúncios — esse é um princípio da plataforma, para todos os leitores.",
+    q: "Os planos removem anúncios?",
+    a: "Sim. A leitura gratuita é mantida por anúncios; nos planos Fã e Super Fã você lê sem anúncios.",
   },
   {
     q: "Como vai funcionar a cobrança?",
@@ -186,18 +166,18 @@ function PlansPage() {
         className="text-[0.65rem] font-bold uppercase tracking-[0.22em]"
         style={{ fontFamily: TAHOMA, color: GOLD }}
       >
-        Leitor Assíduo
+        Planos Fã e Super Fã
       </p>
       <h1 className="hero-type mt-5 max-w-2xl text-4xl sm:text-5xl">
-        Leia sem limite. Apoie quem escreve.
+        Leia sem anúncios. Apoie quem escreve.
       </h1>
       <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-        Você pode usar o The Beyond sem assinar — a leitura gratuita continua aberta. O plano Leitor
-        Assíduo remove o limite diário de leitura.
+        Você pode usar o The Beyond sem assinar — a leitura gratuita continua aberta. Os planos
+        tiram os anúncios e o limite diário, e o Super Fã ainda dá acesso antecipado e clube de fãs.
       </p>
 
       {/* Plans grid */}
-      <div className="mt-14 grid gap-4 sm:grid-cols-3">
+      <div className="mt-14 grid max-w-3xl gap-4 sm:grid-cols-2">
         {PLANS.map((plan) => (
           <div
             key={plan.id}
@@ -234,11 +214,11 @@ function PlansPage() {
                 className="text-3xl font-bold tracking-tight text-foreground"
                 style={{ fontFamily: TAHOMA }}
               >
-                R$ {plan.monthlyPrice}
+                {plan.price ? `R$ ${plan.price}` : "Em breve"}
               </span>
-              <span className="caption">/mês</span>
+              {plan.price && <span className="caption">/mês</span>}
             </div>
-            <p className="caption mt-1">{plan.billing}</p>
+            <p className="caption mt-1">{plan.price ? "cobrança mensal" : "Preço anunciado na abertura"}</p>
 
             {/* Benefits */}
             <ul className="mt-6 flex-1 space-y-3">

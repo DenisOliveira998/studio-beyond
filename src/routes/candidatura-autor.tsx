@@ -170,13 +170,18 @@ function ApplicationPage() {
               <strong className="text-foreground">Apoio direto</strong> dos leitores, no valor que eles escolherem.
             </li>
             <li>
-              <strong className="text-foreground">88% é seu.</strong> A plataforma fica com 12% para se manter.
+              <strong className="text-foreground">A maior parte da receita é sua.</strong> Os percentuais
+              aparecem no seu Painel do Autor.
             </li>
             <li>
               <strong className="text-foreground">Repasse semanal</strong>, sem valor mínimo.
             </li>
             <li>
               <strong className="text-foreground">A obra continua sua.</strong> O The Beyond só tem licença para exibi-la.
+            </li>
+            <li>
+              <strong className="text-foreground">Exclusividade de 6 meses, renovável.</strong> Depois desse
+              período, você pode publicar onde quiser.
             </li>
           </ul>
         </div>

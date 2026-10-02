@@ -5,6 +5,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/auth";
 import { safeRedirect } from "@/lib/redirect";
+import { MIN_AGE, ageFromBirthDate } from "@/lib/age";
+import { savePendingBirth } from "@/lib/auth";
 
 export const Route = createFileRoute("/criar")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
@@ -49,6 +51,12 @@ function CriarPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const redirectTo = safeRedirect(search.redirect);
+  // Idade: mínimo 13 anos; de 13 a 17, com autorização dos responsáveis
+  const [birthDate, setBirthDate] = useState("");
+  const [guardianConsent, setGuardianConsent] = useState(false);
+  const age = birthDate ? ageFromBirthDate(birthDate) : null;
+  const isMinor = age !== null && age >= MIN_AGE && age < 18;
+  const ageOk = age !== null && age >= MIN_AGE && age <= 120 && (!isMinor || guardianConsent);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,6 +76,11 @@ function CriarPage() {
 
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault();
+    if (!ageOk) {
+      toast.error("Informe sua data de nascimento (mínimo 13 anos).");
+      return;
+    }
+    savePendingBirth(birthDate, guardianConsent);
     if (!pwValid) {
       toast.error("A senha não atende os requisitos de segurança.");
       return;
@@ -99,6 +112,11 @@ function CriarPage() {
   }
 
   async function handleGoogle() {
+    if (!ageOk) {
+      toast.error("Informe sua data de nascimento (mínimo 13 anos).");
+      return;
+    }
+    savePendingBirth(birthDate, guardianConsent);
     setSigningGoogle(true);
     try {
       const result = await authClient.signIn.social({ provider: "google", callbackURL: redirectTo });
@@ -121,7 +139,7 @@ function CriarPage() {
           Crie sua conta e comece a ler.
         </h1>
         <p className="mt-6 max-w-md leading-relaxed text-muted-foreground">
-          Conta de Leitor criada em segundos. Acesso completo ao acervo sem anúncios, sem interrupções.
+          Conta de Leitor criada em segundos. Leia de graça, comente e siga os seus autores favoritos.
         </p>
         <ul className="mt-10 space-y-3 border-t border-border pt-8 text-sm text-muted-foreground">
           <li>Salve obras e continue de onde parou.</li>
@@ -134,11 +152,44 @@ function CriarPage() {
 
       {/* Coluna direita */}
       <div className="flex flex-col gap-6">
+        {/* Idade — vale para e-mail e Google */}
+        <div className="border border-border bg-surface p-7 sm:p-9">
+          <label className="block">
+            <span className="eyebrow">Data de nascimento *</span>
+            <input
+              type="date"
+              required
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => {
+                setBirthDate(e.target.value);
+                setGuardianConsent(false);
+              }}
+              className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-gilt"
+            />
+          </label>
+          {age !== null && age < MIN_AGE && (
+            <p className="mt-3 text-xs text-red-400">É preciso ter pelo menos {MIN_AGE} anos para criar uma conta.</p>
+          )}
+          {isMinor && (
+            <label className="mt-4 flex items-start gap-3 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={guardianConsent}
+                onChange={(e) => setGuardianConsent(e.target.checked)}
+                className="mt-1 size-4 shrink-0 accent-[var(--gilt)]"
+              />
+              <span>Tenho menos de 18 anos e meus pais ou responsáveis autorizaram meu cadastro.</span>
+            </label>
+          )}
+          <p className="caption mt-3">Usamos sua idade só para cumprir as regras de proteção a menores.</p>
+        </div>
+
         {/* Google */}
         <button
           type="button"
           onClick={() => void handleGoogle()}
-          disabled={signingGoogle}
+          disabled={signingGoogle || !ageOk}
           className="flex w-full items-center justify-center gap-3 border border-border bg-surface px-5 py-3.5 text-sm transition-colors hover:border-gilt hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
           {signingGoogle ? (
@@ -214,7 +265,7 @@ function CriarPage() {
 
           <button
             type="submit"
-            disabled={loading || !pwValid}
+            disabled={loading || !pwValid || !ageOk}
             className="btn-type w-full bg-primary py-3 text-xs text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {loading ? "Criando conta…" : "Criar conta"}

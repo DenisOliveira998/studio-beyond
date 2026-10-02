@@ -390,3 +390,24 @@ model AuthorBio {
 
   @@map("author_bios")
 }
+
+// Leituras por obra e por dia — base do ranking semanal (Top 50)
+model WorkViewDaily {
+  workSlug String
+  date     String // "YYYY-MM-DD" (UTC)
+  views    Int    @default(0)
+
+  @@id([workSlug, date])
+  @@index([date])
+  @@map("work_view_daily")
+}
+
+// Idade informada no cadastro (mínimo 13 anos; 13–17 com autorização dos responsáveis)
+model UserBirth {
+  userId          String   @id
+  birthDate       String   // "YYYY-MM-DD"
+  guardianConsent Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@map("user_births")
+}

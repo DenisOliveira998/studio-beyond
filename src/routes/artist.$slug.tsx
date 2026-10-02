@@ -41,8 +41,8 @@ export const Route = createFileRoute("/artist/$slug")({
     const role = mainMedium ? `autor de ${mediumNoun(mainMedium)}` : "autor";
     const first = works[0];
     const fallback = first
-      ? `Leia ${stripHtml(first.title)}, ${mediumNoun(first.medium)} de ${artistName}, no The Beyond. Sem anúncios; apoie o autor diretamente.`
-      : `Obras de ${artistName} no The Beyond. Sem anúncios; apoie o autor diretamente.`;
+      ? `Leia ${stripHtml(first.title)}, ${mediumNoun(first.medium)} de ${artistName}, no The Beyond. Leia de graça e apoie o autor diretamente.`
+      : `Obras de ${artistName} no The Beyond. Leia de graça e apoie o autor diretamente.`;
     const description = clampText(bio.bio || fallback, 160);
     const meta: Array<Record<string, unknown>> = [
       { title: `${artistName} — ${role} | The Beyond` },
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/artist/$slug")({
     meta.push({
       "script:ld+json": breadcrumbJsonLd([
         { name: "Início", path: "/" },
-        { name: "Autores", path: "/artists" },
+        { name: "Ranking", path: "/ranking?aba=autores" },
         { name: artistName, path: `/artist/${artistSlug}` },
       ]),
     });

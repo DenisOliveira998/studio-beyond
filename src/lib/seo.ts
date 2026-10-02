@@ -14,7 +14,7 @@ export function organizationJsonLd() {
     url: `${SITE_URL}/`,
     logo: siteUrl("/favicon.svg"),
     description:
-      "Plataforma editorial independente, sem anúncios, para ler e publicar livros, mangás, HQs e contos autorais brasileiros.",
+      "Plataforma digital de leitura e publicação autoral — livros, mangás, HQs, contos e novels — com foco em novos talentos brasileiros.",
   };
 }
 
@@ -128,7 +128,7 @@ export function workSeo(work: Work): { title: string; description: string } {
   const name = stripHtml(work.title);
   const noun = mediumNoun(work.medium);
   const by = work.artistName ? ` de ${work.artistName}` : "";
-  const suffix = " Leia grátis e sem anúncios no The Beyond.";
+  const suffix = " Leia grátis no The Beyond.";
   return {
     title: `${name} — ${noun}${by} | Ler online | The Beyond`,
     description: `${clampText(stripHtml(work.excerpt), 158 - suffix.length)}${suffix}`,

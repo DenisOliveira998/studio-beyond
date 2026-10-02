@@ -23,7 +23,7 @@ export const Route = createFileRoute("/explorar")({
     const url = `${SITE_URL}/explorar${pagina > 1 ? `?pagina=${pagina}` : ""}`;
     const title = `Explorar livros, mangás, HQs e contos${pagina > 1 ? ` — página ${pagina}` : ""} | The Beyond`;
     const description =
-      "Explore livros, mangás, HQs e contos autorais brasileiros por categoria. Obras selecionadas pela curadoria do The Beyond, sem anúncios.";
+      "Explore livros, mangás, HQs, contos e novels autorais por categoria, com foco em autores brasileiros. Leia de graça no The Beyond.";
     return {
       meta: [
         { title },

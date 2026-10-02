@@ -8,7 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PLATFORM_FEE, money } from "@/lib/beyond-data";
+import { PLATFORM_FEE, canSeePlatformFee, money } from "@/lib/beyond-data";
+import { useAuth } from "@/lib/auth";
 
 const presets = [5, 15, 40, 100];
 
@@ -19,6 +20,8 @@ export function DonateDialog({
   artistName: string;
   trigger: ReactNode;
 }) {
+  const { profile } = useAuth();
+  const showFee = canSeePlatformFee(profile?.role);
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(15);
   const [custom, setCustom] = useState("");
@@ -76,14 +79,24 @@ export function DonateDialog({
             <dt className="text-muted-foreground">Sua doação</dt>
             <dd>{money(value)}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Taxa da plataforma (12%)</dt>
-            <dd className="text-muted-foreground">−{money(value * PLATFORM_FEE)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>{artistName} recebe</dt>
-            <dd className="text-gilt">{money(toArtist)}</dd>
-          </div>
+          {/* Taxa só aparece para autores e equipe */}
+          {showFee ? (
+            <>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Taxa da plataforma ({Math.round(PLATFORM_FEE * 100)}%)</dt>
+                <dd className="text-muted-foreground">−{money(value * PLATFORM_FEE)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>{artistName} recebe</dt>
+                <dd className="text-gilt">{money(toArtist)}</dd>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Vai para</dt>
+              <dd className="text-gilt">{artistName}</dd>
+            </div>
+          )}
         </dl>
 
         <button

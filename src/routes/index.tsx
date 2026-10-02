@@ -31,14 +31,14 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Livros, mangás, HQs e contos autorais brasileiros. Leia grátis, sem anúncios, e apoie direto quem escreve — 88% vai para o autor.",
+          "Livros, mangás, HQs, contos e novels autorais, com foco em autores brasileiros. Leia de graça e apoie direto quem escreve.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "The Beyond — Livros, Mangás, HQs e Contos Autorais" },
       {
         property: "og:description",
         content:
-          "Plataforma de publicação independente com curadoria humana. Livros, mangás, HQs e contos — sem anúncios, sem interrupções.",
+          "Plataforma de leitura e publicação autoral com curadoria da equipe. Livros, mangás, HQs, contos e novels — leia de graça.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/` },
@@ -626,7 +626,7 @@ function Home() {
   return (
     <div>
       {/* H1 só para leitores de tela e buscadores — o topo visível é o Destaque */}
-      <h1 className="sr-only">The Beyond — livros, mangás, HQs e contos autorais brasileiros</h1>
+      <h1 className="sr-only">The Beyond — livros, mangás, HQs, contos e novels autorais para ler de graça</h1>
 
       {/* Destaque Beyond — hero carousel */}
       <DestaqueHero works={works} initialDestaque={initial.destaque} />
