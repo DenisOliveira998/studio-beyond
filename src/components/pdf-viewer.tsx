@@ -41,10 +41,9 @@ export function PdfViewer({
   defaultTheme?: PdfTheme;
 }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const [numPages, setNumPages] = useState(0);
+  const [doc, setDoc] = useState<import("pdfjs-dist").PDFDocumentProxy | null>(null);
   const [theme, setTheme] = useState<PdfTheme>(defaultTheme);
   const [zoom, setZoom] = useState(1);
-  const docRef = useRef<import("pdfjs-dist").PDFDocumentProxy | null>(null);
 
   // Preferência salva só depois de montar (evita diferença entre servidor e navegador)
   useEffect(() => { setTheme(readTheme(defaultTheme)); }, [defaultTheme]);
@@ -71,6 +70,8 @@ export function PdfViewer({
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
+    let loaded: import("pdfjs-dist").PDFDocumentProxy | null = null;
+    setState("loading");
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
@@ -80,8 +81,8 @@ export function PdfViewer({
         const data = new Uint8Array(await res.arrayBuffer());
         const doc = await pdfjs.getDocument({ data }).promise;
         if (cancelled) return void doc.destroy();
-        docRef.current = doc;
-        setNumPages(doc.numPages);
+        loaded = doc;
+        setDoc(doc);
         setState("ready");
       } catch {
         if (!cancelled) setState("error");
@@ -89,8 +90,8 @@ export function PdfViewer({
     })();
     return () => {
       cancelled = true;
-      void docRef.current?.destroy();
-      docRef.current = null;
+      setDoc(null);
+      void loaded?.destroy();
     };
   }, [slug, enabled]);
 
@@ -102,14 +103,13 @@ export function PdfViewer({
       </div>
     );
   }
-  if (state === "loading" || !docRef.current) {
+  if (state === "loading" || !doc) {
     return (
       <div ref={bodyRef} className="flex justify-center py-24">
         <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
       </div>
     );
   }
-  const doc = docRef.current;
   const t = THEMES[theme];
   return (
     <div>
@@ -168,7 +168,7 @@ export function PdfViewer({
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
         >
-          {Array.from({ length: numPages }, (_, i) => (
+          {Array.from({ length: doc.numPages }, (_, i) => (
             <PdfPage key={i} doc={doc} pageNumber={i + 1} filter={t.filter} paper={t.paper} />
           ))}
         </div>
@@ -224,18 +224,20 @@ function PdfPage({
   }, []);
 
   useEffect(() => {
-    if (!visible || width === 0) return;
+    if (!visible) return;
     let cancelled = false;
     let task: { cancel: () => void } | null = null;
     (async () => {
-      const page = await doc.getPage(pageNumber);
+      const cssWidth = width || wrapRef.current?.clientWidth || 0;
+      if (!cssWidth) return;
+      const page = await doc.getPage(pageNumber).catch(() => null);
       const canvas = canvasRef.current;
-      if (cancelled || !canvas) return;
+      if (cancelled || !canvas || !page) return;
       const base = page.getViewport({ scale: 1 });
       setRatio(base.height / base.width);
       // Desenha com folga de resolução (mín. 2x) para o texto não serrilhar
       const density = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
-      const viewport = page.getViewport({ scale: (width / base.width) * density });
+      const viewport = page.getViewport({ scale: (cssWidth / base.width) * density });
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const render = page.render({ canvas, viewport });
