@@ -766,19 +766,31 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 
       if (pathname === "/sitemap.xml") {
         const { SITE_URL } = await import("./lib/site-url");
-        const { fetchApprovedWorks, fetchDistinctArtists } = await import("./lib/beyond-db");
+        const { fetchApprovedWorks, fetchDistinctArtists, dbWorkToWork } = await import("./lib/beyond-db");
+        const { stripHtml } = await import("./lib/utils");
         const [works, artists] = await Promise.all([
           fetchApprovedWorks().catch(() => []),
           fetchDistinctArtists().catch(() => []),
         ]);
-        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const url = (path: string, lastmod?: string) =>
-          `  <url><loc>${esc(`${SITE_URL}${path}`)}</loc>${lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : ""}</url>`;
+        const esc = (s: string) =>
+          s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        const abs = (u: string) => (u.startsWith("/") ? `${SITE_URL}${u}` : u);
+        const url = (path: string, lastmod?: string, image?: { loc: string; title: string }) =>
+          `  <url><loc>${esc(`${SITE_URL}${path}`)}</loc>${lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : ""}${
+            image ? `<image:image><image:loc>${esc(abs(image.loc))}</image:loc><image:title>${esc(image.title)}</image:title></image:image>` : ""
+          }</url>`;
+        // Última atualização de cada autor = obra mais recente dele
+        const artistMod = new Map<string, string>();
+        for (const w of works) {
+          const iso = w.updatedAt.toISOString();
+          if ((artistMod.get(w.artistSlug) ?? "") < iso) artistMod.set(w.artistSlug, iso);
+        }
+        const latest = works.reduce((m, w) => (w.updatedAt.toISOString() > m ? w.updatedAt.toISOString() : m), "");
         const mediums = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
         const usedMediums = new Set(works.map((w) => w.medium));
         const lines = [
-          url("/"),
-          url("/explorar"),
+          url("/", latest || undefined),
+          url("/explorar", latest || undefined),
           ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m}`)),
           url("/ranking"),
           url("/biblioteca"),
@@ -788,10 +800,17 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           url("/contato"),
           url("/termos"),
           url("/privacidade"),
-          ...works.map((w) => url(`/work/${encodeURIComponent(w.slug)}`, w.updatedAt.toISOString())),
-          ...artists.filter((a) => a.slug).map((a) => url(`/artist/${encodeURIComponent(a.slug)}`)),
+          ...works.map((w) => {
+            const cover = dbWorkToWork(w).cover;
+            return url(
+              `/work/${encodeURIComponent(w.slug)}`,
+              w.updatedAt.toISOString(),
+              cover ? { loc: cover, title: stripHtml(w.title) } : undefined,
+            );
+          }),
+          ...artists.filter((a) => a.slug).map((a) => url(`/artist/${encodeURIComponent(a.slug)}`, artistMod.get(a.slug))),
         ];
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${lines.join("\n")}\n</urlset>\n`;
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${lines.join("\n")}\n</urlset>\n`;
         return new Response(xml, {
           headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" },
         });
@@ -799,9 +818,32 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 
       if (pathname === "/llms.txt") {
         const { SITE_URL } = await import("./lib/site-url");
+        const { fetchApprovedWorks } = await import("./lib/beyond-db");
+        const { stripHtml } = await import("./lib/utils");
+        const { MEDIUM_LABEL } = await import("./lib/beyond-data");
+        const works = await fetchApprovedWorks().catch(() => []);
+        const oneLine = (s: string, max = 160) => {
+          const t = stripHtml(s).replace(/\s+/g, " ").trim();
+          return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+        };
+        const order = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"] as const;
+        const catalog = order
+          .map((m) => {
+            const list = works.filter((w) => w.medium === m);
+            if (list.length === 0) return "";
+            const items = list
+              .map((w) => {
+                const desc = oneLine(w.excerpt);
+                return `- [${oneLine(w.title, 120)}](${SITE_URL}/work/${encodeURIComponent(w.slug)}): de ${w.artistName}${desc ? `. ${desc}` : ""}`;
+              })
+              .join("\n");
+            return `### ${MEDIUM_LABEL[m]}\n${items}`;
+          })
+          .filter(Boolean)
+          .join("\n\n");
         const body = `# The Beyond
 
-> Plataforma digital de leitura e publicação autoral — livros, mangás, HQs, contos e novels — com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
+> Plataforma digital de leitura e publicação autoral de livros, mangás, HQs, contos e novels, com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
 
 ## Para leitores
 - Leitura gratuita, com limite diário e anúncios; os planos Fã e Super Fã removem o limite e os anúncios.
@@ -819,11 +861,16 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 - [Início](${SITE_URL}/): destaques e catálogo por categoria
 - [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
 - [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
-- [Ranking](${SITE_URL}/ranking): Top 50 da semana — obras e autores mais lidos
+- [Ranking](${SITE_URL}/ranking): Top 50 da semana, com as obras e os autores mais lidos
 - [Planos](${SITE_URL}/planos): planos Fã e Super Fã (em construção)
 - [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
 - [Sitemap](${SITE_URL}/sitemap.xml)
+
+## Catálogo
+${works.length} obras publicadas, todas com curadoria da equipe. Cada link leva à página da obra, com sinopse, autor e botão de leitura.
+
+${catalog}
 `;
         return new Response(body, {
           headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" },
