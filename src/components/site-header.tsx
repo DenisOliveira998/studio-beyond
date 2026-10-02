@@ -77,7 +77,8 @@ function UserMenu() {
                  profile.role === "admin" ? "Administrador" :
                  profile.role === "gerente" ? "Gerente" :
                  profile.role === "author" ? "Autor" :
-                 profile.role === "vip" ? "Fã" : "Leitor"}
+                 profile.role === "vip" ? "Fã" :
+                 profile.role === "superfa" ? "Super Fã" : "Leitor"}
               </p>
             )}
           </div>

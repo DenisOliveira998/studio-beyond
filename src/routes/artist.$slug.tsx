@@ -7,6 +7,7 @@ import { SITE_URL, absoluteUrl } from "@/lib/site-url";
 import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { LoginPrompt } from "@/components/login-prompt";
+import { ReportButton } from "@/components/report-dialog";
 import { VIEWS_DISPLAY_MIN, compact } from "@/lib/beyond-data";
 import type { AuthorBioData, Work } from "@/lib/beyond-data";
 import { useAuth } from "@/lib/auth";
@@ -194,6 +195,19 @@ function ArtistPage() {
           ))}
         </div>
       </section>
+
+      <div className="mt-12 flex justify-end">
+        <ReportButton
+          targetType="author"
+          targetId={artistSlug}
+          redirectTo={`/artist/${artistSlug}`}
+          trigger={
+            <button type="button" className="text-xs text-muted-foreground/70 transition-colors hover:text-red-400">
+              Denunciar este autor
+            </button>
+          }
+        />
+      </div>
 
       <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/artist/${artistSlug}`} />
     </div>

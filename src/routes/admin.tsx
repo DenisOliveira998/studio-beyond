@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Eye,
   FileDown,
+  Flag,
   FileClock,
   Image,
   LayoutDashboard,
@@ -37,6 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import type { EmailEventData, WaitlistRow } from "@/lib/beyond-db";
+import type { ReportRow } from "@/lib/moderation";
 import {
   PLATFORM_FEE,
   RATE_PER_CLICK,
@@ -72,14 +74,15 @@ export const Route = createFileRoute("/admin")({
 const FILTERS: Array<{ value: AppRole | "all"; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "reader", label: "Leitor" },
-  { value: "vip", label: "VIP" },
+  { value: "vip", label: "Fã" },
+  { value: "superfa", label: "Super Fã" },
   { value: "author", label: "Autor" },
   { value: "gerente", label: "Gerente" },
   { value: "admin", label: "Administrador" },
   { value: "owner", label: "Dono" },
 ];
 
-const LADDER: AppRole[] = ["reader", "vip", "author", "gerente", "admin", "owner"];
+const LADDER: AppRole[] = ["reader", "vip", "superfa", "author", "gerente", "admin", "owner"];
 
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
@@ -88,6 +91,7 @@ const NAV = [
   { id: "candidaturas", label: "Candidaturas", icon: ClipboardList },
   { id: "obras-revisao", label: "Obras em revisão", icon: FileClock },
   { id: "contas", label: "Gestão de Contas", icon: Users },
+  { id: "denuncias", label: "Denúncias", icon: Flag },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "lista-espera", label: "Lista de espera", icon: Mail },
@@ -99,6 +103,7 @@ const NAV = [
 const TYPE_BADGE: Record<AppRole, string> = {
   reader: "border-border bg-muted text-muted-foreground",
   vip: "border-gilt/50 bg-gilt/10 text-gilt",
+  superfa: "border-gilt bg-gilt/20 text-gilt font-bold",
   author: "border-[color:var(--chart-2)]/50 bg-[color:var(--chart-2)]/10 text-[color:var(--chart-2)]",
   gerente: "border-blue-500/50 bg-blue-500/10 text-blue-400",
   admin: "border-destructive/50 bg-destructive/10 text-destructive",
@@ -177,6 +182,34 @@ function AdminPage() {
   });
 
   // Lista de espera dos planos Fã/Super Fã e de autores
+  // Denúncias (moderação)
+  const [reportFilter, setReportFilter] = useState<"open" | "all">("open");
+  const [reportBusy, setReportBusy] = useState<string | null>(null);
+  const { data: reports = [], refetch: refetchReports } = useQuery<ReportRow[]>({
+    queryKey: ["admin-reports", reportFilter],
+    queryFn: () => fetch(`/api/admin/reports?status=${reportFilter}`).then((r) => r.json() as Promise<ReportRow[]>),
+    staleTime: 30_000,
+  });
+  async function reportAction(id: string, action: string, done: string) {
+    setReportBusy(id + action);
+    try {
+      const res = await fetch(`/api/admin/reports/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Erro ao aplicar a ação.");
+      toast.success(done);
+      void refetchReports();
+      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao aplicar a ação.");
+    } finally {
+      setReportBusy(null);
+    }
+  }
+
   const { data: waitlist = [] } = useQuery<WaitlistRow[]>({
     queryKey: ["admin-waitlist"],
     queryFn: () => fetch("/api/admin/waitlist").then((r) => r.json() as Promise<WaitlistRow[]>),
@@ -1095,6 +1128,103 @@ function AdminPage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* Denúncias */}
+        <section id="denuncias" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Flag}>Denúncias</SectionTitle>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="caption">
+              {reportFilter === "open"
+                ? `${reports.length} ${reports.length === 1 ? "denúncia aberta" : "denúncias abertas"}. Comentários com 3 ou mais denúncias ficam ocultos até a análise.`
+                : `Últimas ${reports.length} denúncias (todas).`}
+            </p>
+            <div className="flex gap-1">
+              {(["open", "all"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setReportFilter(f)}
+                  className={`border px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                    reportFilter === f ? "border-gilt text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "open" ? "Abertas" : "Todas"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 divide-y divide-border border-y border-border">
+            {reports.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">Nenhuma denúncia {reportFilter === "open" ? "aberta" : "registrada"}.</p>
+            ) : (
+              reports.map((r) => {
+                const btn = "border px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] transition-colors disabled:opacity-50";
+                const busy = (a: string) => reportBusy === r.id + a;
+                return (
+                  <div key={r.id} className="py-5">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="border border-red-500/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-red-400">{r.reason}</span>
+                      <span className="text-sm font-bold">
+                        {r.target.link ? (
+                          <a href={r.target.link} target="_blank" rel="noreferrer" className="hover:text-gilt">{r.target.label}</a>
+                        ) : (
+                          r.target.label
+                        )}
+                      </span>
+                      {r.target.hidden && <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">oculto</span>}
+                      {r.target.ownerSuspended && <span className="text-[10px] uppercase tracking-[0.12em] text-red-400">conta suspensa</span>}
+                      {r.openCount > 1 && <span className="text-xs text-muted-foreground">{r.openCount} denúncias abertas</span>}
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {r.status === "open" ? "aberta" : r.status === "resolved" ? "resolvida" : "descartada"} · {new Date(r.createdAt).toLocaleString("pt-BR")}
+                      </span>
+                    </div>
+                    {r.target.excerpt && (
+                      <p className="mt-2 max-w-3xl whitespace-pre-line border-l-2 border-border pl-3 text-sm text-muted-foreground">{r.target.excerpt}</p>
+                    )}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Denunciado por {r.reporterName}
+                      {r.details ? <> — “{r.details}”</> : null}
+                    </p>
+                    {r.status === "open" && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "dismiss", "Denúncia descartada.")} className={`${btn} border-border text-muted-foreground hover:text-foreground`}>
+                          {busy("dismiss") ? "…" : "Descartar"}
+                        </button>
+                        {r.targetType === "comment" && !r.target.hidden && (
+                          <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "hide_comment", "Comentário ocultado.")} className={`${btn} border-gilt/50 text-gilt hover:bg-gilt/10`}>
+                            {busy("hide_comment") ? "…" : "Ocultar comentário"}
+                          </button>
+                        )}
+                        {r.targetType === "comment" && (
+                          <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "remove_comment", "Comentário removido.")} className={`${btn} border-destructive/50 text-destructive hover:bg-destructive/10`}>
+                            {busy("remove_comment") ? "…" : "Remover comentário"}
+                          </button>
+                        )}
+                        {r.targetType === "work" && (
+                          <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "unpublish_work", "Obra despublicada.")} className={`${btn} border-destructive/50 text-destructive hover:bg-destructive/10`}>
+                            {busy("unpublish_work") ? "…" : "Despublicar obra"}
+                          </button>
+                        )}
+                        {r.target.ownerId && !r.target.ownerSuspended && (
+                          <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "suspend_owner", "Conta suspensa.")} className={`${btn} border-destructive/50 text-destructive hover:bg-destructive/10`}>
+                            {busy("suspend_owner") ? "…" : `Suspender ${r.target.ownerName || "conta"}`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {r.status !== "open" && r.targetType === "comment" && r.target.hidden && (
+                      <div className="mt-3">
+                        <button disabled={!!reportBusy} onClick={() => void reportAction(r.id, "restore_comment", "Comentário restaurado.")} className={`${btn} border-border text-muted-foreground hover:text-foreground`}>
+                          Restaurar comentário
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <p className="caption mt-3">Para reativar uma conta suspensa, use Gestão de Contas.</p>
         </section>
 
         {/* Lista de espera */}

@@ -122,11 +122,12 @@ export const money = (n: number) => formatMoney(n);
 
 export const compact = (n: number) => formatNumber(n);
 
-export type AccountType = "free" | "vip" | "author" | "gerente" | "admin" | "owner";
+export type AccountType = "free" | "vip" | "superfa" | "author" | "gerente" | "admin" | "owner";
 
 export const ACCOUNT_LABEL: Record<AccountType, string> = {
   free: "Gratuito",
   vip: "Fã",
+  superfa: "Super Fã",
   author: "Autor",
   gerente: "Gerente",
   admin: "Administrador",

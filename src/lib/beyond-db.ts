@@ -683,19 +683,39 @@ export type CommentData = {
   author: string;
   text: string;
   createdAt: string;
+  /** Selo pelo cargo de quem comentou: Fã, Super Fã, Autor ou Equipe */
+  badge?: string;
+};
+
+const COMMENT_BADGE: Record<string, string> = {
+  vip: "Fã",
+  superfa: "Super Fã",
+  author: "Autor",
+  gerente: "Equipe",
+  admin: "Equipe",
+  owner: "Equipe",
 };
 
 export async function getWorkComments(workSlug: string): Promise<CommentData[]> {
   const rows = await prisma.workComment.findMany({
-    where: { workSlug },
+    where: { workSlug, hidden: false },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map((r) => ({
-    id: r.id,
-    author: r.author,
-    text: r.text,
-    createdAt: r.createdAt.toISOString(),
-  }));
+  const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
+  const profiles = userIds.length
+    ? await prisma.profile.findMany({ where: { id: { in: userIds } }, select: { id: true, role: true } })
+    : [];
+  const roleById = new Map(profiles.map((p) => [p.id, p.role as string]));
+  return rows.map((r) => {
+    const badge = r.userId ? COMMENT_BADGE[roleById.get(r.userId) ?? ""] : undefined;
+    return {
+      id: r.id,
+      author: r.author,
+      text: r.text,
+      createdAt: r.createdAt.toISOString(),
+      ...(badge ? { badge } : {}),
+    };
+  });
 }
 
 export async function addWorkComment(input: {

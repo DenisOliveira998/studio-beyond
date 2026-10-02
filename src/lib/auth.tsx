@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import type { AuthSession } from "@/lib/auth-client";
 
-export type AppRole = "owner" | "admin" | "gerente" | "author" | "vip" | "reader";
+export type AppRole = "owner" | "admin" | "gerente" | "author" | "vip" | "superfa" | "reader";
 
 export const ROLE_LABEL: Record<AppRole, string> = {
   owner: "Dono",
@@ -19,6 +19,7 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   gerente: "Gerente",
   author: "Autor",
   vip: "Fã",
+  superfa: "Super Fã",
   reader: "Leitor",
 };
 
@@ -123,7 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isGerente,
       isStaff: isOwner || isAdmin || isGerente,
       isAuthor: role === "author",
-      isVip: role === "vip",
+      // Fã ou Super Fã (planos pagos)
+      isVip: role === "vip" || role === "superfa",
       refresh: load,
       signOut: async () => {
         await queryClient.cancelQueries();
@@ -160,7 +162,7 @@ export function useAuth() {
 }
 
 export function highestRole(roles: AppRole[]): AppRole {
-  const order: AppRole[] = ["owner", "admin", "gerente", "author", "vip", "reader"];
+  const order: AppRole[] = ["owner", "admin", "gerente", "author", "superfa", "vip", "reader"];
   return order.find((r) => roles.includes(r)) ?? "reader";
 }
 

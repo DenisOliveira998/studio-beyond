@@ -21,7 +21,8 @@ export type BeyondEvent =
   | { event: "new-application"; data: { artistName: string; email: string } }
   | { event: "new-donation"; data: { artistName: string; amount: number; workSlug: string } }
   | { event: "new-comment"; data: { workSlug: string; author: string } }
-  | { event: "work-submitted"; data: { title: string; artistName: string } };
+  | { event: "work-submitted"; data: { title: string; artistName: string } }
+  | { event: "new-report"; data: { targetType: string; reason: string } };
 
 export async function pushEvent(payload: BeyondEvent): Promise<void> {
   const pusher = getPusher();

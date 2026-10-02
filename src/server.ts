@@ -287,7 +287,14 @@ async function hasBirthDate(userId: string): Promise<boolean> {
 
 async function birthGate(userId: string): Promise<Response | null> {
   const { prisma } = await import("./lib/prisma");
-  const profile = await prisma.profile.findUnique({ where: { id: userId }, select: { role: true } });
+  const profile = await prisma.profile.findUnique({ where: { id: userId }, select: { role: true, suspended: true } });
+  // Conta suspensa pela moderação não curte, salva, segue nem comenta
+  if (profile?.suspended) {
+    return new Response(JSON.stringify({ error: "Sua conta está suspensa. Fale com a equipe pelo Contato.", code: "account_suspended" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+  }
   if (profile && BIRTH_EXEMPT_ROLES.includes(profile.role)) return null;
   if (await hasBirthDate(userId)) return null;
   return new Response(
@@ -864,6 +871,62 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
       }
 
+      // ── Denúncias (moderação) ────────────────────────────────────────────────
+      if (pathname === "/api/reports" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session?.user) {
+          return new Response(JSON.stringify({ error: "Entre na sua conta para denunciar." }), { status: 401, headers: { "content-type": "application/json" } });
+        }
+        if (!(await rateLimit(`report:user:${session.user.id}`, 10, 60 * 60))) {
+          return tooManyRequests("Você enviou muitas denúncias seguidas. Aguarde um pouco.");
+        }
+        const body = (await request.json().catch(() => ({}))) as { targetType?: string; targetId?: string; reason?: string; details?: string };
+        const { REPORT_REASONS, createReport } = await import("./lib/moderation");
+        const targetType = body.targetType ?? "";
+        if (!["comment", "work", "author"].includes(targetType) || !body.targetId || !REPORT_REASONS.includes(body.reason ?? "")) {
+          return new Response(JSON.stringify({ error: "Denúncia inválida." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const result = await createReport({
+          reporterId: session.user.id,
+          targetType: targetType as "comment" | "work" | "author",
+          targetId: String(body.targetId).slice(0, 191),
+          reason: body.reason!,
+          details: String(body.details ?? "").trim().slice(0, 500),
+        });
+        if (!result.ok) {
+          return new Response(JSON.stringify({ error: "Não encontramos o conteúdo denunciado." }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        if (result.created) {
+          const { pushEvent: pushReport } = await import("./lib/pusher");
+          void pushReport({ event: "new-report", data: { targetType, reason: body.reason ?? "" } });
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
+      if (pathname === "/api/admin/reports" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const status = new URL(request.url).searchParams.get("status") ?? "open";
+        const { fetchReports } = await import("./lib/moderation");
+        return new Response(JSON.stringify(await fetchReports(status === "all" ? null : status)), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+
+      const reportActionMatch = pathname.match(/^\/api\/admin\/reports\/([^/]+)$/);
+      if (reportActionMatch && request.method === "PATCH") {
+        const { error, actorId, actorEmail } = await requireAdmin(request);
+        if (error) return error;
+        const body = (await request.json().catch(() => ({}))) as { action?: string };
+        const { applyReportAction } = await import("./lib/moderation");
+        const result = await applyReportAction(reportActionMatch[1]!, body.action ?? "", actorId!, actorEmail ?? "");
+        if (!result.ok) {
+          return new Response(JSON.stringify({ error: result.error }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+      }
+
       // Lista de espera dos planos (Fã/Super Fã) e de autores
       if (pathname === "/api/waitlist" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
@@ -1250,7 +1313,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         ]);
         const deny = (msg: string) =>
           new Response(JSON.stringify({ error: msg }), { status: 403, headers: { "content-type": "application/json" } });
-        const VALID_ROLES = ["owner", "admin", "gerente", "author", "vip", "reader"];
+        const VALID_ROLES = ["owner", "admin", "gerente", "author", "vip", "superfa", "reader"];
         const PRIVILEGED = ["owner", "admin"];
         const actorIsOwner = actor?.role === "owner";
         if (!target) {
@@ -1436,7 +1499,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
         const { prisma } = await import("./lib/prisma");
         const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
-        if (profile && ["vip", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+        if (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role)) {
           return new Response(JSON.stringify({ consumed: 0, limit: null, remaining: null }), {
             headers: { "content-type": "application/json" },
           });
@@ -1456,7 +1519,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
         const { prisma } = await import("./lib/prisma");
         const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
-        if (profile && ["vip", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+        if (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role)) {
           return new Response(JSON.stringify({ allowed: true, remaining: null }), {
             headers: { "content-type": "application/json" },
           });
@@ -1685,7 +1748,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (readerSession?.user) {
           const { prisma: prismaR } = await import("./lib/prisma");
           const readerProfile = await prismaR.profile.findUnique({ where: { id: readerSession.user.id }, select: { role: true } });
-          const unlimited = readerProfile && ["vip", "author", "gerente", "admin", "owner"].includes(readerProfile.role);
+          const unlimited = readerProfile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(readerProfile.role);
           if (!unlimited) {
             const { getReadingQuota } = await import("./lib/beyond-db");
             const quota = await getReadingQuota(readerSession.user.id);

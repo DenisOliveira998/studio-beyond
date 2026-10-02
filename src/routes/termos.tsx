@@ -60,7 +60,8 @@ function TermsPage() {
         <p>
           <strong className="text-foreground">Convivência.</strong> São proibidos golpes, assédio,
           discurso de ódio, conteúdo ilegal e a publicação de material de terceiros sem autorização.
-          Contas que descumprirem estas regras podem ser suspensas sem aviso prévio.
+          Contas que descumprirem estas regras podem ser suspensas sem aviso prévio. Quem tem conta
+          pode denunciar comentários, obras e autores; a equipe analisa cada denúncia.
         </p>
         <p className="caption">Documento de demonstração, sem valor contratual.</p>
       </div>

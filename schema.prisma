@@ -85,7 +85,8 @@ enum AppRole {
   admin
   gerente
   author
-  vip
+  vip      // plano Fã
+  superfa  // plano Super Fã
   reader
 }
 
@@ -308,6 +309,7 @@ model WorkComment {
   userId    String?
   author    String   @default("Anônimo")
   text      String   @db.Text
+  hidden    Boolean  @default(false) // oculto pela moderação (ou por 3+ denúncias)
   createdAt DateTime @default(now())
 
   @@index([workSlug])
@@ -419,4 +421,23 @@ model RateLimit {
   resetAt DateTime
 
   @@map("rate_limits")
+}
+
+// Denúncias de comentários, obras e autores (moderação)
+model Report {
+  id          String    @id @default(cuid())
+  targetType  String    // comment | work | author
+  targetId    String    // id do comentário, slug da obra ou slug do autor
+  reason      String
+  details     String    @db.Text
+  reporterId  String
+  status      String    @default("open") // open | resolved | dismissed
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status])
+  @@index([targetType, targetId])
+  @@map("reports")
 }

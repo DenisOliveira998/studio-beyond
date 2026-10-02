@@ -8,6 +8,7 @@ import { DonateDialog } from "@/components/donate-dialog";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
 import { LoginPrompt } from "@/components/login-prompt";
+import { ReportButton } from "@/components/report-dialog";
 import { breadcrumbJsonLd, workJsonLd, workSeo } from "@/lib/seo";
 import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -159,10 +160,18 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
         )}
         {comments.map((c) => (
           <div key={c.id} className="py-6">
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-wrap items-baseline gap-3">
               <span className="font-display text-base">{c.author}</span>
+              {c.badge && (
+                <span className="border border-gilt/50 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-gilt">
+                  {c.badge}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground">
                 {new Date(c.createdAt).toLocaleDateString("pt-BR")}
+              </span>
+              <span className="ml-auto">
+                <ReportButton targetType="comment" targetId={c.id} redirectTo={`/work/${workSlug}`} />
               </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.text}</p>
@@ -746,6 +755,19 @@ function WorkPage() {
         <h2 className="eyebrow mb-6">Comentários</h2>
         <CommentsSection workSlug={work.slug} />
       </section>
+
+      <div className="mt-12 flex justify-end">
+        <ReportButton
+          targetType="work"
+          targetId={work.slug}
+          redirectTo={`/work/${work.slug}`}
+          trigger={
+            <button type="button" className="text-xs text-muted-foreground/70 transition-colors hover:text-red-400">
+              Denunciar esta obra
+            </button>
+          }
+        />
+      </div>
 
       <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/work/${work.slug}`} />
 
