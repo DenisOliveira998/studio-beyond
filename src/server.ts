@@ -498,14 +498,22 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const { auth } = await import("./lib/auth-server");
         const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
         let detail: Record<string, unknown> = {};
+        let role: string | null = null;
         if (s?.user) {
           const { prisma: prismaQ } = await import("./lib/prisma");
           const prof = await prismaQ.profile.findUnique({ where: { id: s.user.id }, select: { role: true } });
+          role = prof?.role ?? null;
           const { canSeePlatformFee } = await import("./lib/beyond-data");
-          if (canSeePlatformFee(prof?.role)) detail = { feeCents: split.feeCents, authorCents: split.authorCents, feeRate: cfg.feeRate };
+          if (canSeePlatformFee(role)) detail = { feeCents: split.feeCents, authorCents: split.authorCents, feeRate: cfg.feeRate };
         }
+        const { paymentsOpenFor } = await import("./lib/payments");
         return new Response(
-          JSON.stringify({ totalCents: split.grossCents, destino: cfg.feeMode === "retida" ? "plataforma" : "autor", ...detail }),
+          JSON.stringify({
+            totalCents: split.grossCents,
+            destino: cfg.feeMode === "retida" ? "plataforma" : "autor",
+            available: paymentsOpenFor(role),
+            ...detail,
+          }),
           { headers: { "content-type": "application/json", "cache-control": "private, no-store" } },
         );
       }
@@ -535,6 +543,11 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (!work) return json({ error: "Autor ou obra não encontrados." }, 404);
         const { auth } = await import("./lib/auth-server");
         const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        const donorRole = s?.user
+          ? ((await prismaD.profile.findUnique({ where: { id: s.user.id }, select: { role: true } }))?.role ?? null)
+          : null;
+        const { paymentsOpenFor } = await import("./lib/payments");
+        if (!paymentsOpenFor(donorRole)) return json({ error: "Os pagamentos abrem em breve." }, 503);
         const { stripHtml } = await import("./lib/utils");
         try {
           const { checkoutUrl } = await createDonationCheckout({
@@ -563,15 +576,110 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (!verifyWebhookSignature(request, dataId)) {
           return new Response("assinatura inválida", { status: 401 });
         }
-        if (type === "payment" && dataId) {
+        if (dataId) {
           try {
-            await syncMpPayment(dataId);
+            if (type === "payment") await syncMpPayment(dataId);
+            else if (type === "subscription_preapproval" || type === "preapproval") {
+              const { syncPreapproval } = await import("./lib/payments");
+              await syncPreapproval(dataId);
+            } else if (type === "subscription_authorized_payment" || type === "authorized_payment") {
+              const { syncAuthorizedPayment } = await import("./lib/payments");
+              await syncAuthorizedPayment(dataId);
+            }
           } catch (e) {
-            console.error("webhook: falha ao sincronizar pagamento", e);
+            console.error(`webhook: falha ao sincronizar ${type}`, e);
             return new Response("erro", { status: 500 }); // o Mercado Pago tenta de novo
           }
         }
         return new Response("ok");
+      }
+
+      // Planos: preços, se a assinatura está aberta para esta pessoa e a assinatura atual
+      if (pathname === "/api/planos" && request.method === "GET") {
+        const { getPaymentConfig, paymentsOpenFor, getActiveSubscription } = await import("./lib/payments");
+        const cfg = await getPaymentConfig();
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        let role: string | null = null;
+        let current: { plan: string; status: string; priceCents: number; nextPaymentAt: Date | null } | null = null;
+        if (s?.user) {
+          const { prisma: prismaPl } = await import("./lib/prisma");
+          role = (await prismaPl.profile.findUnique({ where: { id: s.user.id }, select: { role: true } }))?.role ?? null;
+          const sub = await getActiveSubscription(s.user.id);
+          if (sub) current = { plan: sub.plan, status: sub.status, priceCents: sub.priceCents, nextPaymentAt: sub.nextPaymentAt };
+        }
+        return new Response(
+          JSON.stringify({
+            prices: { fa: cfg.priceFaCents, superfa: cfg.priceSuperFaCents },
+            available: paymentsOpenFor(role),
+            loggedIn: !!s?.user,
+            current,
+          }),
+          { headers: { "content-type": "application/json", "cache-control": "private, no-store" } },
+        );
+      }
+
+      // Assinar Fã ou Super Fã (precisa de login)
+      if (pathname === "/api/pagamentos/assinatura" && request.method === "POST") {
+        const json = (h: Record<string, unknown>, status = 200) =>
+          new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!s?.user) return json({ error: "Entre na sua conta para assinar." }, 401);
+        if (!(await rateLimit(`assinatura:user:${s.user.id}`, 10, 60 * 60))) {
+          return tooManyRequests("Muitas tentativas. Aguarde e tente de novo.");
+        }
+        const { prisma: prismaA } = await import("./lib/prisma");
+        const prof = await prismaA.profile.findUnique({ where: { id: s.user.id }, select: { role: true, suspended: true } });
+        const { paymentsOpenFor, createSubscriptionCheckout } = await import("./lib/payments");
+        if (!paymentsOpenFor(prof?.role)) return json({ error: "Os planos abrem em breve." }, 503);
+        if (prof?.suspended) return json({ error: "Conta suspensa." }, 403);
+        const body = (await request.json().catch(() => ({}))) as { plano?: string; email?: string };
+        const plan = body.plano === "superfa" ? "superfa" : body.plano === "fa" ? "fa" : null;
+        if (!plan) return json({ error: "Plano inválido." }, 400);
+        const email = String(body.email ?? s.user.email ?? "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return json({ error: "Informe um e-mail válido." }, 400);
+        try {
+          const { checkoutUrl } = await createSubscriptionCheckout({ userId: s.user.id, plan, payerEmail: email });
+          return json({ checkoutUrl });
+        } catch (e) {
+          console.error("assinatura: falha ao criar", e);
+          return json({ error: "Não foi possível abrir a assinatura agora. Confira o e-mail da sua conta no Mercado Pago e tente de novo." }, 502);
+        }
+      }
+
+      // Cancelar a própria assinatura
+      if (pathname === "/api/pagamentos/assinatura/cancelar" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!s?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        const { cancelUserSubscription } = await import("./lib/payments");
+        try {
+          const ok = await cancelUserSubscription(s.user.id);
+          return new Response(JSON.stringify({ ok }), { headers: { "content-type": "application/json" } });
+        } catch (e) {
+          console.error("assinatura: falha ao cancelar", e);
+          return new Response(JSON.stringify({ error: "Não foi possível cancelar agora. Tente de novo." }), { status: 502, headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // Situação da assinatura (página de retorno); consulta o Mercado Pago direto
+      if (pathname === "/api/pagamentos/assinatura/status" && request.method === "GET") {
+        const id = new URL(request.url).searchParams.get("preapproval_id") ?? "";
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!s?.user || !/^[a-zA-Z0-9-]{6,80}$/.test(id)) {
+          return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        const { syncPreapproval, getSubscriptionByPreapproval } = await import("./lib/payments");
+        await syncPreapproval(id).catch(() => {});
+        const sub = await getSubscriptionByPreapproval(id);
+        if (!sub || sub.userId !== s.user.id) {
+          return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ status: sub.status, plan: sub.plan, priceCents: sub.priceCents }), {
+          headers: { "content-type": "application/json", "cache-control": "private, no-store" },
+        });
       }
 
       // Situação de uma cobrança (página de retorno)
@@ -600,9 +708,19 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
       if (pathname === "/api/admin/pagamentos/config" && request.method === "POST") {
         const { error, actorId, actorEmail } = await requireAdmin(request);
         if (error) return error;
-        const body = (await request.json().catch(() => ({}))) as { feeRate?: number; feeMode?: string };
+        const body = (await request.json().catch(() => ({}))) as {
+          feeRate?: number;
+          feeMode?: string;
+          priceFaCents?: number;
+          priceSuperFaCents?: number;
+        };
         const { savePaymentConfig } = await import("./lib/payments");
-        const saved = await savePaymentConfig({ feeRate: Number(body.feeRate ?? 0.12), feeMode: (body.feeMode ?? "descontada") as "descontada" });
+        const saved = await savePaymentConfig({
+          feeRate: Number(body.feeRate ?? 0.12),
+          feeMode: (body.feeMode ?? "descontada") as "descontada",
+          priceFaCents: Number(body.priceFaCents ?? 990),
+          priceSuperFaCents: Number(body.priceSuperFaCents ?? 1990),
+        });
         const { insertAuditLog } = await import("./lib/beyond-db");
         await insertAuditLog({
           action: "payment_config",
@@ -610,7 +728,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           workTitle: "",
           actorId: actorId ?? "",
           actorEmail: actorEmail ?? "",
-          note: `Taxa ${Math.round(saved.feeRate * 1000) / 10}%, modo ${saved.feeMode}`,
+          note: `Taxa ${Math.round(saved.feeRate * 1000) / 10}%, modo ${saved.feeMode}, Fã R$ ${(saved.priceFaCents / 100).toFixed(2)}, Super Fã R$ ${(saved.priceSuperFaCents / 100).toFixed(2)}`,
         }).catch(() => {});
         return new Response(JSON.stringify(saved), { headers: { "content-type": "application/json" } });
       }

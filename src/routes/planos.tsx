@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Check, X, CreditCard, Smartphone, ChevronDown, Hammer } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { faqJsonLd } from "@/lib/seo";
@@ -12,13 +14,13 @@ export const Route = createFileRoute("/planos")({
       {
         name: "description",
         content:
-          "Planos Fã e Super Fã da Go Beyondd (em construção): leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs. Entre na lista de espera.",
+          "Planos Fã (R$ 9,90/mês) e Super Fã (R$ 19,90/mês) da Go Beyondd: leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs.",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "Planos Fã e Super Fã | Go Beyondd" },
       {
         property: "og:description",
-        content: "Leia sem anúncios e sem limite diário. Os planos Fã e Super Fã estão em construção — entre na lista de espera.",
+        content: "Leia sem anúncios e sem limite diário. Fã por R$ 9,90 e Super Fã por R$ 19,90 por mês.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/planos` },
@@ -79,12 +81,12 @@ const PLANS: Plan[] = [
 
 const FAQ = [
   {
-    q: "Quando os planos abrem?",
-    a: "Assim que os pagamentos forem ativados. Quem está na lista de espera é avisado primeiro, por e-mail.",
+    q: "Quanto custam os planos?",
+    a: "Fã: R$ 9,90 por mês. Super Fã: R$ 19,90 por mês. A cobrança é mensal e automática pelo Mercado Pago.",
   },
   {
-    q: "Entrar na lista de espera cobra alguma coisa?",
-    a: "Não. É só o seu e-mail. Nenhum valor é cobrado e você decide depois se quer assinar.",
+    q: "Como cancelo?",
+    a: "Nesta página, no botão Cancelar assinatura, ou na sua conta do Mercado Pago. As próximas cobranças param na hora e os benefícios do plano terminam junto.",
   },
   {
     q: "Preciso assinar para ler?",
@@ -95,13 +97,32 @@ const FAQ = [
     a: "Sim. A leitura gratuita é mantida por anúncios; nos planos Fã e Super Fã você lê sem anúncios.",
   },
   {
-    q: "Como vai funcionar a cobrança?",
-    a: "Os detalhes de cobrança e cancelamento serão publicados nesta página antes da abertura.",
+    q: "Como funciona a cobrança?",
+    a: "Você autoriza a cobrança mensal na página do Mercado Pago, com cartão de crédito ou saldo da sua conta Mercado Pago. Os dados do cartão ficam só com o Mercado Pago.",
   },
 ];
 
+type PlanosData = {
+  prices: { fa: number; superfa: number };
+  available: boolean;
+  loggedIn: boolean;
+  current: { plan: string; status: string; priceCents: number; nextPaymentAt: string | null } | null;
+};
+
+const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 function PlansPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: planos } = useQuery<PlanosData>({
+    queryKey: ["planos", user?.id ?? "anon"],
+    queryFn: () => fetch("/api/planos").then((r) => r.json() as Promise<PlanosData>),
+    staleTime: 30_000,
+  });
+  const available = planos?.available === true;
+  const prices = planos?.prices ?? { fa: 990, superfa: 1990 };
+  const [mode, setMode] = useState<"waitlist" | "subscribe">("waitlist");
+  const [cancelling, setCancelling] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [email, setEmail] = useState("");
@@ -110,6 +131,7 @@ function PlansPage() {
   const [error, setError] = useState("");
 
   function openWaitlist(plan: Plan) {
+    setMode(available ? "subscribe" : "waitlist");
     setSelectedPlan(plan);
     setEmail((prev) => prev || user?.email || "");
     setJoined(false);
@@ -118,6 +140,41 @@ function PlansPage() {
 
   function closeWaitlist() {
     setSelectedPlan(null);
+  }
+
+  async function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch("/api/pagamentos/assinatura", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plano: selectedPlan.id, email: email.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
+      if (!res.ok || !data.checkoutUrl) throw new Error(data.error ?? "Não foi possível abrir a assinatura agora.");
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível abrir a assinatura agora.");
+      setSending(false);
+    }
+  }
+
+  async function cancelSubscription() {
+    if (!window.confirm("Cancelar a assinatura? As próximas cobranças param e os benefícios terminam agora.")) return;
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/pagamentos/assinatura/cancelar", { method: "POST" });
+      if (!res.ok) throw new Error();
+      toast.success("Assinatura cancelada.");
+      void qc.invalidateQueries({ queryKey: ["planos"] });
+    } catch {
+      toast.error("Não foi possível cancelar agora. Tente de novo.");
+    } finally {
+      setCancelling(false);
+    }
   }
 
   async function handleJoin(e: React.FormEvent) {
@@ -145,8 +202,8 @@ function PlansPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
-      {/* Selo de construção */}
-      <div
+      {/* Selo de construção (só enquanto os pagamentos não abrem) */}
+      {!available && <div
         className="mb-10 flex items-center gap-3 px-4 py-3 text-xs"
         style={{ border: `1px solid ${GOLD}50`, background: `${GOLD}10`, fontFamily: TAHOMA }}
       >
@@ -159,7 +216,29 @@ function PlansPage() {
             {" "}— os pagamentos ainda não estão ativos. Entre na lista de espera e avisamos quando o plano abrir.
           </span>
         </span>
-      </div>
+      </div>}
+
+      {/* Assinatura atual */}
+      {planos?.current && (
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-3 rounded border border-border bg-surface px-5 py-4 text-sm">
+          <span>
+            Seu plano: <strong>{planos.current.plan === "superfa" ? "Super Fã" : "Fã"}</strong>
+            <span className="text-muted-foreground">
+              . R$ {brl(planos.current.priceCents)} por mês
+              {planos.current.nextPaymentAt ? `, próxima cobrança em ${new Date(planos.current.nextPaymentAt).toLocaleDateString("pt-BR")}` : ""}
+              {planos.current.status === "paused" ? ". Pausado pelo Mercado Pago (confira o cartão)" : ""}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void cancelSubscription()}
+            disabled={cancelling}
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+          >
+            {cancelling ? "Cancelando…" : "Cancelar assinatura"}
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <p
@@ -214,11 +293,11 @@ function PlansPage() {
                 className="text-3xl font-bold tracking-tight text-foreground"
                 style={{ fontFamily: TAHOMA }}
               >
-                {plan.price ? `R$ ${plan.price}` : "Em breve"}
+                R$ {brl(plan.id === "superfa" ? prices.superfa : prices.fa)}
               </span>
-              {plan.price && <span className="caption">/mês</span>}
+              <span className="caption">/mês</span>
             </div>
-            <p className="caption mt-1">{plan.price ? "cobrança mensal" : "Preço anunciado na abertura"}</p>
+            <p className="caption mt-1">cobrança mensal, cancele quando quiser</p>
 
             {/* Benefits */}
             <ul className="mt-6 flex-1 space-y-3">
@@ -238,8 +317,15 @@ function PlansPage() {
             </ul>
 
             <button
-              onClick={() => openWaitlist(plan)}
-              className="btn-type mt-8 w-full py-3 text-xs transition-all"
+              onClick={() => {
+                if (available && !planos?.loggedIn) {
+                  window.location.href = `/entrar?redirect=${encodeURIComponent("/planos")}`;
+                  return;
+                }
+                openWaitlist(plan);
+              }}
+              disabled={planos?.current?.plan === plan.id}
+              className="btn-type mt-8 w-full py-3 text-xs transition-all disabled:cursor-default disabled:opacity-60"
               style={
                 plan.buttonStyle === "primary"
                   ? {
@@ -261,7 +347,15 @@ function PlansPage() {
                     }
               }
             >
-              Entrar na lista de espera
+              {planos?.current?.plan === plan.id
+                ? "Seu plano atual"
+                : available
+                  ? planos?.loggedIn
+                    ? planos?.current
+                      ? `Trocar para ${plan.name}`
+                      : `Assinar ${plan.name}`
+                    : "Entrar para assinar"
+                  : "Entrar na lista de espera"}
             </button>
           </div>
         ))}
@@ -273,17 +367,14 @@ function PlansPage() {
           className="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
           style={{ fontFamily: TAHOMA }}
         >
-          Formas de pagamento previstas:
+          Formas de pagamento:
         </span>
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground">
             <CreditCard className="size-3" /> Crédito
           </span>
           <span className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground">
-            <CreditCard className="size-3" /> Débito
-          </span>
-          <span className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground">
-            <Smartphone className="size-3" /> Pix
+            <Smartphone className="size-3" /> Saldo Mercado Pago
           </span>
         </div>
       </div>
@@ -291,7 +382,7 @@ function PlansPage() {
         className="mt-3 text-[0.65rem] text-muted-foreground"
         style={{ fontFamily: TAHOMA }}
       >
-        Pagamentos disponíveis quando o plano abrir.
+        {available ? "Cobrança mensal pelo Mercado Pago. Os dados do cartão ficam só com eles." : "Pagamentos disponíveis quando o plano abrir."}
       </p>
 
       <Link
@@ -358,10 +449,40 @@ function PlansPage() {
               className="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.2em]"
               style={{ fontFamily: TAHOMA, color: GOLD }}
             >
-              Lista de espera · {selectedPlan.name}
+              {mode === "subscribe" ? `Plano ${selectedPlan.name}` : `Lista de espera · ${selectedPlan.name}`}
             </p>
 
-            {joined ? (
+            {mode === "subscribe" ? (
+              <form onSubmit={(e) => void handleSubscribe(e)}>
+                <h2 id="waitlist-title" className="font-display text-xl font-bold text-foreground">
+                  R$ {brl(selectedPlan.id === "superfa" ? prices.superfa : prices.fa)} por mês
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  Você vai para o Mercado Pago autorizar a cobrança mensal e volta para cá. Cancele quando quiser.
+                </p>
+                <label className="mt-6 block">
+                  <span className="text-sm text-muted-foreground">E-mail da sua conta no Mercado Pago</span>
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="voce@exemplo.com"
+                    className="mt-2 w-full rounded border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
+                  />
+                </label>
+                {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="btn-type mt-6 w-full py-3 text-xs transition-opacity hover:opacity-85 disabled:opacity-60"
+                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                >
+                  {sending ? "Abrindo o Mercado Pago…" : "Continuar para o Mercado Pago"}
+                </button>
+              </form>
+            ) : joined ? (
               <>
                 <h2 id="waitlist-title" className="font-display text-xl font-bold text-foreground">
                   Você está na lista.

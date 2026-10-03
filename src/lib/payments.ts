@@ -7,7 +7,9 @@ import { SITE_URL } from "@/lib/site-url";
 export type FeeMode = "descontada" | "somada" | "retida";
 export const FEE_MODES: FeeMode[] = ["descontada", "somada", "retida"];
 
-export type PaymentConfigData = { feeRate: number; feeMode: FeeMode };
+export type PaymentConfigData = { feeRate: number; feeMode: FeeMode; priceFaCents: number; priceSuperFaCents: number };
+export type PlanId = "fa" | "superfa";
+export const PLAN_NAME: Record<PlanId, string> = { fa: "Fã", superfa: "Super Fã" };
 
 const MP_API = "https://api.mercadopago.com";
 export const DONATION_MIN_CENTS = 100; // R$ 1,00
@@ -21,18 +23,28 @@ export async function getPaymentConfig(): Promise<PaymentConfigData> {
   return {
     feeRate: row ? Number(row.feeRate) : 0.12,
     feeMode: mode && FEE_MODES.includes(mode) ? mode : "descontada",
+    priceFaCents: row?.priceFaCents ?? 990,
+    priceSuperFaCents: row?.priceSuperFaCents ?? 1990,
   };
 }
 
-export async function savePaymentConfig(input: { feeRate: number; feeMode: FeeMode }): Promise<PaymentConfigData> {
+export async function savePaymentConfig(input: {
+  feeRate: number;
+  feeMode: FeeMode;
+  priceFaCents: number;
+  priceSuperFaCents: number;
+}): Promise<PaymentConfigData> {
   const feeRate = Math.min(0.5, Math.max(0, Math.round(input.feeRate * 10_000) / 10_000));
   const feeMode = FEE_MODES.includes(input.feeMode) ? input.feeMode : "descontada";
+  const price = (v: number, fallback: number) => (Number.isFinite(v) && v >= 100 && v <= 100_000 ? Math.round(v) : fallback);
+  const priceFaCents = price(input.priceFaCents, 990);
+  const priceSuperFaCents = price(input.priceSuperFaCents, 1990);
   await prisma.paymentConfig.upsert({
     where: { id: "default" },
-    create: { id: "default", feeRate, feeMode },
-    update: { feeRate, feeMode },
+    create: { id: "default", feeRate, feeMode, priceFaCents, priceSuperFaCents },
+    update: { feeRate, feeMode, priceFaCents, priceSuperFaCents },
   });
-  return { feeRate, feeMode };
+  return { feeRate, feeMode, priceFaCents, priceSuperFaCents };
 }
 
 /* ---------- divisão do valor ---------- */
@@ -57,6 +69,18 @@ function accessToken(): string {
 
 export function paymentsEnabled(): boolean {
   return !!process.env["MERCADOPAGO_ACCESS_TOKEN"];
+}
+
+/** Credenciais de teste: só a equipe pode pagar (para testar); leitores veem "em breve". */
+export function paymentsTestMode(): boolean {
+  return (process.env["MERCADOPAGO_ACCESS_TOKEN"] ?? "").startsWith("TEST-");
+}
+
+/** Pagamentos abertos para esta pessoa? Produção: todos. Teste: só a equipe. */
+export function paymentsOpenFor(role: string | null | undefined): boolean {
+  if (!paymentsEnabled()) return false;
+  if (!paymentsTestMode()) return true;
+  return !!role && ["gerente", "admin", "owner"].includes(role);
 }
 
 /** Cria a cobrança no Mercado Pago e devolve o link do checkout. */
@@ -247,4 +271,178 @@ export async function markPayoutDone(artistSlug: string): Promise<number> {
     data: { payoutAt: new Date() },
   });
   return r.count;
+}
+
+/* ---------- assinaturas (Fã / Super Fã) ---------- */
+
+const ROLE_OF_PLAN: Record<PlanId, "vip" | "superfa"> = { fa: "vip", superfa: "superfa" };
+
+export async function getActiveSubscription(userId: string) {
+  return prisma.subscription.findFirst({
+    where: { userId, status: { in: ["authorized", "paused"] } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/** Cria a assinatura no Mercado Pago e devolve o link para o leitor autorizar a cobrança mensal. */
+export async function createSubscriptionCheckout(input: {
+  userId: string;
+  plan: PlanId;
+  payerEmail: string;
+}): Promise<{ checkoutUrl: string }> {
+  const cfg = await getPaymentConfig();
+  const priceCents = input.plan === "fa" ? cfg.priceFaCents : cfg.priceSuperFaCents;
+  const sub = await prisma.subscription.create({
+    data: { userId: input.userId, plan: input.plan, priceCents, payerEmail: input.payerEmail },
+  });
+  const res = await fetch(`${MP_API}/preapproval`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken()}`,
+      "content-type": "application/json",
+      "x-idempotency-key": sub.id,
+    },
+    body: JSON.stringify({
+      reason: `Go Beyondd ${PLAN_NAME[input.plan]}`,
+      external_reference: sub.id,
+      payer_email: input.payerEmail,
+      back_url: `${SITE_URL}/planos/retorno`,
+      status: "pending",
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: "months",
+        transaction_amount: priceCents / 100,
+        currency_id: "BRL",
+      },
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    await prisma.subscription.update({ where: { id: sub.id }, data: { status: "cancelled" } }).catch(() => {});
+    throw new Error(`Mercado Pago recusou a assinatura (${res.status}) ${detail.slice(0, 200)}`);
+  }
+  const pre = (await res.json()) as { id: string; init_point?: string; sandbox_init_point?: string };
+  await prisma.subscription.update({ where: { id: sub.id }, data: { mpPreapprovalId: pre.id } });
+  const checkoutUrl = pre.init_point ?? pre.sandbox_init_point;
+  if (!checkoutUrl) throw new Error("Mercado Pago não devolveu o link da assinatura");
+  return { checkoutUrl };
+}
+
+/** Atualiza o cargo do leitor conforme a assinatura (nunca mexe em autor ou equipe). */
+async function applyPlanRole(userId: string) {
+  const active = await prisma.subscription.findFirst({
+    where: { userId, status: "authorized" },
+    orderBy: { createdAt: "desc" },
+  });
+  const profile = await prisma.profile.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!profile || !["reader", "vip", "superfa"].includes(profile.role)) return;
+  const target = active ? (ROLE_OF_PLAN[active.plan as PlanId] ?? "vip") : "reader";
+  if (profile.role !== target) await prisma.profile.update({ where: { id: userId }, data: { role: target } });
+}
+
+type MpPreapproval = { id: string; status: string; external_reference?: string | null; next_payment_date?: string | null };
+
+async function cancelPreapproval(preapprovalId: string) {
+  const res = await fetch(`${MP_API}/preapproval/${encodeURIComponent(preapprovalId)}`, {
+    method: "PUT",
+    headers: { authorization: `Bearer ${accessToken()}`, "content-type": "application/json" },
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  if (!res.ok) throw new Error(`Falha ao cancelar assinatura (${res.status})`);
+}
+
+/** Busca a assinatura no Mercado Pago e atualiza status e cargo. */
+export async function syncPreapproval(preapprovalId: string): Promise<{ status: string; plan: string } | null> {
+  const res = await fetch(`${MP_API}/preapproval/${encodeURIComponent(preapprovalId)}`, {
+    headers: { authorization: `Bearer ${accessToken()}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao consultar assinatura (${res.status})`);
+  const mp = (await res.json()) as MpPreapproval;
+  const sub =
+    (mp.external_reference ? await prisma.subscription.findUnique({ where: { id: mp.external_reference } }) : null) ??
+    (await prisma.subscription.findUnique({ where: { mpPreapprovalId: mp.id } }));
+  if (!sub) return null;
+  const status = ["pending", "authorized", "paused", "cancelled"].includes(mp.status) ? mp.status : sub.status;
+  await prisma.subscription.update({
+    where: { id: sub.id },
+    data: {
+      status,
+      mpPreapprovalId: mp.id,
+      nextPaymentAt: mp.next_payment_date ? new Date(mp.next_payment_date) : sub.nextPaymentAt,
+    },
+  });
+  // Uma assinatura nova autorizada substitui a anterior (troca de plano)
+  if (status === "authorized") {
+    const others = await prisma.subscription.findMany({
+      where: { userId: sub.userId, id: { not: sub.id }, status: { in: ["authorized", "paused"] } },
+    });
+    for (const o of others) if (o.mpPreapprovalId) await cancelPreapproval(o.mpPreapprovalId).catch(() => {});
+    await prisma.subscription.updateMany({
+      where: { userId: sub.userId, id: { not: sub.id }, status: { in: ["authorized", "paused", "pending"] } },
+      data: { status: "cancelled" },
+    });
+  }
+  await applyPlanRole(sub.userId);
+  return { status, plan: sub.plan };
+}
+
+/** Leitor cancela a própria assinatura: para as próximas cobranças e volta a ser leitor. */
+export async function cancelUserSubscription(userId: string): Promise<boolean> {
+  const sub = await getActiveSubscription(userId);
+  if (!sub) return false;
+  if (sub.mpPreapprovalId) await cancelPreapproval(sub.mpPreapprovalId);
+  await prisma.subscription.update({ where: { id: sub.id }, data: { status: "cancelled" } });
+  await applyPlanRole(userId);
+  return true;
+}
+
+type MpAuthorizedPayment = {
+  id: number;
+  preapproval_id?: string;
+  transaction_amount?: number;
+  status?: string;
+  payment?: { id?: number; status?: string };
+};
+
+/** Cobrança mensal de uma assinatura: registra como receita da plataforma. */
+export async function syncAuthorizedPayment(authorizedPaymentId: string): Promise<void> {
+  const res = await fetch(`${MP_API}/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`, {
+    headers: { authorization: `Bearer ${accessToken()}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao consultar cobrança da assinatura (${res.status})`);
+  const ap = (await res.json()) as MpAuthorizedPayment;
+  if (!ap.preapproval_id) return;
+  const sub = await prisma.subscription.findUnique({ where: { mpPreapprovalId: ap.preapproval_id } });
+  if (!sub) return;
+  const status = ap.payment?.status ?? ap.status ?? "pending";
+  const cents = Math.round((ap.transaction_amount ?? sub.priceCents / 100) * 100);
+  const mpPaymentId = ap.payment?.id ? String(ap.payment.id) : `ap-${ap.id}`;
+  await prisma.payment.upsert({
+    where: { mpPaymentId },
+    create: {
+      kind: "subscription",
+      status,
+      mpPaymentId,
+      userId: sub.userId,
+      payerName: sub.payerEmail.split("@")[0] ?? "Assinante",
+      artistSlug: "",
+      artistName: `Plano ${PLAN_NAME[sub.plan as PlanId] ?? sub.plan}`,
+      grossCents: cents,
+      feeCents: cents,
+      authorCents: 0,
+      feeRate: 1,
+      feeMode: "assinatura",
+      paidAt: status === "approved" ? new Date() : null,
+    },
+    update: { status, ...(status === "approved" ? { paidAt: new Date() } : {}) },
+  });
+  // Mantém o cargo em dia (ex.: cobrança recusada pode pausar a assinatura)
+  await syncPreapproval(ap.preapproval_id).catch(() => {});
+}
+
+export async function getSubscriptionByPreapproval(preapprovalId: string) {
+  return prisma.subscription.findUnique({
+    where: { mpPreapprovalId: preapprovalId },
+    select: { status: true, plan: true, priceCents: true, userId: true },
+  });
 }

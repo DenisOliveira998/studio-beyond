@@ -476,10 +476,30 @@ model Payment {
 
 // Regra de taxa das doações (só a equipe vê)
 model PaymentConfig {
-  id        String   @id @default("default")
-  feeRate   Decimal  @default(0.12) @db.Decimal(5, 4)
-  feeMode   String   @default("descontada")
-  updatedAt DateTime @updatedAt
+  id                String   @id @default("default")
+  feeRate           Decimal  @default(0.12) @db.Decimal(5, 4)
+  feeMode           String   @default("descontada")
+  priceFaCents      Int      @default(990) // plano Fã, por mês
+  priceSuperFaCents Int      @default(1990) // plano Super Fã, por mês
+  updatedAt         DateTime @updatedAt
 
   @@map("payment_config")
+}
+
+// Assinaturas mensais (Fã / Super Fã) pelo Mercado Pago (preapproval)
+model Subscription {
+  id              String    @id @default(cuid())
+  userId          String
+  plan            String // fa | superfa
+  status          String    @default("pending") // pending | authorized | paused | cancelled
+  priceCents      Int // preço do momento da assinatura
+  mpPreapprovalId String?   @unique
+  payerEmail      String
+  nextPaymentAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
 }

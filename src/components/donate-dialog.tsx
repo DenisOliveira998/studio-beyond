@@ -14,6 +14,7 @@ const presets = [5, 15, 40, 100];
 
 type Quote = {
   totalCents: number;
+  available?: boolean;
   destino: "autor" | "plataforma";
   feeCents?: number;
   authorCents?: number;
@@ -79,6 +80,7 @@ export function DonateDialog({
   }
 
   const total = quote ? quote.totalCents / 100 : value;
+  const closed = quote?.available === false;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -152,13 +154,15 @@ export function DonateDialog({
         <button
           type="button"
           onClick={() => void pay()}
-          disabled={!valid || sending}
+          disabled={!valid || sending || closed}
           className="w-full rounded-full bg-gilt py-3 text-sm font-bold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {sending ? "Abrindo o pagamento…" : `Pagar ${money(total)}`}
+          {closed ? "Pagamentos em breve" : sending ? "Abrindo o pagamento…" : `Pagar ${money(total)}`}
         </button>
         <p className="text-center text-xs text-muted-foreground">
-          Pagamento seguro pelo Mercado Pago: Pix, cartão ou boleto. Você volta para cá depois.
+          {closed
+            ? "Estamos finalizando os pagamentos. Em breve você vai poder apoiar os autores por aqui."
+            : "Pagamento seguro pelo Mercado Pago: Pix, cartão ou boleto. Você volta para cá depois."}
         </p>
       </DialogContent>
     </Dialog>

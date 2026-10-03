@@ -7,7 +7,7 @@ type FeeMode = "descontada" | "somada" | "retida";
 type AdminPaymentsData = {
   enabled: boolean;
   testMode: boolean;
-  config: { feeRate: number; feeMode: FeeMode };
+  config: { feeRate: number; feeMode: FeeMode; priceFaCents: number; priceSuperFaCents: number };
   payouts: { artistSlug: string; artistName: string; authorCents: number; payments: number }[];
   payments: {
     id: string;
@@ -51,10 +51,14 @@ export function AdminPayments() {
 
   const [rate, setRate] = useState("12");
   const [mode, setMode] = useState<FeeMode>("descontada");
+  const [priceFa, setPriceFa] = useState("9.90");
+  const [priceSuper, setPriceSuper] = useState("19.90");
   useEffect(() => {
     if (!data) return;
     setRate(String(Math.round(data.config.feeRate * 1000) / 10));
     setMode(data.config.feeMode);
+    setPriceFa((data.config.priceFaCents / 100).toFixed(2));
+    setPriceSuper((data.config.priceSuperFaCents / 100).toFixed(2));
   }, [data]);
 
   const saveConfig = useMutation({
@@ -62,12 +66,17 @@ export function AdminPayments() {
       fetch("/api/admin/pagamentos/config", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ feeRate: Number(rate.replace(",", ".")) / 100, feeMode: mode }),
+        body: JSON.stringify({
+          feeRate: Number(rate.replace(",", ".")) / 100,
+          feeMode: mode,
+          priceFaCents: Math.round(Number(priceFa.replace(",", ".")) * 100),
+          priceSuperFaCents: Math.round(Number(priceSuper.replace(",", ".")) * 100),
+        }),
       }).then((r) => {
         if (!r.ok) throw new Error();
       }),
     onSuccess: () => {
-      toast.success("Regra da taxa salva. Vale para as próximas doações.");
+      toast.success("Configuração salva. Vale para as próximas doações e assinaturas.");
       void qc.invalidateQueries({ queryKey: ["admin-payments"] });
     },
     onError: () => toast.error("Não foi possível salvar."),
@@ -102,9 +111,10 @@ export function AdminPayments() {
       </p>
 
       <div className="border border-border bg-background p-6">
-        <h3 className="font-display text-xl font-bold">Regra da taxa das doações</h3>
+        <h3 className="font-display text-xl font-bold">Taxa das doações e preço dos planos</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Só a equipe vê esta configuração. Cada doação guarda a regra do momento em que foi feita.
+          Só a equipe vê esta configuração. Cada doação guarda a regra do momento em que foi feita; quem já assina
+          continua no preço antigo até cancelar.
         </p>
         <div className="mt-5 flex flex-wrap items-end gap-4">
           <label className="text-sm">
@@ -119,7 +129,29 @@ export function AdminPayments() {
               className="mt-1 w-28 rounded border border-input bg-surface px-3 py-2"
             />
           </label>
-          <fieldset className="flex-1 text-sm">
+          <label className="text-sm">
+            <span className="block text-muted-foreground">Fã (R$/mês)</span>
+            <input
+              type="number"
+              min={1}
+              step={0.1}
+              value={priceFa}
+              onChange={(e) => setPriceFa(e.target.value)}
+              className="mt-1 w-28 rounded border border-input bg-surface px-3 py-2"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="block text-muted-foreground">Super Fã (R$/mês)</span>
+            <input
+              type="number"
+              min={1}
+              step={0.1}
+              value={priceSuper}
+              onChange={(e) => setPriceSuper(e.target.value)}
+              className="mt-1 w-28 rounded border border-input bg-surface px-3 py-2"
+            />
+          </label>
+          <fieldset className="basis-full text-sm">
             <legend className="text-muted-foreground">Modo</legend>
             <div className="mt-1 space-y-1.5">
               {(Object.keys(MODE_TEXT) as FeeMode[]).map((m) => (
@@ -136,7 +168,7 @@ export function AdminPayments() {
             disabled={saveConfig.isPending}
             className="rounded-full bg-gilt px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
           >
-            Salvar regra
+            Salvar
           </button>
         </div>
       </div>
