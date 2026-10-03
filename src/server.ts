@@ -483,6 +483,147 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         return handleMe(request);
       }
 
+      // ── Pagamentos (Mercado Pago) ─────────────────────────────────────────────
+
+      // Cotação da doação: total a pagar para todos; taxa e parte do autor só para autores e equipe
+      if (pathname === "/api/pagamentos/cotacao" && request.method === "GET") {
+        const valor = Number(new URL(request.url).searchParams.get("valor") ?? "0");
+        const amountCents = Math.round(valor * 100);
+        const { getPaymentConfig, splitAmount, DONATION_MIN_CENTS, DONATION_MAX_CENTS } = await import("./lib/payments");
+        if (!Number.isFinite(amountCents) || amountCents < DONATION_MIN_CENTS || amountCents > DONATION_MAX_CENTS) {
+          return new Response(JSON.stringify({ error: "Valor entre R$ 1 e R$ 5.000." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const cfg = await getPaymentConfig();
+        const split = splitAmount(amountCents, cfg);
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        let detail: Record<string, unknown> = {};
+        if (s?.user) {
+          const { prisma: prismaQ } = await import("./lib/prisma");
+          const prof = await prismaQ.profile.findUnique({ where: { id: s.user.id }, select: { role: true } });
+          const { canSeePlatformFee } = await import("./lib/beyond-data");
+          if (canSeePlatformFee(prof?.role)) detail = { feeCents: split.feeCents, authorCents: split.authorCents, feeRate: cfg.feeRate };
+        }
+        return new Response(
+          JSON.stringify({ totalCents: split.grossCents, destino: cfg.feeMode === "retida" ? "plataforma" : "autor", ...detail }),
+          { headers: { "content-type": "application/json", "cache-control": "private, no-store" } },
+        );
+      }
+
+      // Cria a doação e devolve o link do Checkout Pro
+      if (pathname === "/api/pagamentos/doacao" && request.method === "POST") {
+        const json = (h: Record<string, unknown>, status = 200) =>
+          new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        if (!(await rateLimit(`doacao:ip:${clientIp(request)}`, 15, 60 * 60))) {
+          return tooManyRequests("Muitas tentativas de pagamento. Aguarde e tente de novo.");
+        }
+        const { paymentsEnabled, createDonationCheckout, DONATION_MIN_CENTS, DONATION_MAX_CENTS } = await import("./lib/payments");
+        if (!paymentsEnabled()) return json({ error: "Pagamentos ainda não estão disponíveis." }, 503);
+        const body = (await request.json().catch(() => ({}))) as { artistSlug?: string; workSlug?: string; valor?: number };
+        const amountCents = Math.round(Number(body.valor ?? 0) * 100);
+        if (!Number.isFinite(amountCents) || amountCents < DONATION_MIN_CENTS || amountCents > DONATION_MAX_CENTS) {
+          return json({ error: "Escolha um valor entre R$ 1 e R$ 5.000." }, 400);
+        }
+        const artistSlug = String(body.artistSlug ?? "").slice(0, 120);
+        const workSlug = body.workSlug ? String(body.workSlug).slice(0, 200) : null;
+        const { prisma: prismaD } = await import("./lib/prisma");
+        // O autor precisa ter obra publicada; a obra (se vier) precisa ser dele
+        const work = await prismaD.work.findFirst({
+          where: { status: "approved", artistSlug, ...(workSlug ? { slug: workSlug } : {}) },
+          select: { slug: true, title: true, artistName: true },
+        });
+        if (!work) return json({ error: "Autor ou obra não encontrados." }, 404);
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        const { stripHtml } = await import("./lib/utils");
+        try {
+          const { checkoutUrl } = await createDonationCheckout({
+            amountCents,
+            artistSlug,
+            artistName: work.artistName,
+            workSlug,
+            workTitle: workSlug ? stripHtml(work.title) : null,
+            userId: s?.user?.id ?? null,
+            payerName: s?.user?.name ?? "Anônimo",
+          });
+          return json({ checkoutUrl });
+        } catch (e) {
+          console.error("doação: falha ao criar checkout", e);
+          return json({ error: "Não foi possível abrir o pagamento agora. Tente de novo em instantes." }, 502);
+        }
+      }
+
+      // Aviso do Mercado Pago: só aceita com assinatura válida; consulta o pagamento direto na API deles
+      if (pathname === "/api/pagamentos/webhook" && request.method === "POST") {
+        const url = new URL(request.url);
+        const body = (await request.json().catch(() => ({}))) as { type?: string; topic?: string; data?: { id?: string | number } };
+        const dataId = url.searchParams.get("data.id") ?? (body.data?.id != null ? String(body.data.id) : null);
+        const type = url.searchParams.get("type") ?? body.type ?? body.topic ?? "";
+        const { verifyWebhookSignature, syncMpPayment } = await import("./lib/payments");
+        if (!verifyWebhookSignature(request, dataId)) {
+          return new Response("assinatura inválida", { status: 401 });
+        }
+        if (type === "payment" && dataId) {
+          try {
+            await syncMpPayment(dataId);
+          } catch (e) {
+            console.error("webhook: falha ao sincronizar pagamento", e);
+            return new Response("erro", { status: 500 }); // o Mercado Pago tenta de novo
+          }
+        }
+        return new Response("ok");
+      }
+
+      // Situação de uma cobrança (página de retorno)
+      if (pathname === "/api/pagamentos/status" && request.method === "GET") {
+        const ref = new URL(request.url).searchParams.get("ref") ?? "";
+        const mpId = new URL(request.url).searchParams.get("payment_id");
+        const { getPaymentStatus, syncMpPayment, paymentsEnabled } = await import("./lib/payments");
+        // Se o leitor voltou antes do aviso chegar, consulta o Mercado Pago direto
+        if (mpId && /^\d+$/.test(mpId) && paymentsEnabled()) await syncMpPayment(mpId).catch(() => {});
+        const p = ref ? await getPaymentStatus(ref) : null;
+        if (!p) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify(p), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+
+      // Admin: regra de taxa, últimos pagamentos e repasses pendentes
+      if (pathname === "/api/admin/pagamentos" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { getPaymentConfig, listPayments, pendingPayouts, paymentsEnabled } = await import("./lib/payments");
+        const [config, payments, payouts] = await Promise.all([getPaymentConfig(), listPayments(50), pendingPayouts()]);
+        const testMode = (process.env["MERCADOPAGO_ACCESS_TOKEN"] ?? "").startsWith("TEST-");
+        return new Response(JSON.stringify({ config, payments, payouts, enabled: paymentsEnabled(), testMode }), {
+          headers: { "content-type": "application/json", "cache-control": "private, no-store" },
+        });
+      }
+      if (pathname === "/api/admin/pagamentos/config" && request.method === "POST") {
+        const { error, actorId, actorEmail } = await requireAdmin(request);
+        if (error) return error;
+        const body = (await request.json().catch(() => ({}))) as { feeRate?: number; feeMode?: string };
+        const { savePaymentConfig } = await import("./lib/payments");
+        const saved = await savePaymentConfig({ feeRate: Number(body.feeRate ?? 0.12), feeMode: (body.feeMode ?? "descontada") as "descontada" });
+        const { insertAuditLog } = await import("./lib/beyond-db");
+        await insertAuditLog({
+          action: "payment_config",
+          workSlug: "",
+          workTitle: "",
+          actorId: actorId ?? "",
+          actorEmail: actorEmail ?? "",
+          note: `Taxa ${Math.round(saved.feeRate * 1000) / 10}%, modo ${saved.feeMode}`,
+        }).catch(() => {});
+        return new Response(JSON.stringify(saved), { headers: { "content-type": "application/json" } });
+      }
+      if (pathname === "/api/admin/pagamentos/repasse" && request.method === "POST") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { artistSlug } = (await request.json().catch(() => ({}))) as { artistSlug?: string };
+        if (!artistSlug) return new Response(JSON.stringify({ error: "artistSlug obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
+        const { markPayoutDone } = await import("./lib/payments");
+        const count = await markPayoutDone(artistSlug);
+        return new Response(JSON.stringify({ ok: true, count }), { headers: { "content-type": "application/json" } });
+      }
+
 // Configurações públicas do site (Instagram, contato, etc.)
       if (pathname === "/api/site-config") {
         if (request.method === "GET") {

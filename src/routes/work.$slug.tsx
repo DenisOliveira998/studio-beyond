@@ -490,6 +490,8 @@ function WorkPage() {
             {artistName && (
               <DonateDialog
                 artistName={artistName}
+                artistSlug={work.artistSlug}
+                workSlug={work.slug}
                 trigger={
                   <button className="w-full bg-primary py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
                     Apoiar {artistName.split(" ")[0]}
@@ -712,6 +714,8 @@ function WorkPage() {
               {artistName && (
                 <DonateDialog
                   artistName={artistName}
+                  artistSlug={work.artistSlug}
+                  workSlug={work.slug}
                   trigger={
                     <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
                       Apoiar {artistName.split(" ")[0]}

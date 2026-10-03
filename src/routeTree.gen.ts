@@ -25,6 +25,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as ApoioRetornoRouteImport } from './routes/apoio.retorno'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ExplorarCategoriaRouteImport } from './routes/explorar_.$categoria'
@@ -111,6 +112,11 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApoioRetornoRoute = ApoioRetornoRouteImport.update({
+  id: '/apoio/retorno',
+  path: '/apoio/retorno',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArtistSlugRoute = ArtistSlugRouteImport.update({
   id: '/artist/$slug',
   path: '/artist/$slug',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/apoio/retorno': typeof ApoioRetornoRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/apoio/retorno': typeof ApoioRetornoRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/ranking': typeof RankingRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
+  '/apoio/retorno': typeof ApoioRetornoRoute
   '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar_/$categoria': typeof ExplorarCategoriaRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/sobre'
     | '/termos'
+    | '/apoio/retorno'
     | '/artist/$slug'
     | '/auth/callback'
     | '/explorar/$categoria'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/sobre'
     | '/termos'
+    | '/apoio/retorno'
     | '/artist/$slug'
     | '/auth/callback'
     | '/explorar/$categoria'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/sobre'
     | '/termos'
+    | '/apoio/retorno'
     | '/artist/$slug'
     | '/auth/callback'
     | '/explorar_/$categoria'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   RankingRoute: typeof RankingRoute
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
+  ApoioRetornoRoute: typeof ApoioRetornoRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
   ExplorarCategoriaRoute: typeof ExplorarCategoriaRoute
   LerSlugRoute: typeof LerSlugRoute
@@ -416,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apoio/retorno': {
+      id: '/apoio/retorno'
+      path: '/apoio/retorno'
+      fullPath: '/apoio/retorno'
+      preLoaderRoute: typeof ApoioRetornoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/artist/$slug': {
       id: '/artist/$slug'
       path: '/artist/$slug'
@@ -481,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   RankingRoute: RankingRoute,
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
+  ApoioRetornoRoute: ApoioRetornoRoute,
   ArtistSlugRoute: ArtistSlugRoute,
   ExplorarCategoriaRoute: ExplorarCategoriaRoute,
   LerSlugRoute: LerSlugRoute,

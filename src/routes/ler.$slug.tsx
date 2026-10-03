@@ -437,6 +437,8 @@ function EndOfWork({ work, title }: { work: Work; title: string }) {
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <DonateDialog
               artistName={artistName}
+              artistSlug={work.artistSlug}
+              workSlug={work.slug}
               trigger={
                 <button className="btn-type bg-gilt px-5 py-2.5 text-xs font-bold text-ink transition-opacity hover:opacity-90">
                   Apoiar {artistName.split(" ")[0]}

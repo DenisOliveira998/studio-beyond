@@ -441,3 +441,45 @@ model Report {
   @@index([targetType, targetId])
   @@map("reports")
 }
+
+// -------------------------------------------------- Pagamentos (Mercado Pago)
+
+// Cada cobrança guarda a regra de taxa do momento em que foi criada,
+// para mudanças futuras de taxa ou modo não alterarem o passado.
+model Payment {
+  id             String    @id @default(cuid())
+  kind           String    @default("donation") // donation | subscription
+  status         String    @default("pending") // pending | in_process | approved | rejected | cancelled | refunded | charged_back
+  mpPreferenceId String?   @unique
+  mpPaymentId    String?   @unique
+  userId         String?
+  payerName      String    @default("Anônimo")
+  artistSlug     String
+  artistName     String
+  workSlug       String?
+  grossCents     Int // valor pago pelo leitor
+  feeCents       Int // parte da plataforma
+  authorCents    Int // parte do autor
+  feeRate        Decimal   @db.Decimal(5, 4)
+  feeMode        String // descontada | somada | retida
+  method         String?
+  paidAt         DateTime?
+  payoutAt       DateTime? // repasse ao autor feito
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([artistSlug])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// Regra de taxa das doações (só a equipe vê)
+model PaymentConfig {
+  id        String   @id @default("default")
+  feeRate   Decimal  @default(0.12) @db.Decimal(5, 4)
+  feeMode   String   @default("descontada")
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_config")
+}

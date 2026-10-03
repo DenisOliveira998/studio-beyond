@@ -177,6 +177,7 @@ function ArtistPage() {
             </button>
             <DonateDialog
               artistName={artistName}
+              artistSlug={artistSlug}
               trigger={
                 <button className="bg-primary px-6 py-3 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
                   Apoiar {artistName}

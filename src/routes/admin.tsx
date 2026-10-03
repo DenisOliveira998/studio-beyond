@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AdminPayments } from "@/components/admin-payments";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -93,6 +94,7 @@ const NAV = [
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "denuncias", label: "Denúncias", icon: Flag },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
+  { id: "pagamentos", label: "Pagamentos", icon: CircleDollarSign },
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "lista-espera", label: "Lista de espera", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
@@ -1080,6 +1082,12 @@ function AdminPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Pagamentos (Mercado Pago) */}
+        <section id="pagamentos" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={CircleDollarSign}>Pagamentos</SectionTitle>
+          <AdminPayments />
         </section>
 
         {/* E-mails */}
