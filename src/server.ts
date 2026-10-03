@@ -1415,9 +1415,9 @@ ${catalog}
               changes: "Ajustes solicitados — Go Beyondd",
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${safeName}!<br><br>Sua candidatura ao <strong>Go Beyondd</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe Go Beyondd</em>`,
-              rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte do <strong>Go Beyondd</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe Go Beyondd</em>`,
-              changes: `Olá, ${safeName}.<br><br>Sua candidatura ao <strong>Go Beyondd</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
+              approved: `Olá, ${safeName}!<br><br>Sua candidatura à <strong>Go Beyondd</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://www.gobeyondd.com.br/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe Go Beyondd</em>`,
+              rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte da <strong>Go Beyondd</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe Go Beyondd</em>`,
+              changes: `Olá, ${safeName}.<br><br>Sua candidatura à <strong>Go Beyondd</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };
             await fetch("https://api.resend.com/emails", {
               method: "POST",
@@ -1477,7 +1477,7 @@ ${catalog}
               changes: `Ajustes solicitados para "${title}" — Go Beyondd`,
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria do <strong>Go Beyondd</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe Go Beyondd</em>`,
+              approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria da <strong>Go Beyondd</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe Go Beyondd</em>`,
               rejected: `Olá, ${safeName}.<br><br>Após análise, sua obra <strong>${safeTitle}</strong> não foi aprovada neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br><em>Equipe Go Beyondd</em>`,
               changes: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };

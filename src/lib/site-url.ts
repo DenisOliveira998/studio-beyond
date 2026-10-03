@@ -1,9 +1,9 @@
 /**
  * URL canônica do site.
- * Alterar aqui quando o domínio definitivo (www.gobeyondd.com.br) estiver apontado para a Vercel.
+ * Domínio definitivo (DNS na HostGator apontando para a Vercel desde 03/10/2026).
  * Usado em: canonical links, og:url, og:image, twitter:image.
  */
-export const SITE_URL = "https://studio-beyond-phi.vercel.app";
+export const SITE_URL = "https://www.gobeyondd.com.br";
 
 /** Retorna URL absoluta para um caminho relativo (sem barra dupla). */
 export function siteUrl(path: string): string {

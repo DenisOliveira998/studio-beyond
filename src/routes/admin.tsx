@@ -699,7 +699,7 @@ function AdminPage() {
                   <div className="relative size-14 shrink-0">
                     {w.cover ? (
                       <img
-                        src={w.cover.startsWith("/api/") ? `https://studio-beyond-phi.vercel.app${w.cover}` : w.cover}
+                        src={w.cover}
                         alt={w.title}
                         className="size-full object-cover"
                       />
