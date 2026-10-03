@@ -405,8 +405,8 @@ function ReaderPage() {
           </div>
         )}
 
-        {/* Rodapé do leitor */}
-        {!quotaExhausted && (
+        {/* Rodapé do leitor (não aparece para quem ainda não pode ler o PDF inteiro) */}
+        {!quotaExhausted && !(isPdf && !user) && (
           <EndOfWork work={work} title={cleanTitle} />
         )}
       </div>
