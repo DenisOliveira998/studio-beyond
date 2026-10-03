@@ -330,8 +330,21 @@ async function handleMe(request: Request): Promise<Response> {
   });
 }
 
+// Endereço antigo da Vercel → domínio oficial (mesmo caminho e parâmetros).
+// Só o endereço de produção; prévias de deploy (*.vercel.app) continuam acessíveis.
+const OLD_HOSTS = new Set(["studio-beyond-phi.vercel.app"]);
+const OFFICIAL_ORIGIN = "https://www.gobeyondd.com.br";
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    const host = (request.headers.get("x-forwarded-host") ?? url.host).split(",")[0]!.trim().toLowerCase();
+    if (OLD_HOSTS.has(host)) {
+      return new Response(null, {
+        status: 308,
+        headers: { location: `${OFFICIAL_ORIGIN}${url.pathname}${url.search}`, "cache-control": "public, max-age=3600" },
+      });
+    }
     return withSecurityHeaders(await route(request, env, ctx));
   },
 };
