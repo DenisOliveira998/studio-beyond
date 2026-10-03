@@ -78,7 +78,7 @@ export function BirthdatePrompt() {
         </label>
         {tooYoung && (
           <p className="mt-3 text-xs text-red-400">
-            É preciso ter pelo menos {MIN_AGE} anos para usar uma conta no The Beyond. Você ainda pode
+            É preciso ter pelo menos {MIN_AGE} anos para usar uma conta na Go Beyondd. Você ainda pode
             ler sem conta.
           </p>
         )}

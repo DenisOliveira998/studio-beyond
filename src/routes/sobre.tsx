@@ -4,14 +4,14 @@ import { SITE_URL } from "@/lib/site-url";
 export const Route = createFileRoute("/sobre")({
   head: () => ({
     meta: [
-      { title: "Quem somos: plataforma editorial independente | The Beyond" },
+      { title: "Quem somos: plataforma editorial independente | Go Beyondd" },
       {
         name: "description",
         content:
           "Plataforma brasileira de leitura e publicação autoral: editora, distribuidora e produtora digital para novos talentos. Leia de graça e apoie quem escreve.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Quem Somos | The Beyond" },
+      { property: "og:title", content: "Quem Somos | Go Beyondd" },
       {
         property: "og:description",
         content: "Uma vitrine para novos talentos autorais: leitura gratuita, curadoria da equipe e apoio direto a quem escreve.",
@@ -35,7 +35,7 @@ function AboutPage() {
 
       <div className="mt-10 space-y-6 leading-relaxed text-muted-foreground">
         <p>
-          O The Beyond começou como um projeto de estudos e de uma constatação: muita gente escreve
+          A Go Beyondd começou como um projeto de estudos e de uma constatação: muita gente escreve
           bem no Brasil e não publica, porque o caminho tradicional fica com a maior parte do lucro.
           Aqui, a obra é do autor — e a maior parte da receita também.
         </p>

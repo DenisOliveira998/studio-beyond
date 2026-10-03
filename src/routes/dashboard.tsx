@@ -28,14 +28,14 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Painel do autor | The Beyond" },
+      { title: "Painel do autor | Go Beyondd" },
       { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content:
           "Acompanhe a receita por cliques, as doações recebidas, publique novas obras e gerencie seu perfil de autor.",
       },
-      { property: "og:title", content: "Painel do autor — The Beyond" },
+      { property: "og:title", content: "Painel do autor — Go Beyondd" },
       {
         property: "og:description",
         content: "Uma visão direta do que sua obra rendeu neste mês.",

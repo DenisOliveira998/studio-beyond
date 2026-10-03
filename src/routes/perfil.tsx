@@ -8,10 +8,10 @@ import type { ReaderProfileStats } from "@/lib/beyond-db";
 export const Route = createFileRoute("/perfil")({
   head: () => ({
     meta: [
-      { title: "Meu perfil | The Beyond" },
+      { title: "Meu perfil | Go Beyondd" },
       { name: "robots", content: "noindex, nofollow" },
-      { name: "description", content: "Sua leitura no The Beyond: obras favoritas, páginas lidas e progresso." },
-      { property: "og:title", content: "Meu Perfil — The Beyond" },
+      { name: "description", content: "Sua leitura na Go Beyondd: obras favoritas, páginas lidas e progresso." },
+      { property: "og:title", content: "Meu Perfil — Go Beyondd" },
       { property: "og:type", content: "website" },
     ],
   }),

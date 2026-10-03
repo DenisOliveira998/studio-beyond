@@ -104,7 +104,7 @@ async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
 
   while (nextUrl && entries.length < 1000) {
     const res = await fetch(nextUrl, {
-      headers: { "User-Agent": "TheBeyond/1.0 (https://thebeyond.art)", Accept: "application/atom+xml" },
+      headers: { "User-Agent": "GoBeyondd/1.0 (https://www.gobeyondd.com.br)", Accept: "application/atom+xml" },
     });
     if (!res.ok) {
       // Feed bloqueado/indisponível: tenta o próximo, se ainda não achou obras
@@ -195,7 +195,7 @@ async function finalizeHtmlResponse(request: Request, response: Response): Promi
   // 404: título próprio e noindex (o head da raiz herda o título da home)
   if (response.status === 404) {
     const html = (await response.text())
-      .replace(/<title>[^<]*<\/title>/, "<title>Página não encontrada | The Beyond</title>")
+      .replace(/<title>[^<]*<\/title>/, "<title>Página não encontrada | Go Beyondd</title>")
       .replace(/<meta name="robots" content="[^"]*"\/?>/, '<meta name="robots" content="noindex"/>')
       .replace(/<link rel="canonical"[^>]*>/, "");
     const headers = new Headers(response.headers);
@@ -705,7 +705,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
         const apiKey = process.env.RESEND_API_KEY;
         if (!apiKey) {
-          return new Response(JSON.stringify({ error: "Serviço de e-mail não configurado. Escreva diretamente para contato@thebeyond.art" }), {
+          return new Response(JSON.stringify({ error: "Serviço de e-mail não configurado. Escreva diretamente para contato@gobeyondd.com.br" }), {
             status: 503,
             headers: { "content-type": "application/json" },
           });
@@ -716,8 +716,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             method: "POST",
             headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "The Beyond <noreply@thebeyond.art>",
-              to: "contato@thebeyond.art",
+              from: "Go Beyondd <noreply@gobeyondd.com.br>",
+              to: "contato@gobeyondd.com.br",
               reply_to: body.email,
               subject: `[Contato] ${(body.subject || "Mensagem").replace(/[\r\n]/g, " ")} — ${body.name.replace(/[\r\n]/g, " ")}`,
               html: `<p><strong>Nome:</strong> ${escapeHtml(body.name)}</p>
@@ -732,15 +732,15 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             method: "POST",
             headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "The Beyond <noreply@thebeyond.art>",
+              from: "Go Beyondd <noreply@gobeyondd.com.br>",
               to: body.email,
-              subject: "Mensagem recebida — The Beyond",
+              subject: "Mensagem recebida — Go Beyondd",
               html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">Go Beyondd</p>
                 <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#f6f6f6">Mensagem recebida</h1>
                 <p style="color:#9ba1ab;font-size:15px">Ol&#225;. Recebemos sua mensagem pelo formul&#225;rio do site e responderemos em breve.</p>
                 <p style="color:#9ba1ab;font-size:13px;margin-top:12px">Se n&#227;o foi voc&#234; quem enviou, ignore este e-mail.</p>
-                <p style="color:#9ba1ab;font-size:13px;margin-top:16px">&#8212; Equipe The Beyond</p>
+                <p style="color:#9ba1ab;font-size:13px;margin-top:16px">&#8212; Equipe Go Beyondd</p>
               </div>`,
             }),
           });
@@ -846,7 +846,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           })
           .filter(Boolean)
           .join("\n\n");
-        const body = `# The Beyond
+        const body = `# Go Beyondd
 
 > Plataforma digital de leitura e publicação autoral de livros, mangás, HQs, contos e novels, com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
 
@@ -860,7 +860,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 - Renda: R$ 0,004 por visualização + doações diretas dos leitores.
 - A maior parte da receita é do autor; repasse semanal, sem valor mínimo.
 - Exclusividade de 6 meses por obra, renovável; depois o autor pode publicar onde quiser.
-- A obra continua do autor; o The Beyond tem apenas licença para exibi-la.
+- A obra continua do autor; a Go Beyondd tem apenas licença para exibi-la.
 
 ## Páginas principais
 - [Início](${SITE_URL}/): destaques e catálogo por categoria
@@ -1129,8 +1129,8 @@ ${catalog}
             method: "POST",
             headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "The Beyond <noreply@thebeyond.art>",
-              to: "contato@thebeyond.art",
+              from: "Go Beyondd <noreply@gobeyondd.com.br>",
+              to: "contato@gobeyondd.com.br",
               reply_to: body.email,
               subject: `[Candidatura] ${String(body.artistName ?? "").replace(/[\r\n]/g, " ").slice(0, 120)}`,
               html: `<p><strong>Nome:</strong> ${escapeHtml(body.artistName)}</p>
@@ -1146,11 +1146,11 @@ ${catalog}
             method: "POST",
             headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "The Beyond <noreply@thebeyond.art>",
+              from: "Go Beyondd <noreply@gobeyondd.com.br>",
               to: body.email,
-              subject: "Candidatura recebida — The Beyond",
+              subject: "Candidatura recebida — Go Beyondd",
               html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">Go Beyondd</p>
                 <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#f6f6f6">Candidatura recebida</h1>
                 <p style="color:#9ba1ab;font-size:15px">Recebemos a sua candidatura. A curadoria avalia por ordem de chegada.</p>
                 <p style="color:#9ba1ab;font-size:15px;margin-top:12px">Prazo: <strong style="color:#f6f6f6">até 15 dias úteis</strong>. Você receberá uma resposta neste e-mail com aprovação ou recusa comentada.</p>
@@ -1410,22 +1410,22 @@ ${catalog}
             const safeName = esc(artistName);
             const safeNote = note ? esc(note) : "";
             const subjects: Record<string, string> = {
-              approved: "Candidatura aprovada — The Beyond",
-              rejected: "Resposta à sua candidatura — The Beyond",
-              changes: "Ajustes solicitados — The Beyond",
+              approved: "Candidatura aprovada — Go Beyondd",
+              rejected: "Resposta à sua candidatura — Go Beyondd",
+              changes: "Ajustes solicitados — Go Beyondd",
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${safeName}!<br><br>Sua candidatura ao <strong>The Beyond</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe The Beyond</em>`,
-              rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte do <strong>The Beyond</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe The Beyond</em>`,
-              changes: `Olá, ${safeName}.<br><br>Sua candidatura ao <strong>The Beyond</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
+              approved: `Olá, ${safeName}!<br><br>Sua candidatura ao <strong>Go Beyondd</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://studio-beyond-phi.vercel.app/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe Go Beyondd</em>`,
+              rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte do <strong>Go Beyondd</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe Go Beyondd</em>`,
+              changes: `Olá, ${safeName}.<br><br>Sua candidatura ao <strong>Go Beyondd</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };
             await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                from: "The Beyond <noreply@thebeyond.art>",
+                from: "Go Beyondd <noreply@gobeyondd.com.br>",
                 to: [email],
-                subject: subjects[status] ?? "Atualização da sua candidatura — The Beyond",
+                subject: subjects[status] ?? "Atualização da sua candidatura — Go Beyondd",
                 html: bodies[status] ?? "",
               }),
             }).catch(() => {});
@@ -1472,22 +1472,22 @@ ${catalog}
             const safeTitle = esc(title);
             const safeNote = note ? esc(note) : "";
             const subjects: Record<string, string> = {
-              approved: `"${title}" foi aprovada — The Beyond`,
-              rejected: `"${title}" não foi aprovada — The Beyond`,
-              changes: `Ajustes solicitados para "${title}" — The Beyond`,
+              approved: `"${title}" foi aprovada — Go Beyondd`,
+              rejected: `"${title}" não foi aprovada — Go Beyondd`,
+              changes: `Ajustes solicitados para "${title}" — Go Beyondd`,
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria do <strong>The Beyond</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe The Beyond</em>`,
-              rejected: `Olá, ${safeName}.<br><br>Após análise, sua obra <strong>${safeTitle}</strong> não foi aprovada neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br><em>Equipe The Beyond</em>`,
-              changes: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe The Beyond</em>`,
+              approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria do <strong>Go Beyondd</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe Go Beyondd</em>`,
+              rejected: `Olá, ${safeName}.<br><br>Após análise, sua obra <strong>${safeTitle}</strong> não foi aprovada neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br><em>Equipe Go Beyondd</em>`,
+              changes: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };
             await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                from: "The Beyond <noreply@thebeyond.art>",
+                from: "Go Beyondd <noreply@gobeyondd.com.br>",
                 to: [authorEmail],
-                subject: subjects[status] ?? "Atualização da sua obra — The Beyond",
+                subject: subjects[status] ?? "Atualização da sua obra — Go Beyondd",
                 html: bodies[status] ?? "",
               }),
             }).catch(() => {});
@@ -1949,7 +1949,7 @@ ${catalog}
           });
         }
         const upstream = await fetch(parsed.toString(), {
-          headers: { "User-Agent": "TheBeyond/1.0 (https://thebeyond.art)" },
+          headers: { "User-Agent": "GoBeyondd/1.0 (https://www.gobeyondd.com.br)" },
         });
         if (!upstream.ok) {
           return new Response(JSON.stringify({ error: "EPUB não encontrado" }), {

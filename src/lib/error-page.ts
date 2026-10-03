@@ -7,7 +7,7 @@ export function renderErrorPage(): string {
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <title>Esta página não carregou — The Beyond</title>
+    <title>Esta página não carregou — Go Beyondd</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -51,7 +51,7 @@ export function renderErrorPage(): string {
     </style>
   </head>
   <body>
-    <header><a class="logo" href="/">The <span>Beyond</span></a></header>
+    <header><a class="logo" href="/">Go <span>Beyondd</span></a></header>
     <main>
       <div class="wrap">
         <div aria-hidden="true"><span class="folio">500</span><span class="rule"></span></div>

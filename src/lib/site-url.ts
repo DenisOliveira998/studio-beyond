@@ -1,6 +1,6 @@
 /**
  * URL canônica do site.
- * Alterar aqui quando o domínio definitivo (thebeyond.art) estiver configurado.
+ * Alterar aqui quando o domínio definitivo (www.gobeyondd.com.br) estiver apontado para a Vercel.
  * Usado em: canonical links, og:url, og:image, twitter:image.
  */
 export const SITE_URL = "https://studio-beyond-phi.vercel.app";

@@ -4,13 +4,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: "Termos de uso | The Beyond" },
+      { title: "Termos de uso | Go Beyondd" },
       {
         name: "description",
         content:
-          "Termos de uso do The Beyond: direitos e exclusividade das obras, curadoria, receita do autor, anúncios, idade mínima e regras de convivência.",
+          "Termos de uso da Go Beyondd: direitos e exclusividade das obras, curadoria, receita do autor, anúncios, idade mínima e regras de convivência.",
       },
-      { property: "og:title", content: "Termos de uso — The Beyond" },
+      { property: "og:title", content: "Termos de uso — Go Beyondd" },
       {
         property: "og:description",
         content: "Direitos das obras, curadoria e repasse de receita aos autores.",
@@ -30,12 +30,12 @@ function TermsPage() {
       <h1 className="hero-type mt-5 text-4xl tracking-tight">Termos de uso</h1>
       <div className="mt-10 space-y-6 leading-relaxed text-muted-foreground">
         <p>
-          As obras publicadas permanecem integralmente do autor. O The Beyond recebe apenas licença
+          As obras publicadas permanecem integralmente do autor. A Go Beyondd recebe apenas licença
           para exibi-las no site e nos materiais de curadoria.
         </p>
         <p>
           <strong className="text-foreground">Exclusividade.</strong> Cada obra fica em exclusividade
-          no The Beyond por 6 meses a partir da publicação, renováveis por acordo. Terminado o
+          na Go Beyondd por 6 meses a partir da publicação, renováveis por acordo. Terminado o
           período, o autor pode publicá-la em outros lugares.
         </p>
         <p>

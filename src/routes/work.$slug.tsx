@@ -26,7 +26,7 @@ export const Route = createFileRoute("/work/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Obra não encontrada | The Beyond" },
+          { title: "Obra não encontrada | Go Beyondd" },
           { name: "robots", content: "noindex" },
         ],
       };

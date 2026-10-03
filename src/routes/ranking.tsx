@@ -17,9 +17,9 @@ export const Route = createFileRoute("/ranking")({
     search["aba"] === "autores" ? { aba: "autores" } : {},
   loader: async () => ({ ranking: await loaderFetch<RankingData>("/api/ranking", EMPTY) }),
   head: () => {
-    const title = "Ranking da semana: obras e autores mais lidos | The Beyond";
+    const title = "Ranking da semana: obras e autores mais lidos | Go Beyondd";
     const description =
-      "Top 50 da semana no The Beyond: as obras e os autores mais lidos dos últimos 7 dias — livros, mangás, HQs, contos e novels autorais.";
+      "Top 50 da semana na Go Beyondd: as obras e os autores mais lidos dos últimos 7 dias — livros, mangás, HQs, contos e novels autorais.";
     return {
       meta: [
         { title },

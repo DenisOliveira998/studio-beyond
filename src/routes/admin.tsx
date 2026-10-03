@@ -52,14 +52,14 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Administração | The Beyond" },
+      { title: "Administração | Go Beyondd" },
       { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content:
           "Painel administrativo: visão geral da receita, rankings de obras e gestão de contas da plataforma.",
       },
-      { property: "og:title", content: "Administração — The Beyond" },
+      { property: "og:title", content: "Administração — Go Beyondd" },
       {
         property: "og:description",
         content: "Receita total, obras mais populares e gerenciamento de contas.",
@@ -550,7 +550,7 @@ function AdminPage() {
       <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[220px] shrink-0 flex-col border-r border-border bg-surface md:flex">
         <div className="px-6 pt-8 pb-6">
           <p className="eyebrow">Administração</p>
-          <p className="mt-2 font-display text-xl tracking-tight">The Beyond</p>
+          <p className="mt-2 font-display text-xl tracking-tight">Go Beyondd</p>
         </div>
         <nav className="flex flex-col gap-1 px-3">
           {NAV.map((item) => (
@@ -565,7 +565,7 @@ function AdminPage() {
           ))}
         </nav>
         <div className="mt-auto px-6 pb-8">
-          <p className="text-xs text-muted-foreground">The Beyond · Admin</p>
+          <p className="text-xs text-muted-foreground">Go Beyondd · Admin</p>
         </div>
       </aside>
 
@@ -1401,9 +1401,9 @@ function AdminPage() {
             <div className="grid gap-5 sm:grid-cols-2">
               {(
                 [
-                  { key: "instagram", label: "Instagram (URL completa)", placeholder: "https://instagram.com/thebeyond.art" },
-                  { key: "youtube", label: "YouTube (URL completa)", placeholder: "https://youtube.com/@thebeyond" },
-                  { key: "email", label: "E-mail de contato", placeholder: "contato@thebeyond.art" },
+                  { key: "instagram", label: "Instagram (URL completa)", placeholder: "https://instagram.com/gobeyondd" },
+                  { key: "youtube", label: "YouTube (URL completa)", placeholder: "https://youtube.com/@gobeyondd" },
+                  { key: "email", label: "E-mail de contato", placeholder: "contato@gobeyondd.com.br" },
                   { key: "phone", label: "Telefone", placeholder: "(11) 99999-9999" },
                   { key: "address", label: "Endereço", placeholder: "Rua das Artes, 142 — São Paulo, SP" },
                   { key: "cnpj", label: "CNPJ", placeholder: "00.000.000/0001-00" },

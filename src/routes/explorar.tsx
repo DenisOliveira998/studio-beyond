@@ -22,9 +22,9 @@ export const Route = createFileRoute("/explorar")({
     const total = Math.max(1, Math.ceil((loaderData?.works.length ?? 0) / ITEMS_PER_PAGE));
     const pagina = Math.min((match.search as { pagina?: number }).pagina ?? 1, total);
     const url = `${SITE_URL}/explorar${pagina > 1 ? `?pagina=${pagina}` : ""}`;
-    const title = `Explorar livros, mangás, HQs e contos${pagina > 1 ? `, página ${pagina}` : ""} | The Beyond`;
+    const title = `Explorar livros, mangás, HQs e contos${pagina > 1 ? `, página ${pagina}` : ""} | Go Beyondd`;
     const description =
-      "Explore livros, mangás, HQs, contos e novels autorais por categoria, com foco em autores brasileiros. Leia de graça no The Beyond.";
+      "Explore livros, mangás, HQs, contos e novels autorais por categoria, com foco em autores brasileiros. Leia de graça na Go Beyondd.";
     return {
       meta: [
         { title },

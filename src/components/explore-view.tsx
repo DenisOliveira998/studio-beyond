@@ -36,38 +36,38 @@ const INTRO: Record<Medium, string> = {
 export const CATEGORY_SEO: Record<Medium, { h1: string; title: string; description: string }> = {
   livro: {
     h1: "Livros autorais",
-    title: "Livros autorais brasileiros para ler online | The Beyond",
-    description: "Leia livros autorais online, de graça, com foco em autores brasileiros. Romances e ficção independente com curadoria no The Beyond.",
+    title: "Livros autorais brasileiros para ler online | Go Beyondd",
+    description: "Leia livros autorais online, de graça, com foco em autores brasileiros. Romances e ficção independente com curadoria na Go Beyondd.",
   },
   manga: {
     h1: "Mangás brasileiros",
-    title: "Mangás brasileiros autorais para ler online | The Beyond",
-    description: "Leia mangás brasileiros autorais online, de graça. Roteiro e traço originais de mangakás independentes, com curadoria do The Beyond.",
+    title: "Mangás brasileiros autorais para ler online | Go Beyondd",
+    description: "Leia mangás brasileiros autorais online, de graça. Roteiro e traço originais de mangakás independentes, com curadoria da Go Beyondd.",
   },
   hq: {
     h1: "HQs nacionais",
-    title: "HQs nacionais independentes para ler online | The Beyond",
-    description: "Leia HQs nacionais independentes online, de graça. Quadrinhos brasileiros autorais selecionados pela curadoria do The Beyond.",
+    title: "HQs nacionais independentes para ler online | Go Beyondd",
+    description: "Leia HQs nacionais independentes online, de graça. Quadrinhos brasileiros autorais selecionados pela curadoria da Go Beyondd.",
   },
   conto: {
     h1: "Contos",
-    title: "Contos autorais brasileiros para ler online | The Beyond",
+    title: "Contos autorais brasileiros para ler online | Go Beyondd",
     description: "Leia contos autorais online, de graça, com foco em autores brasileiros. Histórias curtas para ler de uma sentada, com curadoria.",
   },
   lightnovel: {
     h1: "Novels",
-    title: "Novels e webnovels autorais para ler online | The Beyond",
-    description: "Leia novels e webnovels autorais online, de graça. Histórias longas em prosa, por capítulos, de autores independentes no The Beyond.",
+    title: "Novels e webnovels autorais para ler online | Go Beyondd",
+    description: "Leia novels e webnovels autorais online, de graça. Histórias longas em prosa, por capítulos, de autores independentes na Go Beyondd.",
   },
   manhwa: {
     h1: "Manhwas",
-    title: "Manhwas em formato webtoon para ler online | The Beyond",
-    description: "Leia manhwas em formato webtoon online, de graça, com leitura vertical em scroll contínuo no The Beyond.",
+    title: "Manhwas em formato webtoon para ler online | Go Beyondd",
+    description: "Leia manhwas em formato webtoon online, de graça, com leitura vertical em scroll contínuo na Go Beyondd.",
   },
   manhua: {
     h1: "Manhuas",
-    title: "Manhuas para ler online | The Beyond",
-    description: "Leia manhuas online, de graça, em formato webtoon ou paginado no The Beyond.",
+    title: "Manhuas para ler online | Go Beyondd",
+    description: "Leia manhuas online, de graça, em formato webtoon ou paginado na Go Beyondd.",
   },
 };
 

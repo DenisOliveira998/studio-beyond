@@ -139,7 +139,7 @@ export function SiteHeader() {
         {/* ── Esquerda: logo ── */}
         <Link to="/" className="flex shrink-0 items-baseline gap-2">
           <span className="hero-type text-xl leading-none text-white sm:text-2xl">
-            The <span className="text-gilt">Beyond</span>
+            Go <span className="text-gilt">Beyondd</span>
           </span>
           <span className="hidden eyebrow sm:inline">desde 2026</span>
         </Link>
@@ -210,7 +210,7 @@ export function SiteHeader() {
           />
           <div className="fixed left-0 top-0 bottom-0 z-50 w-72 bg-ink border-r border-border flex flex-col">
             <div className="flex items-center justify-between px-5 h-16 border-b border-border/60">
-              <span className="hero-type text-xl text-white">The <span className="text-gilt">Beyond</span></span>
+              <span className="hero-type text-xl text-white">Go <span className="text-gilt">Beyondd</span></span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="text-white/60 hover:text-gilt transition-colors"
@@ -288,14 +288,14 @@ export function SiteFooter() {
 
   const igHandle = cfg.instagram
     ? cfg.instagram.replace(/.*instagram\.com\//i, "").replace(/\/$/, "")
-    : "thebeyond.art";
+    : "gobeyondd";
 
   return (
     <footer className="mt-24 border-t border-border/70 bg-surface/40">
       <div className="grid gap-12 px-5 py-16 sm:py-20 sm:px-10 lg:px-14 md:grid-cols-2 lg:grid-cols-4">
         {/* Identidade */}
         <div>
-          <p className="hero-type text-2xl text-foreground">The <span className="text-gilt">Beyond</span></p>
+          <p className="hero-type text-2xl text-foreground">Go <span className="text-gilt">Beyondd</span></p>
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
             Novos talentos, lidos e apoiados.
           </p>
@@ -394,7 +394,7 @@ export function SiteFooter() {
 
       <div className="border-t border-border/70">
         <div className="flex flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-14">
-          <p className="caption">© 2026 The Beyond. Literatura e arte autoral, de graça.</p>
+          <p className="caption">© 2026 Go Beyondd. Literatura e arte autoral, de graça.</p>
           <div className="flex items-center gap-6">
             <Link to="/privacidade" className="caption transition-colors hover:text-foreground">
               Privacidade

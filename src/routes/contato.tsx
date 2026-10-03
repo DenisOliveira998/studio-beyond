@@ -9,17 +9,17 @@ import type { SiteConfigData } from "@/lib/beyond-db";
 export const Route = createFileRoute("/contato")({
   head: () => ({
     meta: [
-      { title: "Contato | The Beyond" },
+      { title: "Contato | Go Beyondd" },
       {
         name: "description",
         content:
-          "Entre em contato com o The Beyond: dúvidas, parcerias, imprensa ou suporte. Estamos disponíveis por e-mail, telefone e redes sociais.",
+          "Entre em contato com a Go Beyondd: dúvidas, parcerias, imprensa ou suporte. Estamos disponíveis por e-mail, telefone e redes sociais.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Contato | The Beyond" },
+      { property: "og:title", content: "Contato | Go Beyondd" },
       {
         property: "og:description",
-        content: "Fale com a equipe do The Beyond: dúvidas, parcerias e suporte.",
+        content: "Fale com a equipe da Go Beyondd: dúvidas, parcerias e suporte.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/contato` },
@@ -31,11 +31,11 @@ export const Route = createFileRoute("/contato")({
 });
 
 const DEFAULT_CFG: SiteConfigData = {
-  instagram: "https://instagram.com/thebeyond.art",
+  instagram: "",
   youtube: "",
-  email: "contato@thebeyond.art",
+  email: "contato@gobeyondd.com.br",
   phone: "",
-  address: "Rua das Artes, 142 — São Paulo, SP",
+  address: "",
   cnpj: "",
 };
 
@@ -87,7 +87,7 @@ function ContactPage() {
       setSent(true);
       toast.success("Mensagem enviada! Respondemos em até 2 dias úteis.");
     } catch {
-      toast.error("Erro ao enviar. Tente novamente ou escreva para contato@thebeyond.art");
+      toast.error("Erro ao enviar. Tente novamente ou escreva para contato@gobeyondd.com.br");
     } finally {
       setSending(false);
     }

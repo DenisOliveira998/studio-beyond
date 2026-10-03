@@ -10,14 +10,14 @@ export const Route = createFileRoute("/biblioteca")({
   loader: async () => ({ books: await loaderFetch<SEBook[]>("/api/biblioteca", []) }),
   head: ({ loaderData }) => ({
     meta: [
-      { title: "Biblioteca clássica: obras em domínio público | The Beyond" },
+      { title: "Biblioteca clássica: obras em domínio público | Go Beyondd" },
       {
         name: "description",
         content:
-          "Clássicos em domínio público com edição cuidadosa do Standard Ebooks. Baixe EPUBs gratuitos, sem DRM, na Biblioteca Clássica do The Beyond.",
+          "Clássicos em domínio público com edição cuidadosa do Standard Ebooks. Baixe EPUBs gratuitos, sem DRM, na Biblioteca Clássica da Go Beyondd.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Biblioteca Clássica | The Beyond" },
+      { property: "og:title", content: "Biblioteca Clássica | Go Beyondd" },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/biblioteca` },
       { name: "twitter:card", content: "summary_large_image" },

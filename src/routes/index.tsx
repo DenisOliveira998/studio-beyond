@@ -28,14 +28,14 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
+      { title: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
         name: "description",
         content:
           "Livros, mangás, HQs, contos e novels autorais, com foco em autores brasileiros. Leia de graça e apoie direto quem escreve.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
+      { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
         property: "og:description",
         content:
@@ -505,7 +505,7 @@ function Home() {
   return (
     <div>
       {/* H1 só para leitores de tela e buscadores — o topo visível é o Destaque */}
-      <h1 className="sr-only">The Beyond — livros, mangás, HQs, contos e novels autorais para ler de graça</h1>
+      <h1 className="sr-only">Go Beyondd — livros, mangás, HQs, contos e novels autorais para ler de graça</h1>
 
       {/* Destaque Beyond — hero carousel */}
       <DestaqueHero works={works} initialDestaque={initial.destaque} />

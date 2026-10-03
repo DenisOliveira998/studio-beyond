@@ -10,7 +10,7 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": ORGANIZATION_ID,
-    name: "The Beyond",
+    name: "Go Beyondd",
     url: `${SITE_URL}/`,
     logo: siteUrl("/icon-512.png"),
     description:
@@ -23,7 +23,7 @@ export function websiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
-    name: "The Beyond",
+    name: "Go Beyondd",
     url: `${SITE_URL}/`,
     inLanguage: "pt-BR",
     publisher: { "@id": ORGANIZATION_ID },
@@ -127,14 +127,14 @@ export function clampText(text: string, max: number): string {
 export function workSeo(work: Work): { title: string; description: string } {
   const name = stripHtml(work.title);
   const noun = mediumNoun(work.medium);
-  const brand = " | The Beyond";
+  const brand = " | Go Beyondd";
   const options = [
     work.artistName ? `${name}: ${noun} de ${work.artistName}` : `${name}: ${noun}`,
     work.artistName ? `${name}, de ${work.artistName}` : "",
     name,
   ].filter(Boolean);
   const head = options.find((t) => t.length + brand.length <= 60) ?? name;
-  const suffix = " Leia grátis no The Beyond.";
+  const suffix = " Leia grátis na Go Beyondd.";
   return {
     title: `${head}${brand}`,
     description: `${clampText(stripHtml(work.excerpt), 158 - suffix.length)}${suffix}`,

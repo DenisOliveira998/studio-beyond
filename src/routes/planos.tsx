@@ -8,14 +8,14 @@ import { faqJsonLd } from "@/lib/seo";
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos Fã e Super Fã: leia sem anúncios | The Beyond" },
+      { title: "Planos Fã e Super Fã: leia sem anúncios | Go Beyondd" },
       {
         name: "description",
         content:
-          "Planos Fã e Super Fã do The Beyond (em construção): leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs. Entre na lista de espera.",
+          "Planos Fã e Super Fã da Go Beyondd (em construção): leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs. Entre na lista de espera.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Planos Fã e Super Fã | The Beyond" },
+      { property: "og:title", content: "Planos Fã e Super Fã | Go Beyondd" },
       {
         property: "og:description",
         content: "Leia sem anúncios e sem limite diário. Os planos Fã e Super Fã estão em construção — entre na lista de espera.",
@@ -172,7 +172,7 @@ function PlansPage() {
         Leia sem anúncios. Apoie quem escreve.
       </h1>
       <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-        Você pode usar o The Beyond sem assinar — a leitura gratuita continua aberta. Os planos
+        Você pode usar a Go Beyondd sem assinar — a leitura gratuita continua aberta. Os planos
         tiram os anúncios e o limite diário, e o Super Fã ainda dá acesso antecipado e clube de fãs.
       </p>
 

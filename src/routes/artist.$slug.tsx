@@ -29,7 +29,7 @@ export const Route = createFileRoute("/artist/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Autor não encontrado | The Beyond" },
+          { title: "Autor não encontrado | Go Beyondd" },
           { name: "robots", content: "noindex" },
         ],
       };
@@ -42,13 +42,13 @@ export const Route = createFileRoute("/artist/$slug")({
     const role = mainMedium ? `autor de ${mediumNoun(mainMedium)}` : "autor";
     const first = works[0];
     const fallback = first
-      ? `Leia ${stripHtml(first.title)}, ${mediumNoun(first.medium)} de ${artistName}, no The Beyond. Leia de graça e apoie o autor diretamente.`
-      : `Obras de ${artistName} no The Beyond. Leia de graça e apoie o autor diretamente.`;
+      ? `Leia ${stripHtml(first.title)}, ${mediumNoun(first.medium)} de ${artistName}, na Go Beyondd. Leia de graça e apoie o autor diretamente.`
+      : `Obras de ${artistName} na Go Beyondd. Leia de graça e apoie o autor diretamente.`;
     const description = clampText(bio.bio || fallback, 160);
     const meta: Array<Record<string, unknown>> = [
-      { title: `${artistName}: obras e biografia | The Beyond` },
+      { title: `${artistName}: obras e biografia | Go Beyondd` },
       { name: "description", content: description },
-      { property: "og:title", content: `${artistName} | The Beyond` },
+      { property: "og:title", content: `${artistName} | Go Beyondd` },
       { property: "og:description", content: description },
       { property: "og:type", content: "profile" },
       { name: "twitter:card", content: "summary_large_image" },

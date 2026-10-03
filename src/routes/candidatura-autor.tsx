@@ -9,14 +9,14 @@ import { CANDIDATURAS_ABERTAS } from "@/lib/features";
 export const Route = createFileRoute("/candidatura-autor")({
   head: () => ({
     meta: [
-      { title: "Publique sua obra: candidatura de autor | The Beyond" },
+      { title: "Publique sua obra: candidatura de autor | Go Beyondd" },
       {
         name: "description",
         content:
-          "Quer publicar livros, mangás, HQs, contos ou novels no The Beyond? As candidaturas de autor abrem em breve — entre na lista de espera. Seleção por curadoria.",
+          "Quer publicar livros, mangás, HQs, contos ou novels na Go Beyondd? As candidaturas de autor abrem em breve — entre na lista de espera. Seleção por curadoria.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Candidatura de Autor | The Beyond" },
+      { property: "og:title", content: "Candidatura de Autor | Go Beyondd" },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/candidatura-autor` },
       { name: "twitter:card", content: "summary_large_image" },
@@ -177,7 +177,7 @@ function ApplicationPage() {
               <strong className="text-foreground">Repasse semanal</strong>, sem valor mínimo.
             </li>
             <li>
-              <strong className="text-foreground">A obra continua sua.</strong> O The Beyond só tem licença para exibi-la.
+              <strong className="text-foreground">A obra continua sua.</strong> A Go Beyondd só tem licença para exibi-la.
             </li>
             <li>
               <strong className="text-foreground">Exclusividade de 6 meses, renovável.</strong> Depois desse

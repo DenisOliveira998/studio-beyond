@@ -4,13 +4,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de privacidade | The Beyond" },
+      { title: "Política de privacidade | Go Beyondd" },
       {
         name: "description",
         content:
-          "Como o The Beyond trata os seus dados: o que guardamos, anúncios de parceiros na leitura gratuita e proteção a menores. Não vendemos dados.",
+          "Como a Go Beyondd trata os seus dados: o que guardamos, anúncios de parceiros na leitura gratuita e proteção a menores. Não vendemos dados.",
       },
-      { property: "og:title", content: "Privacidade — The Beyond" },
+      { property: "og:title", content: "Privacidade — Go Beyondd" },
       {
         property: "og:description",
         content: "Sem rastreadores publicitários e sem venda de dados.",
@@ -51,7 +51,7 @@ function PrivacyPage() {
         </p>
         <p>
           Para solicitar exportação ou exclusão dos seus dados, escreva para
-          contato@thebeyond.art.
+          contato@gobeyondd.com.br.
         </p>
         <p className="caption">Documento de demonstração, sem valor contratual.</p>
       </div>

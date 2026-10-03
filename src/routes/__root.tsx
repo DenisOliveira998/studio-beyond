@@ -47,17 +47,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
+      { title: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
         name: "description",
         content:
           "Livros, mangás, HQs, contos e novels autorais, com foco em autores brasileiros. Leia de graça e apoie direto quem escreve.",
       },
       { name: "robots", content: "index, follow" },
-      { name: "author", content: "The Beyond" },
+      { name: "author", content: "Go Beyondd" },
       { name: "theme-color", content: "#121519" },
-      { property: "og:site_name", content: "The Beyond" },
-      { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
+      { property: "og:site_name", content: "Go Beyondd" },
+      { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
         property: "og:description",
         content:
@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Livros, mangás e HQs autorais para ler grátis | The Beyond" },
+      { name: "twitter:title", content: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
         name: "twitter:description",
         content: "Leia de graça obras autorais de novos talentos e apoie direto quem escreve.",

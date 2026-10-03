@@ -15,7 +15,7 @@ export const Route = createFileRoute("/explorar_/$categoria")({
   },
   head: ({ loaderData, params, match }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Categoria não encontrada | The Beyond" }, { name: "robots", content: "noindex" }] };
+      return { meta: [{ title: "Categoria não encontrada | Go Beyondd" }, { name: "robots", content: "noindex" }] };
     }
     const seo = CATEGORY_SEO[loaderData.medium];
     // Página além da última → trata como a última existente
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/explorar_/$categoria")({
     const total = Math.max(1, Math.ceil(count / ITEMS_PER_PAGE));
     const pagina = Math.min((match.search as { pagina?: number }).pagina ?? 1, total);
     const url = `${SITE_URL}/explorar/${params.categoria}${pagina > 1 ? `?pagina=${pagina}` : ""}`;
-    const title = pagina > 1 ? seo.title.replace(" | The Beyond", `, página ${pagina} | The Beyond`) : seo.title;
+    const title = pagina > 1 ? seo.title.replace(" | Go Beyondd", `, página ${pagina} | Go Beyondd`) : seo.title;
     return {
       meta: [
         { title },

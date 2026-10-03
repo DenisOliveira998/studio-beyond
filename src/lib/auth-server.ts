@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Better Auth — configuração do servidor (The Beyond)
+// Better Auth — configuração do servidor (Go Beyondd)
 // Provedores: Google OAuth + Email OTP (Resend)
 // ---------------------------------------------------------------------------
 
@@ -50,6 +50,8 @@ export const auth = betterAuth({
     "http://localhost:3001",
     "http://localhost:8080",
     "https://studio-beyond-phi.vercel.app",
+    "https://www.gobeyondd.com.br",
+    "https://gobeyondd.com.br",
     "https://thebeyond.art",
     "https://www.thebeyond.art",
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
@@ -97,12 +99,12 @@ async function sendOTPEmail(email: string, otp: string, type: string) {
 
   const isSignIn = type === "sign-in";
   const subject = isSignIn
-    ? "Seu código de acesso — The Beyond"
-    : "Confirme seu e-mail — The Beyond";
+    ? "Seu código de acesso — Go Beyondd"
+    : "Confirme seu e-mail — Go Beyondd";
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:420px;margin:0 auto;padding:32px 24px;background:#121519;border-radius:4px">
-      <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#a08d24">The Beyond</p>
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#a08d24">Go Beyondd</p>
       <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#f6f6f6">
         ${isSignIn ? "Seu código de acesso" : "Confirme seu e-mail"}
       </h1>
@@ -126,7 +128,7 @@ async function sendOTPEmail(email: string, otp: string, type: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "The Beyond <noreply@thebeyond.art>",
+        from: "Go Beyondd <noreply@gobeyondd.com.br>",
         to: email,
         subject,
         html,

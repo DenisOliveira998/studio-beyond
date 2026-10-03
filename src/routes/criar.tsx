@@ -14,9 +14,9 @@ export const Route = createFileRoute("/criar")({
   head: () => ({
     meta: [
       { name: "robots", content: "noindex, follow" },
-      { title: "Criar conta | The Beyond" },
-      { name: "description", content: "Crie sua conta de leitor no The Beyond e comece a ler agora." },
-      { property: "og:title", content: "Criar conta — The Beyond" },
+      { title: "Criar conta | Go Beyondd" },
+      { name: "description", content: "Crie sua conta de leitor na Go Beyondd e comece a ler agora." },
+      { property: "og:title", content: "Criar conta — Go Beyondd" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -101,7 +101,7 @@ function CriarPage() {
           toast.error(msg || "Erro ao criar conta.");
         }
       } else {
-        toast.success("Conta criada. Boas-vindas ao The Beyond.");
+        toast.success("Conta criada. Boas-vindas à Go Beyondd.");
         window.location.href = redirectTo;
       }
     } catch {
