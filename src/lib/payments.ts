@@ -71,15 +71,33 @@ export function paymentsEnabled(): boolean {
   return !!process.env["MERCADOPAGO_ACCESS_TOKEN"];
 }
 
-/** Credenciais de teste: só a equipe pode pagar (para testar); leitores veem "em breve". */
-export function paymentsTestMode(): boolean {
-  return (process.env["MERCADOPAGO_ACCESS_TOKEN"] ?? "").startsWith("TEST-");
+let testModeCache: { value: boolean; at: number } | null = null;
+
+/**
+ * Credenciais de teste? Pergunta ao próprio Mercado Pago (as credenciais de teste novas
+ * também começam com APP_USR-). Na dúvida (erro na consulta), trata como teste: só a equipe paga.
+ */
+export async function paymentsTestMode(): Promise<boolean> {
+  const token = process.env["MERCADOPAGO_ACCESS_TOKEN"] ?? "";
+  if (!token) return true;
+  if (token.startsWith("TEST-")) return true;
+  if (testModeCache && Date.now() - testModeCache.at < 10 * 60_000) return testModeCache.value;
+  try {
+    const res = await fetch(`${MP_API}/users/me`, { headers: { authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(String(res.status));
+    const me = (await res.json()) as { tags?: string[]; nickname?: string };
+    const isTest = (me.tags ?? []).includes("test_user") || /^TEST/i.test(me.nickname ?? "");
+    testModeCache = { value: isTest, at: Date.now() };
+    return isTest;
+  } catch {
+    return true;
+  }
 }
 
 /** Pagamentos abertos para esta pessoa? Produção: todos. Teste: só a equipe. */
-export function paymentsOpenFor(role: string | null | undefined): boolean {
+export async function paymentsOpenFor(role: string | null | undefined): Promise<boolean> {
   if (!paymentsEnabled()) return false;
-  if (!paymentsTestMode()) return true;
+  if (!(await paymentsTestMode())) return true;
   return !!role && ["gerente", "admin", "owner"].includes(role);
 }
 

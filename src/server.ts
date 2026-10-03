@@ -511,7 +511,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           JSON.stringify({
             totalCents: split.grossCents,
             destino: cfg.feeMode === "retida" ? "plataforma" : "autor",
-            available: paymentsOpenFor(role),
+            available: await paymentsOpenFor(role),
             ...detail,
           }),
           { headers: { "content-type": "application/json", "cache-control": "private, no-store" } },
@@ -547,7 +547,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           ? ((await prismaD.profile.findUnique({ where: { id: s.user.id }, select: { role: true } }))?.role ?? null)
           : null;
         const { paymentsOpenFor } = await import("./lib/payments");
-        if (!paymentsOpenFor(donorRole)) return json({ error: "Os pagamentos abrem em breve." }, 503);
+        if (!(await paymentsOpenFor(donorRole))) return json({ error: "Os pagamentos abrem em breve." }, 503);
         const { stripHtml } = await import("./lib/utils");
         try {
           const { checkoutUrl } = await createDonationCheckout({
@@ -611,7 +611,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         return new Response(
           JSON.stringify({
             prices: { fa: cfg.priceFaCents, superfa: cfg.priceSuperFaCents },
-            available: paymentsOpenFor(role),
+            available: await paymentsOpenFor(role),
             loggedIn: !!s?.user,
             current,
           }),
@@ -632,7 +632,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const { prisma: prismaA } = await import("./lib/prisma");
         const prof = await prismaA.profile.findUnique({ where: { id: s.user.id }, select: { role: true, suspended: true } });
         const { paymentsOpenFor, createSubscriptionCheckout } = await import("./lib/payments");
-        if (!paymentsOpenFor(prof?.role)) return json({ error: "Os planos abrem em breve." }, 503);
+        if (!(await paymentsOpenFor(prof?.role))) return json({ error: "Os planos abrem em breve." }, 503);
         if (prof?.suspended) return json({ error: "Conta suspensa." }, 403);
         const body = (await request.json().catch(() => ({}))) as { plano?: string; email?: string };
         const plan = body.plano === "superfa" ? "superfa" : body.plano === "fa" ? "fa" : null;
@@ -700,7 +700,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (error) return error;
         const { getPaymentConfig, listPayments, pendingPayouts, paymentsEnabled } = await import("./lib/payments");
         const [config, payments, payouts] = await Promise.all([getPaymentConfig(), listPayments(50), pendingPayouts()]);
-        const testMode = (process.env["MERCADOPAGO_ACCESS_TOKEN"] ?? "").startsWith("TEST-");
+        const { paymentsTestMode } = await import("./lib/payments");
+        const testMode = await paymentsTestMode();
         return new Response(JSON.stringify({ config, payments, payouts, enabled: paymentsEnabled(), testMode }), {
           headers: { "content-type": "application/json", "cache-control": "private, no-store" },
         });
