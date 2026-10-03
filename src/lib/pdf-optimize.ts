@@ -64,7 +64,9 @@ async function rasterize(
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      await page.render({ canvas, viewport }).promise;
+      // intent "print": desenha sem esperar o quadro de animação do navegador
+      // (senão a compressão pausa se o autor trocar de aba)
+      await page.render({ canvas, viewport, intent: "print" }).promise;
       const jpg = await out.embedJpg(await canvasToJpeg(canvas));
       // Mantém o tamanho físico da página original (em pontos)
       const p = out.addPage([base.width, base.height]);
