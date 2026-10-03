@@ -7,9 +7,12 @@ import { money } from "@/lib/beyond-data";
 // que confere o pagamento direto no Mercado Pago (o parâmetro da URL não é confiável).
 export const Route = createFileRoute("/apoio/retorno")({
   // Mantém os nomes que o Mercado Pago envia (evita redirecionamento extra)
-  validateSearch: (s: Record<string, unknown>): { external_reference?: string; payment_id?: string } => ({
-    ...(typeof s["external_reference"] === "string" ? { external_reference: s["external_reference"] as string } : {}),
-    ...(typeof s["payment_id"] === "string" || typeof s["payment_id"] === "number" ? { payment_id: String(s["payment_id"]) } : {}),
+  // (o valor é mantido como chegou: o roteador lê "123" como número, e converter mudaria a URL)
+  validateSearch: (s: Record<string, unknown>): { external_reference?: string | number; payment_id?: string | number } => ({
+    ...(typeof s["external_reference"] === "string" || typeof s["external_reference"] === "number"
+      ? { external_reference: s["external_reference"] as string | number }
+      : {}),
+    ...(typeof s["payment_id"] === "string" || typeof s["payment_id"] === "number" ? { payment_id: s["payment_id"] as string | number } : {}),
   }),
   head: () => ({
     meta: [{ title: "Apoio | Go Beyondd" }, { name: "robots", content: "noindex" }],
@@ -21,8 +24,8 @@ type Status = { status: string; artistName: string; artistSlug: string; workSlug
 
 function ApoioRetorno() {
   const search = Route.useSearch();
-  const ref = search.external_reference ?? "";
-  const mp = search.payment_id ?? "";
+  const ref = String(search.external_reference ?? "");
+  const mp = String(search.payment_id ?? "");
   const { data, isLoading } = useQuery<Status | null>({
     queryKey: ["apoio-status", ref, mp],
     queryFn: () =>
