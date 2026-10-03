@@ -247,7 +247,7 @@ async function blobAccess(request: Request, blobUrl: string): Promise<"public" |
 
   // 3) Arquivo de obra ainda não publicada: só o autor
   const draftWork = await prisma.work.findFirst({
-    where: { OR: [{ coverUrl: blobUrl }, { pdfUrl: blobUrl }] },
+    where: { OR: [{ coverUrl: blobUrl }, { pdfUrl: blobUrl }, { previewUrl: blobUrl }] },
     select: { authorId: true },
   });
   if (draftWork) return draftWork.authorId === session.user.id ? "private" : "denied";
@@ -827,6 +827,40 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
       }
 
+      // Envio direto do PDF da obra para o Blob (navegador → Blob), até 100 MB, só autores aprovados
+      if (pathname === "/api/upload/presign" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        const { prisma: prismaUp } = await import("./lib/prisma");
+        const prof = await prismaUp.profile.findUnique({ where: { id: session.user.id }, select: { role: true, suspended: true } });
+        if (!prof || prof.suspended || !["author", "gerente", "admin", "owner"].includes(prof.role)) {
+          return new Response(JSON.stringify({ error: "Apenas autores aprovados podem enviar obras." }), { status: 403, headers: { "content-type": "application/json" } });
+        }
+        if (!(await rateLimit(`presign:user:${session.user.id}`, 60, 60 * 60))) {
+          return tooManyRequests("Muitos envios em pouco tempo. Aguarde e tente de novo.");
+        }
+        const { handleUploadPresigned } = await import("@vercel/blob/client");
+        const { issueSignedToken } = await import("@vercel/blob");
+        const { MAX_WORK_PDF_BYTES } = await import("./lib/security");
+        try {
+          const result = await handleUploadPresigned({
+            body: (await request.json()) as import("@vercel/blob/client").HandleUploadPresignedBody,
+            request,
+            getSignedToken: async (pathname) => {
+              if (!/^obras\/[a-zA-Z0-9._-]{1,120}\.pdf$/.test(pathname)) throw new Error("Nome de arquivo inválido");
+              const opts = { allowedContentTypes: ["application/pdf"], maximumSizeInBytes: MAX_WORK_PDF_BYTES };
+              const token = await issueSignedToken({ pathname, operations: ["put"], validUntil: Date.now() + 15 * 60_000, ...opts });
+              return { token, urlOptions: { ...opts, addRandomSuffix: true } };
+            },
+          });
+          return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });
+        } catch (e) {
+          console.error("presign falhou:", e);
+          return new Response(JSON.stringify({ error: "Não foi possível autorizar o envio. Tente de novo." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+      }
+
       // Upload de arquivo (PDF de obra) → Vercel Blob
       if (pathname === "/api/upload" && request.method === "POST") {
         const { auth } = await import("./lib/auth-server");
@@ -894,17 +928,27 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
           excerpt?: string; body?: string; tags?: string;
-          pdfUrl?: string | null; coverUrl?: string | null; status?: "pending" | "draft";
+          pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number;
+          coverUrl?: string | null; status?: "pending" | "draft";
         };
+        // Toda obra é PDF: o arquivo precisa existir na nossa loja, ser PDF de verdade e caber no limite
+        const { verifyStoredPdf } = await import("./lib/pdf-storage");
+        const pdfCheck = body.pdfUrl ? await verifyStoredPdf(body.pdfUrl) : { ok: false as const, error: "Envie o PDF da obra." };
+        if (!pdfCheck.ok) {
+          return new Response(JSON.stringify({ error: pdfCheck.error }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const previewCheck = body.previewUrl ? await verifyStoredPdf(body.previewUrl) : null;
         const submitted = await submitWork({
           authorId: session.user.id,
           title: body.title ?? "",
           medium: (body.medium ?? "livro") as import("./lib/beyond-data").Medium,
           artistName: body.artistName ?? session.user.name ?? "",
           excerpt: body.excerpt ?? "",
-          body: body.body ?? "",
+          body: "",
           tags: body.tags ?? "",
           pdfUrl: body.pdfUrl ?? null,
+          previewUrl: previewCheck?.ok ? body.previewUrl ?? null : null,
+          pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 && (body.pdfPages ?? 0) < 5000 ? body.pdfPages! : null,
           coverUrl: body.coverUrl ?? null,
           status: toAuthorStatus(body.status),
         });
@@ -2054,13 +2098,21 @@ ${catalog}
         const site = request.headers.get("sec-fetch-site");
         if (!dest || !["empty"].includes(dest)) return denied(403);
         if (site && site !== "same-origin") return denied(403);
-        const { fetchWorkBySlug } = await import("./lib/beyond-db");
-        const dbWork = await fetchWorkBySlug(decodeURIComponent(pdfMatch[1]!));
+        const { prisma: prismaPdf } = await import("./lib/prisma");
+        const dbWork = await prismaPdf.work.findUnique({
+          where: { slug: decodeURIComponent(pdfMatch[1]!) },
+          select: { status: true, pdfUrl: true, previewUrl: true },
+        });
         if (!dbWork || dbWork.status !== "approved" || !dbWork.pdfUrl) return denied();
-        // Limite diário de contas gratuitas: sem cota, sem arquivo
+        // Obra inteira só com login; sem login, só a prévia (2 primeiras páginas)
+        const wantPreview = new URL(request.url).searchParams.get("previa") === "1";
         const { auth } = await import("./lib/auth-server");
         const sessionPdf = await auth.api.getSession({ headers: request.headers }).catch(() => null);
-        if (sessionPdf?.user) {
+        if (!wantPreview && !sessionPdf?.user) return denied(401);
+        const fileUrl = wantPreview ? dbWork.previewUrl : dbWork.pdfUrl;
+        if (!fileUrl) return denied();
+        // Limite diário de contas gratuitas: sem cota, sem arquivo
+        if (!wantPreview && sessionPdf?.user) {
           const { prisma: prismaP } = await import("./lib/prisma");
           const prof = await prismaP.profile.findUnique({ where: { id: sessionPdf.user.id }, select: { role: true } });
           const unlimited = prof && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(prof.role);
@@ -2070,17 +2122,24 @@ ${catalog}
             if (quota.remaining <= 0) return denied(403);
           }
         }
+        // Leitura por partes: o visor pede só os pedaços que precisa (Range)
+        const range = request.headers.get("range");
+        const safeRange = range && /^bytes=\d*-\d*$/.test(range) ? range : null;
         const { get: blobGetPdf } = await import("@vercel/blob");
-        const file = await blobGetPdf(dbWork.pdfUrl, { access: "private" }).catch(() => null);
+        const file = await blobGetPdf(fileUrl, { access: "private", ...(safeRange ? { headers: { range: safeRange } } : {}) }).catch(() => null);
         if (!file || file.stream === null) return denied();
-        return new Response(file.stream, {
-          headers: {
-            "content-type": "application/octet-stream",
-            "cache-control": "private, no-store",
-            "x-content-type-options": "nosniff",
-            "content-security-policy": "default-src 'none'; sandbox",
-          },
+        const out = new Headers({
+          "content-type": "application/octet-stream",
+          "cache-control": "private, no-store",
+          "x-content-type-options": "nosniff",
+          "content-security-policy": "default-src 'none'; sandbox",
+          "accept-ranges": "bytes",
         });
+        const contentRange = file.headers.get("content-range");
+        const contentLength = file.headers.get("content-length");
+        if (contentRange) out.set("content-range", contentRange);
+        if (contentLength) out.set("content-length", contentLength);
+        return new Response(file.stream, { status: contentRange ? 206 : 200, headers: out });
       }
 
       if (pathname.startsWith("/api/reader/") && request.method === "GET") {
@@ -2091,8 +2150,9 @@ ${catalog}
         if (!dbWork || dbWork.status !== "approved") {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
-        const isWebtoon = ["manhwa", "manhua"].includes(dbWork.medium);
-        const isPdf = !isWebtoon && !dbWork.body?.trim() && !!dbWork.pdfUrl;
+        // Obra com PDF abre no visor de PDF, qualquer que seja o formato
+        const isPdf = !!dbWork.pdfUrl;
+        const isWebtoon = !isPdf && ["manhwa", "manhua"].includes(dbWork.medium);
         if (!isWebtoon && !isPdf && !dbWork.body?.trim()) {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
@@ -2103,7 +2163,11 @@ ${catalog}
 
         // ?meta=1 → só os dados da obra (usado pelo loader no servidor, sem cookies)
         if (new URL(request.url).searchParams.get("meta") === "1") {
-          return new Response(JSON.stringify({ work, readerMode }), { headers: noStore });
+          const { prisma: prismaMeta } = await import("./lib/prisma");
+          const extra = isPdf
+            ? await prismaMeta.work.findUnique({ where: { id: dbWork.id }, select: { previewUrl: true, pdfPages: true } })
+            : null;
+          return new Response(JSON.stringify({ work, readerMode, hasPreview: !!extra?.previewUrl, pdfPages: extra?.pdfPages ?? null }), { headers: noStore });
         }
 
         // Limite diário conferido no servidor para contas gratuitas logadas.

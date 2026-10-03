@@ -102,6 +102,8 @@ export async function submitWork(input: {
   body: string;
   tags: string;
   pdfUrl?: string | null;
+  previewUrl?: string | null;
+  pdfPages?: number | null;
   coverUrl?: string | null;
   status: "pending" | "draft";
 }) {
@@ -121,6 +123,8 @@ export async function submitWork(input: {
       body: ["manhwa", "manhua"].includes(input.medium) ? input.body : sanitizeWorkHtml(input.body),
       tags: input.tags,
       pdfUrl: input.pdfUrl ?? null,
+      previewUrl: input.previewUrl ?? null,
+      pdfPages: input.pdfPages ?? null,
       coverUrl: input.coverUrl ?? null,
       status: toAuthorStatus(input.status),
     },

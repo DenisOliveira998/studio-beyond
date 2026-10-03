@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { RichEditor } from "@/components/RichEditor";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -188,6 +187,7 @@ function Dashboard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<"idle" | "cover" | "pdf" | "work">("idle");
+  const [pdfProgress, setPdfProgress] = useState<{ message: string; percent: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
@@ -252,6 +252,8 @@ function Dashboard() {
     setUploading(true);
     setUploadStep("idle");
     let pdfUrl: string | null = null;
+    let previewUrl: string | null = null;
+    let pdfPages: number | null = null;
     let coverUrl: string | null = null;
     try {
       // Se tiver capa selecionada, faz upload primeiro
@@ -270,21 +272,45 @@ function Dashboard() {
         }
         coverUrl = data.url;
       }
-      // Se tiver PDF selecionado, faz upload
+      // PDF: comprime no navegador e envia direto para o armazenamento (até 100 MB)
       if (pdfFile) {
         setUploadStep("pdf");
-        const fd = new FormData();
-        fd.append("file", pdfFile);
-        fd.append("purpose", "work");
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const data = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !data.url) {
-          toast.error(data.error ?? "Erro ao enviar o PDF.");
+        try {
+          const { optimizePdf, formatBytes } = await import("@/lib/pdf-optimize");
+          const { uploadPresigned } = await import("@vercel/blob/client");
+          const comic = ["Mangá", "HQ", "Manhwa", "Manhua"].includes(workType ?? "");
+          const opt = await optimizePdf(pdfFile, {
+            comic,
+            onProgress: (message, percent) => setPdfProgress({ message, percent: Math.round(percent * 0.5) }),
+          });
+          if (opt.full.size > 100 * 1024 * 1024) throw new Error("O PDF passa de 100 MB mesmo depois de comprimido.");
+          const base = pdfFile.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "obra";
+          const sent = await uploadPresigned(`obras/${base}.pdf`, opt.full, {
+            access: "private",
+            handleUploadUrl: "/api/upload/presign",
+            contentType: "application/pdf",
+            multipart: opt.full.size > 8 * 1024 * 1024,
+            onUploadProgress: (e) => setPdfProgress({ message: `Enviando ${formatBytes(opt.full.size)}…`, percent: 50 + Math.round(e.percentage * 0.45) }),
+          });
+          const sentPreview = await uploadPresigned(`obras/${base}-previa.pdf`, opt.preview, {
+            access: "private",
+            handleUploadUrl: "/api/upload/presign",
+            contentType: "application/pdf",
+          });
+          pdfUrl = sent.url;
+          previewUrl = sentPreview.url;
+          pdfPages = opt.pages;
+          setPdfProgress({ message: "PDF enviado", percent: 100 });
+          if (opt.finalBytes < opt.originalBytes) {
+            toast.success(`PDF comprimido de ${formatBytes(opt.originalBytes)} para ${formatBytes(opt.finalBytes)}.`);
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Erro ao enviar o PDF.");
           setUploading(false);
           setUploadStep("idle");
+          setPdfProgress(null);
           return;
         }
-        pdfUrl = data.url;
       }
       setUploadStep("work");
 
@@ -301,9 +327,10 @@ function Dashboard() {
           medium,
           artistName: artistNameInput.trim() || displayName,
           excerpt: synopsis.trim(),
-          body,
           tags: tags.join(", "),
           pdfUrl,
+          previewUrl,
+          pdfPages,
           coverUrl,
           status: kind === "publish" ? "pending" : "draft",
         }),
@@ -529,17 +556,6 @@ function Dashboard() {
                 </p>
               </Field>
 
-              <Field label="Conteúdo para leitura web" htmlFor="obra-conteudo">
-                <RichEditor
-                  value={body}
-                  onChange={setBody}
-                  placeholder={'Cole ou escreva o texto completo da obra aqui. Quando preenchido, habilita o botão "Ler online" na página pública.'}
-                  maxChars={300000}
-                />
-                <p className="mt-1 text-xs text-muted-foreground/60">
-                  Opcional — sem isso, a obra fica disponível apenas via arquivo. Com isso, os leitores podem ler diretamente no site.
-                </p>
-              </Field>
 
               <Field label="Imagem de capa *" htmlFor="obra-capa">
                 <input
@@ -585,8 +601,17 @@ function Dashboard() {
                   <FileUp className="size-5 text-gilt" strokeWidth={1.5} />
                   {pdfName ?? "Clique para enviar o arquivo (obrigatório)"}
                 </button>
+                {pdfProgress && (
+                  <div className="mt-3" role="status" aria-live="polite">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                      <div className="h-full rounded-full bg-gilt transition-all" style={{ width: `${pdfProgress.percent}%` }} />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{pdfProgress.message}</p>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-muted-foreground/60">
-                  Formato aceito: PDF. Os leitores leem a obra dentro do site, sem opção de download.
+                  Formato aceito: PDF, até 100 MB. O arquivo é comprimido antes do envio, e os leitores leem a obra
+                  dentro do site, sem opção de download.
                 </p>
               </Field>
 
@@ -632,12 +657,6 @@ function Dashboard() {
                   <>
                     <p className="eyebrow text-muted-foreground">{workType}</p>
                     <h3 className="mt-2 font-display text-2xl tracking-tight">{title}</h3>
-                    {body && (
-                      <div
-                        className="prose mt-4 max-w-none text-sm text-muted-foreground"
-                        dangerouslySetInnerHTML={{ __html: body.slice(0, 800) + (body.length > 800 ? "…" : "") }}
-                      />
-                    )}
                     {tags.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {tags.map((t) => (

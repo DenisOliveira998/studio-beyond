@@ -32,11 +32,14 @@ export function PdfViewer({
   slug,
   bodyRef,
   enabled,
+  preview = false,
   defaultTheme = "original",
 }: {
   slug: string;
   bodyRef: React.RefObject<HTMLDivElement | null>;
   enabled: boolean;
+  /** Só as 2 primeiras páginas (visitante sem login) */
+  preview?: boolean;
   /** Prosa abre no escuro; quadrinhos, no original (não altera a arte). */
   defaultTheme?: PdfTheme;
 }) {
@@ -76,10 +79,13 @@ export function PdfViewer({
       try {
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
-        const res = await fetch(`/api/reader/${encodeURIComponent(slug)}/arquivo`, { credentials: "same-origin" });
-        if (!res.ok) throw new Error(String(res.status));
-        const data = new Uint8Array(await res.arrayBuffer());
-        const doc = await pdfjs.getDocument({ data }).promise;
+        // Carrega por partes: a primeira página aparece sem baixar o arquivo inteiro
+        const doc = await pdfjs.getDocument({
+          url: `/api/reader/${encodeURIComponent(slug)}/arquivo${preview ? "?previa=1" : ""}`,
+          rangeChunkSize: 512 * 1024,
+          disableAutoFetch: true,
+          disableStream: true,
+        }).promise;
         if (cancelled) return void doc.destroy();
         loaded = doc;
         setDoc(doc);
@@ -93,7 +99,7 @@ export function PdfViewer({
       setDoc(null);
       void loaded?.destroy();
     };
-  }, [slug, enabled]);
+  }, [slug, enabled, preview]);
 
   if (state === "error") {
     return (

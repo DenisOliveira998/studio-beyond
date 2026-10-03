@@ -48,7 +48,7 @@ export const Route = createFileRoute("/ler/$slug")({
     const res = await fetch(`${base}/api/reader/${params.slug}?meta=1`);
     if (res.status === 404) throw notFound();
     if (!res.ok) throw new Error("Falha ao carregar obra");
-    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" | "pdf" };
+    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" | "pdf"; hasPreview?: boolean; pdfPages?: number | null };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Obra não encontrada | Go Beyondd" }] };
@@ -313,7 +313,48 @@ function ReaderPage() {
         {/* Corpo da obra */}
         <div className="relative">
           {isPdf ? (
-            <PdfViewer slug={work.slug} bodyRef={bodyRef} enabled={!authLoading && !contentLoading && !quotaExhausted} defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"} />
+            authLoading ? (
+              <div className="flex justify-center py-24">
+                <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
+              </div>
+            ) : !user && !loaderData.hasPreview ? (
+              <div ref={bodyRef} className="rounded border border-border bg-surface px-6 py-12 text-center">
+                <h2 className="font-display text-2xl font-bold tracking-tight">Entre para ler esta obra</h2>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  A leitura é gratuita: basta ter uma conta. Leva menos de um minuto.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
+                  <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
+                    Já tenho conta
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <>
+                <PdfViewer
+                  slug={work.slug}
+                  bodyRef={bodyRef}
+                  enabled={!contentLoading && !quotaExhausted}
+                  preview={!user}
+                  defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"}
+                />
+                {!user && (
+                  <div className="mt-6 rounded border border-border bg-surface px-6 py-10 text-center">
+                    <h2 className="font-display text-2xl font-bold tracking-tight">Gostou do começo?</h2>
+                    <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                      Estas são as 2 primeiras páginas{loaderData.pdfPages ? ` de ${loaderData.pdfPages}` : ""}. Crie sua conta grátis para ler o resto.
+                    </p>
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                      <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
+                      <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
+                        Já tenho conta
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
           ) : isWebtoon ? (
             <WebtoonBody images={bodyImages} bodyRef={bodyRef} loading={authLoading || contentLoading} />
           ) : (

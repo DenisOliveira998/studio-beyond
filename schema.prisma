@@ -146,6 +146,8 @@ model Work {
   body        String       @db.LongText
   coverUrl    String?      @db.Text
   pdfUrl      String?      @db.Text
+  previewUrl  String?      @db.Text // prévia (2 primeiras páginas) para quem não está logado
+  pdfPages    Int? // número de páginas do PDF
   genre       String?
   tags        String?
   status      ReviewStatus @default(pending)

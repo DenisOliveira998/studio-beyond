@@ -85,6 +85,8 @@ const FILE_SIGNATURES: { type: string; ext: string; test: (b: Uint8Array) => boo
 
 /** Limite de tamanho (o limite de corpo das funções da Vercel é ~4,5 MB). */
 export const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+/** PDF da obra: enviado direto do navegador para o Blob (não passa pelo limite de 4,5 MB do servidor). */
+export const MAX_WORK_PDF_BYTES = 100 * 1024 * 1024;
 
 /** Identifica o tipo real pelo conteúdo (não pelo nome nem pelo tipo informado pelo navegador). */
 export function detectFileType(bytes: Uint8Array): { type: string; ext: string } | null {
