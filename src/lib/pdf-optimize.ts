@@ -104,7 +104,18 @@ export async function optimizePdf(file: File, opts: { comic: boolean; onProgress
   }
 
   opts.onProgress?.("Gerando a prévia…", 92);
-  const preview = await rasterize(best, 2);
+  // Prévia: copia as 2 primeiras páginas (leve e nítida); só vira imagem se o PDF for protegido
+  let preview: Uint8Array;
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const src = await PDFDocument.load(best, { updateMetadata: false });
+    const out = await PDFDocument.create();
+    const copied = await out.copyPages(src, [0, 1].filter((i) => i < src.getPageCount()));
+    for (const page of copied) out.addPage(page);
+    preview = await out.save({ useObjectStreams: true });
+  } catch {
+    preview = await rasterize(best, 2);
+  }
   opts.onProgress?.("Pronto para enviar", 100);
 
   // Uint8Array.slice() garante um ArrayBuffer comum para o Blob
