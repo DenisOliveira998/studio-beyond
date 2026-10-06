@@ -512,6 +512,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             totalCents: split.grossCents,
             destino: cfg.feeMode === "retida" ? "plataforma" : "autor",
             available: await paymentsOpenFor(role),
+            testMode: await (await import("./lib/payments")).paymentsTestMode(),
             ...detail,
           }),
           { headers: { "content-type": "application/json", "cache-control": "private, no-store" } },
@@ -612,6 +613,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           JSON.stringify({
             prices: { fa: cfg.priceFaCents, superfa: cfg.priceSuperFaCents },
             available: await paymentsOpenFor(role),
+            testMode: await (await import("./lib/payments")).paymentsTestMode(),
             loggedIn: !!s?.user,
             current,
           }),

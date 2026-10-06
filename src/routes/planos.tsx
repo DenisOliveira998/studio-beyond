@@ -105,6 +105,7 @@ const FAQ = [
 type PlanosData = {
   prices: { fa: number; superfa: number };
   available: boolean;
+  testMode?: boolean;
   loggedIn: boolean;
   current: { plan: string; status: string; priceCents: number; nextPaymentAt: string | null } | null;
 };
@@ -217,6 +218,15 @@ function PlansPage() {
           </span>
         </span>
       </div>}
+
+      {/* Modo de teste: ninguém paga de verdade */}
+      {available && planos?.testMode && (
+        <div className="mb-10 rounded border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm leading-relaxed">
+          <strong>Modo de teste.</strong> Nenhum valor real é cobrado. Para testar, use o cartão de teste do Mercado Pago:
+          <span className="font-mono"> 5031 4332 1540 6351</span>, validade <span className="font-mono">11/30</span>, CVV{" "}
+          <span className="font-mono">123</span>, titular <span className="font-mono">APRO</span>. Não use seu cartão de verdade.
+        </div>
+      )}
 
       {/* Assinatura atual */}
       {planos?.current && (

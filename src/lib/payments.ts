@@ -94,10 +94,15 @@ export async function paymentsTestMode(): Promise<boolean> {
   }
 }
 
-/** Pagamentos abertos para esta pessoa? Produção: todos. Teste: só a equipe. */
+/**
+ * Pagamentos abertos para esta pessoa? Produção: todos. Teste: só a equipe, a não ser que a
+ * variável MERCADOPAGO_TEST_OPEN=true esteja ligada na Vercel (bateria de testes com usuários).
+ * Fica na Vercel, e não no admin, para uma conta de admin invadida não conseguir mexer nisso.
+ */
 export async function paymentsOpenFor(role: string | null | undefined): Promise<boolean> {
   if (!paymentsEnabled()) return false;
   if (!(await paymentsTestMode())) return true;
+  if (process.env["MERCADOPAGO_TEST_OPEN"] === "true") return true;
   return !!role && ["gerente", "admin", "owner"].includes(role);
 }
 

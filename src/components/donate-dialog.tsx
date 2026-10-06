@@ -15,6 +15,7 @@ const presets = [5, 15, 40, 100];
 type Quote = {
   totalCents: number;
   available?: boolean;
+  testMode?: boolean;
   destino: "autor" | "plataforma";
   feeCents?: number;
   authorCents?: number;
@@ -162,7 +163,9 @@ export function DonateDialog({
         <p className="text-center text-xs text-muted-foreground">
           {closed
             ? "Estamos finalizando os pagamentos. Em breve você vai poder apoiar os autores por aqui."
-            : "Pagamento seguro pelo Mercado Pago: Pix, cartão ou boleto. Você volta para cá depois."}
+            : quote?.testMode
+              ? "Modo de teste: nenhum valor real é cobrado. Use o cartão de teste 5031 4332 1540 6351, validade 11/30, CVV 123, titular APRO."
+              : "Pagamento seguro pelo Mercado Pago: Pix, cartão ou boleto. Você volta para cá depois."}
         </p>
       </DialogContent>
     </Dialog>
