@@ -73,13 +73,14 @@ export function chapterAccess(
 
 /** O arquivo já é usado por alguma obra, capítulo, candidatura ou foto? (impede apontar para arquivo alheio) */
 export async function blobUrlInUse(url: string): Promise<boolean> {
-  const [w, c, a, b] = await Promise.all([
+  const [w, c, a, b, r] = await Promise.all([
     prisma.work.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }, { coverUrl: url }] }, select: { id: true } }),
     prisma.chapter.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }] }, select: { id: true } }),
     prisma.authorApplication.findFirst({ where: { portfolioFiles: { contains: url } }, select: { id: true } }),
     prisma.authorBio.findFirst({ where: { avatarUrl: url }, select: { userId: true } }).catch(() => null),
+    prisma.workRevision.findFirst({ where: { status: "pending", data: { contains: url } }, select: { id: true } }),
   ]);
-  return !!(w || c || a || b);
+  return !!(w || c || a || b || r);
 }
 
 /** Avisa quem segue o autor e quem favoritou a obra (sem duplicar e sem avisar o próprio autor). */
@@ -108,7 +109,18 @@ async function notifyNewChapter(
   }
 }
 
-/** Autor publica um capítulo numa obra já aprovada pela curadoria (o capítulo vai direto ao ar). */
+export type NewChapterData = { number: number; title: string | null; pdfUrl: string; previewUrl: string | null; pdfPages: number | null };
+
+/** Números de capítulos novos que estão esperando a curadoria nesta obra. */
+export async function pendingChapterNumbers(workId: string): Promise<{ id: string; number: number; title: string | null; createdAt: string }[]> {
+  const rows = await prisma.workRevision.findMany({ where: { workId, kind: "new_chapter", status: "pending" }, orderBy: { createdAt: "asc" } });
+  return rows.map((r) => {
+    const d = JSON.parse(r.data) as NewChapterData;
+    return { id: r.id, number: Number(d.number), title: d.title ?? null, createdAt: r.createdAt.toISOString() };
+  });
+}
+
+/** Autor envia um capítulo novo: vai para a curadoria e só entra no ar quando a equipe aprovar. */
 export async function createChapter(input: {
   workId: string;
   authorId: string;
@@ -128,27 +140,50 @@ export async function createChapter(input: {
   if (!Number.isFinite(number) || number < 0 || number > 99999) throw new Error("Número de capítulo inválido.");
   const taken = await prisma.chapter.findFirst({ where: { workId: work.id, number } });
   if (taken) throw new Error(`Já existe o ${chapterLabel(number)} nesta obra.`);
-  const count = await prisma.chapter.count({ where: { workId: work.id } });
+  if ((await pendingChapterNumbers(work.id)).some((p) => p.number === number)) {
+    throw new Error(`O ${chapterLabel(number)} já está esperando a curadoria.`);
+  }
+  const data: NewChapterData = {
+    number,
+    title: cleanChapterTitle(input.title),
+    pdfUrl: input.pdfUrl,
+    previewUrl: input.previewUrl,
+    pdfPages: input.pdfPages,
+  };
+  await prisma.workRevision.create({ data: { workId: work.id, authorId: input.authorId, kind: "new_chapter", data: JSON.stringify(data) } });
+  return { number };
+}
+
+/** Capítulo aprovado pela curadoria entra no ar: 3 dias só para Super Fã (menos o primeiro) e aviso aos leitores. */
+async function publishApprovedChapter(workId: string, d: NewChapterData) {
+  const work = await prisma.work.findUnique({
+    where: { id: workId },
+    select: { id: true, slug: true, title: true, artistSlug: true, artistName: true, authorId: true },
+  });
+  if (!work) throw new Error("Obra não encontrada.");
+  const number = Number(d.number);
+  if (await prisma.chapter.findFirst({ where: { workId, number } })) {
+    throw new Error(`Já existe o ${chapterLabel(number)} nesta obra. Recuse este pedido.`);
+  }
+  const count = await prisma.chapter.count({ where: { workId } });
   const now = new Date();
-  // O primeiro capítulo de uma obra não tem acesso antecipado; os seguintes, 3 dias para Super Fã
   const early = count > 0;
-  const chapterTitle = cleanChapterTitle(input.title);
+  const chapterTitle = cleanChapterTitle(d.title);
   await prisma.chapter.create({
     data: {
-      workId: work.id,
+      workId,
       number,
       title: chapterTitle,
-      pdfUrl: input.pdfUrl,
-      previewUrl: input.previewUrl,
-      pdfPages: input.pdfPages,
+      pdfUrl: d.pdfUrl,
+      previewUrl: d.previewUrl,
+      pdfPages: d.pdfPages,
       publishedAt: now,
       earlyUntil: early ? new Date(now.getTime() + EARLY_ACCESS_DAYS * 86_400_000) : null,
     },
   });
   // Obra sobe em "atualizadas"
-  await prisma.work.update({ where: { id: work.id }, data: { updatedAt: now } });
+  await prisma.work.update({ where: { id: workId }, data: { updatedAt: now } });
   await notifyNewChapter(work, number, early, chapterTitle).catch((e) => console.error("notificação de capítulo falhou", e));
-  return { number };
 }
 
 /** Primeiro capítulo, criado junto com a obra (antes da curadoria; sem acesso antecipado). */
@@ -161,14 +196,18 @@ export async function createInitialChapter(input: { workId: string; number: numb
 
 /* ---------- revisões (curadoria de alterações) ---------- */
 
-export type WorkRevisionData = { title?: string; excerpt?: string; coverUrl?: string; medium?: string };
+export type WorkRevisionData = { title?: string; excerpt?: string; coverUrl?: string; medium?: string; workStatus?: string; tags?: string; unpublish?: boolean };
 export type ChapterRevisionData = { pdfUrl?: string; previewUrl?: string | null; pdfPages?: number | null; title?: string | null };
 
 export async function requestWorkRevision(workId: string, authorId: string, data: WorkRevisionData) {
   const work = await prisma.work.findFirst({ where: { id: workId, authorId }, select: { id: true } });
   if (!work) throw new Error("Obra não encontrada.");
-  // Um pedido pendente por obra: o novo substitui o anterior
-  await prisma.workRevision.updateMany({ where: { workId, kind: "work", status: "pending" }, data: { status: "rejected", note: "Substituído por um pedido mais novo." } });
+  // Um pedido pendente por obra: o novo se junta ao anterior (o campo mais novo vale)
+  const open = await prisma.workRevision.findFirst({ where: { workId, kind: "work", status: "pending" }, orderBy: { createdAt: "desc" } });
+  if (open) {
+    const merged = { ...(JSON.parse(open.data) as WorkRevisionData), ...data };
+    return prisma.workRevision.update({ where: { id: open.id }, data: { data: JSON.stringify(merged), createdAt: new Date() } });
+  }
   return prisma.workRevision.create({ data: { workId, authorId, kind: "work", data: JSON.stringify(data) } });
 }
 
@@ -185,7 +224,7 @@ export async function listPendingRevisions() {
   const rows = await prisma.workRevision.findMany({ where: { status: "pending" }, orderBy: { createdAt: "asc" }, take: 100 });
   const works = await prisma.work.findMany({
     where: { id: { in: [...new Set(rows.map((r) => r.workId))] } },
-    select: { id: true, slug: true, title: true, excerpt: true, coverUrl: true, medium: true, artistName: true },
+    select: { id: true, slug: true, title: true, excerpt: true, coverUrl: true, medium: true, artistName: true, tags: true },
   });
   const chapters = await prisma.chapter.findMany({
     where: { id: { in: rows.map((r) => r.chapterId).filter((x): x is string => !!x) } },
@@ -197,7 +236,11 @@ export async function listPendingRevisions() {
     createdAt: r.createdAt.toISOString(),
     data: JSON.parse(r.data) as Record<string, unknown>,
     work: works.find((w) => w.id === r.workId) ?? null,
-    chapterNumber: r.chapterId ? Number(chapters.find((c) => c.id === r.chapterId)?.number ?? 0) : null,
+    chapterNumber: r.chapterId
+      ? Number(chapters.find((c) => c.id === r.chapterId)?.number ?? 0)
+      : r.kind === "new_chapter"
+        ? Number((JSON.parse(r.data) as NewChapterData).number)
+        : null,
     chapterTitle: r.chapterId ? (chapters.find((c) => c.id === r.chapterId)?.title ?? null) : null,
   }));
 }
@@ -215,7 +258,12 @@ export async function decideRevision(id: string, approve: boolean, reviewerId: s
       if (typeof data["excerpt"] === "string" && data["excerpt"].trim()) patch["excerpt"] = String(data["excerpt"]).slice(0, 240);
       if (typeof data["coverUrl"] === "string") patch["coverUrl"] = data["coverUrl"];
       if (typeof data["medium"] === "string") patch["medium"] = data["medium"];
+      if (data["workStatus"] === "andamento" || data["workStatus"] === "finalizado" || data["workStatus"] === "paralisado") patch["workStatus"] = data["workStatus"];
+      if (typeof data["tags"] === "string" && data["tags"].trim()) patch["tags"] = data["tags"];
+      if (data["unpublish"] === true) patch["status"] = "draft";
       await prisma.work.update({ where: { id: rev.workId }, data: patch });
+    } else if (rev.kind === "new_chapter") {
+      await publishApprovedChapter(rev.workId, data as unknown as NewChapterData);
     } else if (rev.chapterId) {
       const patch: Record<string, unknown> = {};
       if (typeof data["pdfUrl"] === "string") {
@@ -233,12 +281,18 @@ export async function decideRevision(id: string, approve: boolean, reviewerId: s
   });
   if (work) {
     const { stripHtml } = await import("@/lib/utils");
+    const isNew = rev.kind === "new_chapter";
+    const cap = isNew ? chapterLabel(Number((JSON.parse(rev.data) as NewChapterData).number)) : "";
     await prisma.notification.create({
       data: {
         userId: rev.authorId,
         type: approve ? "revision_approved" : "revision_rejected",
-        title: approve ? `Alteração aprovada em ${stripHtml(work.title)}` : `Alteração recusada em ${stripHtml(work.title)}`,
-        body: note ?? (approve ? "Sua alteração já está no ar." : "A versão anterior continua no ar."),
+        title: isNew
+          ? `${cap} ${approve ? "aprovado" : "recusado"} em ${stripHtml(work.title)}`
+          : approve ? `Alteração aprovada em ${stripHtml(work.title)}` : `Alteração recusada em ${stripHtml(work.title)}`,
+        body: note ?? (isNew
+          ? (approve ? "O capítulo já está no ar e os seus leitores foram avisados." : "O capítulo não foi publicado.")
+          : (approve ? "Sua alteração já está no ar." : "A versão anterior continua no ar.")),
         link: `/obra/${work.slug}`,
       },
     }).catch(() => {});

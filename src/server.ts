@@ -1044,7 +1044,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (request.method === "GET") {
           const { info } = await chapters.listChapters(work.id);
           const pending = await prismaCh.workRevision.findMany({ where: { workId: work.id, status: "pending" }, select: { kind: true, chapterId: true, createdAt: true } });
-          return json({ status: work.status, chapters: info, pending });
+          const pendingNew = await chapters.pendingChapterNumbers(work.id);
+          return json({ status: work.status, chapters: info, pending, pendingNew });
         }
         if (!(await rateLimit(`capitulo:user:${session.user.id}`, 30, 60 * 60))) return tooManyRequests("Muitos envios em pouco tempo.");
         const body = (await request.json().catch(() => ({}))) as { number?: number; title?: string; pdfUrl?: string; previewUrl?: string; pdfPages?: number };
@@ -1150,21 +1151,31 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
         }
         const workId = authorWorkMatch[1]!;
-        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; tags?: string; status?: "pending" | "draft" };
+        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; tags?: string; workStatus?: string; status?: "pending" | "draft" };
+        if (body.workStatus !== undefined && !["andamento", "finalizado", "paralisado"].includes(body.workStatus)) {
+          return new Response(JSON.stringify({ error: "Situação inválida." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
         const { updateAuthorWork, insertAuditLog, cleanTags } = await import("./lib/beyond-db");
-        // Gêneros entram direto (lista fechada), mas nunca vazios
+        // Gêneros nunca vazios
         if (body.tags !== undefined) {
           const list = cleanTags(body.tags);
           if (list.length === 0) {
             return new Response(JSON.stringify({ error: "Escolha pelo menos um gênero." }), { status: 400, headers: { "content-type": "application/json" } });
           }
-          await updateAuthorWork(workId, session.user.id, { tags: list.join(", ") }).catch(() => null);
-          delete body.tags;
+          body.tags = list.join(", ");
         }
-        // Obra já aprovada: nome, sinopse, capa e formato passam pela curadoria de novo (a versão atual segue no ar)
         const { prisma: prismaEd } = await import("./lib/prisma");
         const current = await prismaEd.work.findFirst({ where: { id: workId, authorId: session.user.id }, select: { status: true } });
-        if (current?.status === "approved" && (body.title !== undefined || body.medium !== undefined || body.excerpt !== undefined || body.coverUrl !== undefined)) {
+        if (!current) return new Response(JSON.stringify({ error: "Obra não encontrada." }), { status: 404, headers: { "content-type": "application/json" } });
+        // Obra no ar: despublicar também passa pela curadoria (continua no ar até a aprovação)
+        if (current.status === "approved" && body.status === "draft") {
+          const { requestWorkRevision } = await import("./lib/chapters");
+          await requestWorkRevision(workId, session.user.id, { unpublish: true });
+          return new Response(JSON.stringify({ ok: true, review: true }), { headers: { "content-type": "application/json" } });
+        }
+        if (current.status === "approved") delete body.status; // já está no ar
+        // Obra no ar: nome, sinopse, capa, formato, situação e gêneros passam pela curadoria (a versão atual segue no ar)
+        if (current.status === "approved" && (body.title !== undefined || body.medium !== undefined || body.excerpt !== undefined || body.coverUrl !== undefined || body.workStatus !== undefined || body.tags !== undefined)) {
           const { requestWorkRevision, blobUrlInUse } = await import("./lib/chapters");
           if (body.coverUrl && (await blobUrlInUse(body.coverUrl))) {
             return new Response(JSON.stringify({ error: "Envie uma capa nova." }), { status: 400, headers: { "content-type": "application/json" } });
@@ -1174,10 +1185,20 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             ...(body.medium !== undefined ? { medium: body.medium } : {}),
             ...(body.excerpt !== undefined ? { excerpt: body.excerpt } : {}),
             ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
+            ...(body.workStatus !== undefined ? { workStatus: body.workStatus } : {}),
+            ...(body.tags !== undefined ? { tags: body.tags } : {}),
           });
           return new Response(JSON.stringify({ ok: true, review: true }), { headers: { "content-type": "application/json" } });
         }
-        if (body.title === undefined && body.medium === undefined && body.status === undefined) {
+        // Obra ainda fora do ar: a situação muda direto
+        if (body.workStatus !== undefined) {
+          const { prisma: prismaWs } = await import("./lib/prisma");
+          await prismaWs.work.updateMany({
+            where: { id: workId, authorId: session.user.id },
+            data: { workStatus: body.workStatus as "andamento" | "finalizado" | "paralisado" },
+          });
+        }
+        if (body.title === undefined && body.medium === undefined && body.status === undefined && body.tags === undefined) {
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         try {

@@ -229,8 +229,8 @@ function useBookmark(slug: string, artistSlug: string, onRequireLogin: () => voi
 
 const STATUS_CONFIG = {
   andamento: { label: "EM ANDAMENTO", cls: "border-gilt/60 text-gilt bg-gilt/10" },
-  finalizado: { label: "FINALIZADO", cls: "border-emerald-500/60 text-emerald-400 bg-emerald-500/10" },
-  paralisado: { label: "PARALISADO", cls: "border-red-500/60 text-red-400 bg-red-500/10" },
+  finalizado: { label: "FINALIZADA", cls: "border-emerald-500/60 text-emerald-400 bg-emerald-500/10" },
+  paralisado: { label: "PAUSADA", cls: "border-red-500/60 text-red-400 bg-red-500/10" },
 } as const;
 
 function StatusBadge({ status }: { status: keyof typeof STATUS_CONFIG }) {

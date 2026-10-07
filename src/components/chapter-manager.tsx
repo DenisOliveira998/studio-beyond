@@ -8,6 +8,7 @@ type ChaptersData = {
   status: string;
   chapters: ChapterInfo[];
   pending: { kind: string; chapterId: string | null; createdAt: string }[];
+  pendingNew?: { id: string; number: number; title: string | null; createdAt: string }[];
 };
 
 const label = (n: number, title?: string | null) => `Capítulo ${String(n).replace(".", ",")}${title ? ` - ${title}` : ""}`;
@@ -20,7 +21,9 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
     queryFn: () => fetch(`/api/works/${workId}/capitulos`).then((r) => r.json() as Promise<ChaptersData>),
   });
   const chapters = data?.chapters ?? [];
-  const nextNumber = chapters.length ? Math.floor(Math.max(...chapters.map((c) => c.number))) + 1 : 1;
+  const pendingNew = data?.pendingNew ?? [];
+  const allNumbers = [...chapters.map((c) => c.number), ...pendingNew.map((p) => p.number)];
+  const nextNumber = allNumbers.length ? Math.floor(Math.max(...allNumbers)) + 1 : 1;
 
   const [number, setNumber] = useState<string>("");
   const [newTitle, setNewTitle] = useState("");
@@ -48,6 +51,10 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
       toast.error(`Já existe o ${label(n)}. Use "Trocar PDF" nele ou escolha outro número.`);
       return;
     }
+    if (pendingNew.some((p) => p.number === n)) {
+      toast.error(`O ${label(n)} já está esperando a curadoria.`);
+      return;
+    }
     setBusy("novo");
     try {
       const r = await upload(file);
@@ -57,8 +64,8 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
         body: JSON.stringify({ number: n, title: newTitle.trim(), pdfUrl: r.pdfUrl, previewUrl: r.previewUrl, pdfPages: r.pages }),
       });
       const out = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(out.error ?? "Não foi possível publicar o capítulo.");
-      toast.success(`${label(n, newTitle.trim())} publicado. Quem segue você foi avisado.`);
+      if (!res.ok) throw new Error(out.error ?? "Não foi possível enviar o capítulo.");
+      toast.success(`${label(n, newTitle.trim())} enviado para a curadoria. Quando for aprovado, entra no ar e quem segue você é avisado.`);
       setNumber("");
       setNewTitle("");
       void qc.invalidateQueries({ queryKey: ["chapters-mine", workId] });
@@ -136,7 +143,13 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
         ) : (
           <>
             <ol className="mt-5 divide-y divide-border rounded border border-border">
-              {chapters.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">Nenhum capítulo ainda.</li>}
+              {chapters.length === 0 && pendingNew.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">Nenhum capítulo ainda.</li>}
+              {pendingNew.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                  <strong>{label(p.number, p.title)}</strong>
+                  <span className="text-xs text-amber-400">Esperando a curadoria</span>
+                </li>
+              ))}
               {chapters.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                   <span>
@@ -191,7 +204,8 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
               <p className="text-sm font-bold">Próximo capítulo</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Sugerimos o {label(nextNumber)}. Pode trocar o número para encaixar um capítulo esquecido: 0 para prólogo, 1,5
-                para um extra. A lista é ordenada pelo número. O capítulo vai direto ao ar e fica 3 dias só para Super Fãs.
+                para um extra. A lista é ordenada pelo número. O capítulo passa pela curadoria; quando aprovado, entra no ar e fica 3
+                dias só para Super Fãs.
               </p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="min-w-[180px] flex-1 text-sm">
@@ -222,7 +236,7 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
                   onClick={() => fileRef.current?.click()}
                   className="rounded-full bg-gilt px-5 py-2 text-sm font-bold text-ink disabled:opacity-50"
                 >
-                  {busy === "novo" ? "Publicando…" : "Escolher PDF e publicar"}
+                  {busy === "novo" ? "Enviando…" : "Escolher PDF e enviar"}
                 </button>
                 <input
                   ref={fileRef}

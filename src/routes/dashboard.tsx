@@ -165,6 +165,7 @@ function Dashboard() {
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [editWorkStatus, setEditWorkStatus] = useState<"andamento" | "finalizado" | "paralisado">("andamento");
 
   const DRAFT_KEY = "beyond_dashboard_draft_v1";
 
@@ -220,6 +221,11 @@ function Dashboard() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error();
+      const out = (await res.json().catch(() => ({}))) as { review?: boolean };
+      if (out.review) {
+        toast.success(`Pedido para despublicar "${workTitle}" enviado para a curadoria. A obra continua no ar até a aprovação.`);
+        return;
+      }
       setPublished((prev) => ({ ...prev, [id]: !isLive }));
       void queryClient.invalidateQueries({ queryKey: ["works-mine"] });
       void refetchDash();
@@ -486,6 +492,7 @@ function Dashboard() {
                               setEditTitle(w.title);
                               setEditType(WORK_TYPES.find((t) => t.toLowerCase() === w.medium) ?? WORK_TYPES[0] ?? "Livro");
                               setEditTags(w.tags ?? []);
+                              setEditWorkStatus(w.workStatus ?? "andamento");
                             }}
                           >
                             <Pencil className="size-3.5" /> Editar
@@ -977,8 +984,8 @@ function Dashboard() {
 
         {/* Modal de edição de obra (item 9) */}
         {editingWork && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="w-full max-w-lg border border-gilt/40 bg-surface p-8 shadow-[var(--shadow-gallery)]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-sm">
+            <div className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto border border-gilt/40 bg-surface p-8 shadow-[var(--shadow-gallery)]">
               <div className="flex items-center justify-between">
                 <p className="font-display text-xl tracking-tight">Editar obra</p>
                 <button
@@ -1011,6 +1018,25 @@ function Dashboard() {
                     ))}
                   </select>
                 </label>
+              </div>
+
+              <div className="mt-5">
+                <span className="eyebrow">Situação da obra</span>
+                <div role="group" aria-label="Situação da obra" className="mt-2 flex flex-wrap gap-2">
+                  {([["andamento", "Em andamento"], ["finalizado", "Finalizada"], ["paralisado", "Pausada"]] as const).map(([v, l]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={editWorkStatus === v}
+                      onClick={() => setEditWorkStatus(v)}
+                      className={`border px-3 py-1.5 text-xs transition-colors ${
+                        editWorkStatus === v ? "border-gilt bg-gilt/10 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-5">
@@ -1050,11 +1076,12 @@ function Dashboard() {
                       const res = await fetch(`/api/works/${editingWork.id}`, {
                         method: "PATCH",
                         headers: { "content-type": "application/json" },
-                        // Só manda o que mudou: nome e formato passam pela curadoria, gêneros entram direto
+                        // Só manda o que mudou (com a obra no ar, tudo passa pela curadoria)
                         body: JSON.stringify({
                           ...(editTitle !== editingWork.title ? { title: editTitle } : {}),
                           ...((mediumMap[editType] ?? "livro") !== editingWork.medium ? { medium: mediumMap[editType] ?? "livro" } : {}),
-                          tags: editTags.join(", "),
+                          ...([...editTags].sort().join(",") !== [...(editingWork.tags ?? [])].sort().join(",") ? { tags: editTags.join(", ") } : {}),
+                          ...(editWorkStatus !== (editingWork.workStatus ?? "andamento") ? { workStatus: editWorkStatus } : {}),
                         }),
                       });
                       if (!res.ok) throw new Error();

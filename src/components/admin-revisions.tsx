@@ -3,15 +3,16 @@ import { toast } from "sonner";
 
 type Revision = {
   id: string;
-  kind: "work" | "chapter";
+  kind: "work" | "chapter" | "new_chapter";
   createdAt: string;
   data: Record<string, unknown>;
-  work: { id: string; slug: string; title: string; excerpt: string; coverUrl: string | null; medium: string; artistName: string } | null;
+  work: { id: string; slug: string; title: string; excerpt: string; coverUrl: string | null; medium: string; artistName: string; tags?: string | null } | null;
   chapterNumber: number | null;
   chapterTitle: string | null;
 };
 
 const strip = (s: string) => s.replace(/<[^>]*>/g, "");
+const SITUACAO: Record<string, string> = { andamento: "Em andamento", finalizado: "Finalizada", paralisado: "Pausada" };
 
 /** Alterações que autores pediram em obras já aprovadas: nome, sinopse, capa, formato ou PDF de capítulo. */
 export function AdminRevisions() {
@@ -48,7 +49,12 @@ export function AdminRevisions() {
             <div>
               <p className="font-bold">
                 {r.work ? strip(r.work.title) : "Obra removida"}
-                {r.chapterNumber != null && <span className="font-normal text-muted-foreground"> · Capítulo {String(r.chapterNumber).replace(".", ",")}</span>}
+                {r.chapterNumber != null && (
+                  <span className="font-normal text-muted-foreground">
+                    {r.kind === "new_chapter" ? ". Capítulo novo: " : ". "}Capítulo {String(r.chapterNumber).replace(".", ",")}
+                    {r.kind === "new_chapter" && typeof r.data["title"] === "string" && r.data["title"] ? ` - ${r.data["title"]}` : ""}
+                  </span>
+                )}
               </p>
               <p className="text-xs text-muted-foreground">
                 {r.work?.artistName}. Pedido em {new Date(r.createdAt).toLocaleDateString("pt-BR")}
@@ -64,6 +70,22 @@ export function AdminRevisions() {
             </div>
           </div>
           <dl className="mt-4 grid gap-2">
+            {r.kind === "new_chapter" && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Capítulo novo, entra no ar ao aprovar</dt>
+                <dd>
+                  {typeof r.data["pdfPages"] === "number" ? `${r.data["pdfPages"]} páginas.` : "Número de páginas desconhecido."}{" "}
+                  <a
+                    href={`/api/blob-proxy?url=${encodeURIComponent(String(r.data["pdfUrl"] ?? ""))}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Abrir o PDF
+                  </a>
+                </dd>
+              </div>
+            )}
             {r.kind === "chapter" && "title" in r.data && (
               <div>
                 <dt className="text-xs text-muted-foreground">Nome do capítulo</dt>
@@ -72,7 +94,7 @@ export function AdminRevisions() {
                 </dd>
               </div>
             )}
-            {r.kind === "chapter" && typeof r.data["pdfUrl"] !== "string" ? null : r.kind === "chapter" ? (
+            {r.kind === "new_chapter" ? null : r.kind === "chapter" && typeof r.data["pdfUrl"] !== "string" ? null : r.kind === "chapter" ? (
               <div>
                 <dt className="text-xs text-muted-foreground">Troca do PDF do capítulo</dt>
                 <dd>
@@ -109,6 +131,26 @@ export function AdminRevisions() {
                     <dd>
                       {r.work?.medium} → {String(r.data["medium"])}
                     </dd>
+                  </div>
+                )}
+                {r.data["unpublish"] === true && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Despublicar</dt>
+                    <dd>O autor pediu para tirar a obra do ar.</dd>
+                  </div>
+                )}
+                {typeof r.data["tags"] === "string" && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Gêneros</dt>
+                    <dd>
+                      {r.work?.tags ? <span className="text-muted-foreground line-through">{r.work.tags}</span> : <span className="text-muted-foreground">sem gêneros</span>} → {String(r.data["tags"])}
+                    </dd>
+                  </div>
+                )}
+                {typeof r.data["workStatus"] === "string" && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Situação da obra</dt>
+                    <dd>{SITUACAO[String(r.data["workStatus"])] ?? String(r.data["workStatus"])}</dd>
                   </div>
                 )}
                 {typeof r.data["coverUrl"] === "string" && (
