@@ -180,13 +180,13 @@ export function SiteHeader() {
             <div className="flex items-center gap-2">
               <Link
                 to="/entrar"
-                className="btn-type border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
+                className="btn-type whitespace-nowrap border border-white/40 px-3 py-1.5 text-xs text-white transition-colors hover:border-gilt hover:text-gilt"
               >
                 Entrar
               </Link>
               <Link
                 to="/criar"
-                className="btn-type hidden bg-gilt px-3 py-1.5 text-xs font-bold text-ink transition-opacity hover:opacity-90 sm:inline-block"
+                className="btn-type hidden whitespace-nowrap bg-gilt px-3 py-1.5 text-xs font-bold text-ink transition-opacity hover:opacity-90 sm:inline-block"
               >
                 Criar conta
               </Link>

@@ -132,7 +132,7 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
 
               <div className="mt-4 flex gap-4 sm:gap-6">
                 <Link
-                  to="/work/$slug"
+                  to="/obra/$slug"
                   params={{ slug: work.slug }}
                   tabIndex={active ? 0 : -1}
                   className="relative w-[104px] shrink-0 overflow-hidden rounded-md sm:w-[150px] lg:w-[170px]"
@@ -156,7 +156,7 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
 
                 <div className="flex min-w-0 flex-1 flex-col">
                   <Link
-                    to="/work/$slug"
+                    to="/obra/$slug"
                     params={{ slug: work.slug }}
                     tabIndex={active ? 0 : -1}
                     className="font-display text-xl font-bold leading-tight text-white line-clamp-3 hover:underline sm:text-3xl lg:text-4xl"
@@ -191,7 +191,7 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
                       <span className="not-italic text-white/45">. {status}</span>
                     </p>
                     <Link
-                      to={isReadable(work) ? "/ler/$slug" : "/work/$slug"}
+                      to={isReadable(work) ? "/ler/$slug" : "/obra/$slug"}
                       params={{ slug: work.slug }}
                       tabIndex={active ? 0 : -1}
                       className="hidden rounded-full bg-gilt px-5 py-2 text-sm font-bold text-ink transition-opacity hover:opacity-90 sm:inline-block"
@@ -253,7 +253,7 @@ function CatalogCard({
   const color = MEDIUM_COLOR[work.medium];
 
   return (
-    <Link to="/work/$slug" params={{ slug: work.slug }} className="group block">
+    <Link to="/obra/$slug" params={{ slug: work.slug }} className="group block">
       <div className="relative overflow-hidden rounded-md">
         {work.cover ? (
           <img

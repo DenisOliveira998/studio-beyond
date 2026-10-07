@@ -190,6 +190,7 @@ function Dashboard() {
   const [uploadStep, setUploadStep] = useState<"idle" | "cover" | "pdf" | "work">("idle");
   const [pdfProgress, setPdfProgress] = useState<{ message: string; percent: number } | null>(null);
   const [firstChapter, setFirstChapter] = useState("1");
+  const [firstChapterTitle, setFirstChapterTitle] = useState("");
   const [chaptersOf, setChaptersOf] = useState<{ id: string; title: string; medium: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -335,6 +336,7 @@ function Dashboard() {
           previewUrl,
           pdfPages,
           chapterNumber: Number(firstChapter.replace(",", ".")) || 1,
+          chapterTitle: firstChapterTitle.trim(),
           coverUrl,
           status: kind === "publish" ? "pending" : "draft",
         }),
@@ -456,7 +458,7 @@ function Dashboard() {
                     <tr key={w.id} className="transition-colors hover:bg-surface/60">
                       <Td>
                         <Link
-                          to="/work/$slug"
+                          to="/obra/$slug"
                           params={{ slug: w.slug }}
                           className="rule-hover font-display text-lg"
                         >
@@ -593,15 +595,27 @@ function Dashboard() {
                 </button>
               </Field>
 
-              <Field label="Número do capítulo deste PDF" htmlFor="obra-cap">
-                <input
-                  id="obra-cap"
-                  type="text"
-                  inputMode="decimal"
-                  value={firstChapter}
-                  onChange={(e) => setFirstChapter(e.target.value)}
-                  className="w-28 border border-border bg-transparent px-4 py-2 text-sm outline-none focus:border-gilt"
-                />
+              <Field label="Capítulo deste PDF" htmlFor="obra-cap">
+                <div className="flex flex-wrap gap-3">
+                  <input
+                    id="obra-cap"
+                    type="text"
+                    inputMode="decimal"
+                    aria-label="Número do capítulo"
+                    value={firstChapter}
+                    onChange={(e) => setFirstChapter(e.target.value)}
+                    className="w-24 border border-border bg-transparent px-4 py-2 text-sm outline-none focus:border-gilt"
+                  />
+                  <input
+                    type="text"
+                    aria-label="Nome do capítulo (opcional)"
+                    maxLength={120}
+                    value={firstChapterTitle}
+                    onChange={(e) => setFirstChapterTitle(e.target.value)}
+                    placeholder="Nome do capítulo (opcional)"
+                    className="min-w-[220px] flex-1 border border-border bg-transparent px-4 py-2 text-sm outline-none focus:border-gilt"
+                  />
+                </div>
                 <p className="mt-1 text-xs text-muted-foreground/60">
                   Normalmente 1. Use 0 para prólogo. Depois da aprovação, os próximos capítulos entram pelo botão Capítulos.
                 </p>

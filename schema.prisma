@@ -515,6 +515,7 @@ model Chapter {
   id          String    @id @default(cuid())
   workId      String
   number      Decimal   @db.Decimal(7, 2)
+  title       String?   @db.VarChar(120) // nome opcional: "Capítulo 1 - O começo"
   pdfUrl      String    @db.Text
   previewUrl  String?   @db.Text
   pdfPages    Int?
@@ -562,4 +563,14 @@ model Notification {
   @@index([userId, readAt])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// Endereço antigo de obra → endereço atual (ex.: sem o sufixo aleatório). Mantém links antigos funcionando.
+model WorkSlugAlias {
+  oldSlug   String   @id
+  newSlug   String
+  createdAt DateTime @default(now())
+
+  @@index([newSlug])
+  @@map("work_slug_aliases")
 }

@@ -12,7 +12,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
 
   return (
     <article className="card-lift group border border-border bg-card p-3">
-      <Link to="/work/$slug" params={{ slug: work.slug }} className="block">
+      <Link to="/obra/$slug" params={{ slug: work.slug }} className="block">
         {work.cover ? (
           <div className="aspect-[3/2] overflow-hidden rounded-[3px] bg-ink">
             <img
@@ -38,7 +38,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
           {" · "}{work.readTime ?? work.published}
         </p>
         <h3 className="font-display text-lg font-bold leading-tight">
-          <Link to="/work/$slug" params={{ slug: work.slug }} className="rule-hover">
+          <Link to="/obra/$slug" params={{ slug: work.slug }} className="rule-hover">
             {cleanTitle}
           </Link>
         </h3>

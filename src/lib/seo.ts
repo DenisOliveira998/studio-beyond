@@ -51,7 +51,7 @@ export function workJsonLd(work: Work) {
     "@context": "https://schema.org",
     "@type": isComic ? "ComicStory" : "Book",
     name: stripHtml(work.title),
-    url: siteUrl(`/work/${work.slug}`),
+    url: siteUrl(`/obra/${work.slug}`),
     description: stripHtml(work.excerpt),
     inLanguage: "pt-BR",
     genre: [MEDIUM_LABEL[work.medium], ...(work.genre ? [work.genre] : []), ...tags],
@@ -152,7 +152,7 @@ export function workListJsonLd(name: string, path: string, works: Pick<Work, "sl
     itemListElement: works.map((w, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: siteUrl(`/work/${w.slug}`),
+      url: siteUrl(`/obra/${w.slug}`),
       name: stripHtml(w.title),
     })),
   };

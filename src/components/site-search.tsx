@@ -123,7 +123,7 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
               {results.works.map((hit) => (
                 <Link
                   key={hit.slug}
-                  to="/work/$slug"
+                  to="/obra/$slug"
                   params={{ slug: hit.slug }}
                   onClick={close}
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background"

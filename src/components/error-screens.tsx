@@ -72,7 +72,7 @@ function Suggestions() {
         {picks.map((w) => {
           const title = stripHtml(w.title);
           return (
-            <Link key={w.id} to="/work/$slug" params={{ slug: w.slug }} className="group block">
+            <Link key={w.id} to="/obra/$slug" params={{ slug: w.slug }} className="group block">
               {w.cover ? (
                 <img
                   width={180} height={240}

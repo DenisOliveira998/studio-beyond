@@ -67,7 +67,7 @@ export const Route = createFileRoute("/ler/$slug")({
         { property: "og:type", content: "article" },
         { name: "robots", content: "noindex" },
       ],
-      links: [{ rel: "canonical", href: `${SITE_URL}/work/${work.slug}` }],
+      links: [{ rel: "canonical", href: `${SITE_URL}/obra/${work.slug}` }],
     };
   },
   component: ReaderPage,
@@ -284,7 +284,7 @@ function ReaderPage() {
         {/* Barra de navegação do leitor */}
         <div className="mb-10 flex items-center justify-between gap-4">
           <Link
-            to="/work/$slug"
+            to="/obra/$slug"
             params={{ slug: work.slug }}
             className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-gilt"
           >
@@ -471,7 +471,7 @@ function ReaderPage() {
                 Ver os planos Fã e Super Fã
               </Link>
               <Link
-                to="/work/$slug"
+                to="/obra/$slug"
                 params={{ slug: work.slug }}
                 className="btn-type border border-border px-5 py-2.5 text-xs text-muted-foreground transition-colors hover:border-gilt/50 hover:text-foreground"
               >
@@ -578,7 +578,7 @@ function EndOfWork({ work, title }: { work: Work; title: string }) {
         </>
       ) : null}
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Link to="/work/$slug" params={{ slug: work.slug }} className={btn}>
+        <Link to="/obra/$slug" params={{ slug: work.slug }} className={btn}>
           ← Página da obra
         </Link>
         <Link

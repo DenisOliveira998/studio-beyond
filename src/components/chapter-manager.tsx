@@ -3,14 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
-type ChapterInfo = { id: string; number: number; pdfPages: number | null; publishedAt: string; earlyUntil: string | null; free: boolean };
+type ChapterInfo = { id: string; number: number; title: string | null; pdfPages: number | null; publishedAt: string; earlyUntil: string | null; free: boolean };
 type ChaptersData = {
   status: string;
   chapters: ChapterInfo[];
   pending: { kind: string; chapterId: string | null; createdAt: string }[];
 };
 
-const label = (n: number) => `Capítulo ${String(n).replace(".", ",")}`;
+const label = (n: number, title?: string | null) => `Capítulo ${String(n).replace(".", ",")}${title ? ` - ${title}` : ""}`;
 
 /** Capítulos de uma obra no painel do autor: publicar o próximo e trocar o PDF de um existente. */
 export function ChapterManager({ workId, title, medium, onClose }: { workId: string; title: string; medium: string; onClose: () => void }) {
@@ -23,6 +23,7 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
   const nextNumber = chapters.length ? Math.floor(Math.max(...chapters.map((c) => c.number))) + 1 : 1;
 
   const [number, setNumber] = useState<string>("");
+  const [newTitle, setNewTitle] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // "novo" ou id do capítulo
   const [progress, setProgress] = useState<{ message: string; percent: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,12 +54,13 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
       const res = await fetch(`/api/works/${workId}/capitulos`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ number: n, pdfUrl: r.pdfUrl, previewUrl: r.previewUrl, pdfPages: r.pages }),
+        body: JSON.stringify({ number: n, title: newTitle.trim(), pdfUrl: r.pdfUrl, previewUrl: r.previewUrl, pdfPages: r.pages }),
       });
       const out = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(out.error ?? "Não foi possível publicar o capítulo.");
-      toast.success(`${label(n)} publicado. Quem segue você foi avisado.`);
+      toast.success(`${label(n, newTitle.trim())} publicado. Quem segue você foi avisado.`);
       setNumber("");
+      setNewTitle("");
       void qc.invalidateQueries({ queryKey: ["chapters-mine", workId] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao publicar.");
@@ -86,6 +88,27 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
     } finally {
       setBusy(null);
       setProgress(null);
+    }
+  }
+
+  async function rename(ch: ChapterInfo) {
+    const t = window.prompt(`Nome do ${label(ch.number)} (deixe vazio para tirar o nome):`, ch.title ?? "");
+    if (t === null) return;
+    setBusy(ch.id);
+    try {
+      const res = await fetch(`/api/capitulos/${ch.id}/revisao`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: t.trim() }),
+      });
+      const out = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(out.error ?? "Não foi possível enviar.");
+      toast.success("Nome novo enviado para a curadoria. O atual continua até a aprovação.");
+      void qc.invalidateQueries({ queryKey: ["chapters-mine", workId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao enviar.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -117,7 +140,7 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
               {chapters.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                   <span>
-                    <strong>{label(c.number)}</strong>
+                    <strong>{label(c.number, c.title)}</strong>
                     <span className="text-muted-foreground">
                       {c.pdfPages ? `. ${c.pdfPages} páginas` : ""}
                       {c.free ? ". Grátis" : ""}
@@ -125,8 +148,17 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
                     </span>
                   </span>
                   {pendingFor(c.id) ? (
-                    <span className="text-xs text-amber-400">Troca em análise</span>
+                    <span className="text-xs text-amber-400">Alteração em análise</span>
                   ) : (
+                    <span className="flex gap-3">
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => void rename(c)}
+                      className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+                    >
+                      Renomear
+                    </button>
                     <button
                       type="button"
                       disabled={!!busy}
@@ -138,6 +170,7 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
                     >
                       {busy === c.id ? "Enviando…" : "Trocar PDF"}
                     </button>
+                    </span>
                   )}
                 </li>
               ))}
@@ -161,6 +194,17 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
                 para um extra. A lista é ordenada pelo número. O capítulo vai direto ao ar e fica 3 dias só para Super Fãs.
               </p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="min-w-[180px] flex-1 text-sm">
+                  <span className="block text-muted-foreground">Nome (opcional)</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={newTitle}
+                    placeholder="Ex.: O começo"
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    className="mt-1 w-full rounded border border-input bg-background px-3 py-2"
+                  />
+                </label>
                 <label className="text-sm">
                   <span className="block text-muted-foreground">Número</span>
                   <input

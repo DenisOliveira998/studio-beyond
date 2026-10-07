@@ -339,6 +339,21 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
     const host = (request.headers.get("x-forwarded-host") ?? url.host).split(",")[0]!.trim().toLowerCase();
+    // /work/<obra> virou /obra/<obra>; endereços antigos de obra (ex.: com sufixo) levam ao atual
+    const obraPath = url.pathname.match(/^\/(work|obra|ler)\/([^/]+)(\/?.*)$/);
+    if (obraPath && request.method === "GET" && !OLD_HOSTS.has(host)) {
+      const [, section, rawSlug, rest] = obraPath;
+      let slug = rawSlug!;
+      try {
+        const { prisma } = await import("./lib/prisma");
+        const alias = await prisma.workSlugAlias.findUnique({ where: { oldSlug: decodeURIComponent(slug) }, select: { newSlug: true } });
+        if (alias) slug = encodeURIComponent(alias.newSlug);
+      } catch {}
+      const target = section === "work" ? "obra" : section!;
+      if (target !== section || slug !== rawSlug) {
+        return new Response(null, { status: 308, headers: { location: `/${target}/${slug}${rest ?? ""}${url.search}`, "cache-control": "public, max-age=3600" } });
+      }
+    }
     if (OLD_HOSTS.has(host)) {
       return new Response(null, {
         status: 308,
@@ -745,6 +760,29 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         return new Response(JSON.stringify({ ok: true, count }), { headers: { "content-type": "application/json" } });
       }
 
+      // Card "Apoie o autor": nome, foto e posição no ranking de autores da semana (público).
+      // A posição vale para a lista inteira de autores, não só para o top 50.
+      const apoioMatch = pathname.match(/^\/api\/apoio\/autor\/([^/]+)$/);
+      if (apoioMatch && request.method === "GET") {
+        const slug = decodeURIComponent(apoioMatch[1]!);
+        const { fetchRanking, getAuthorBio } = await import("./lib/beyond-db");
+        const ranking = await fetchRanking(100_000).catch(() => null);
+        const idx = ranking ? ranking.authors.findIndex((a) => a.slug === slug) : -1;
+        const a = idx >= 0 ? ranking!.authors[idx]! : null;
+        let name = a?.name ?? "";
+        let avatarUrl = a?.avatarUrl ?? "";
+        if (!a) {
+          const { prisma: prismaAp } = await import("./lib/prisma");
+          const w = await prismaAp.work.findFirst({ where: { artistSlug: slug, status: "approved" }, select: { artistName: true, authorId: true } });
+          if (!w) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+          name = w.artistName;
+          avatarUrl = (await getAuthorBio(w.authorId)).avatarUrl;
+        }
+        return new Response(JSON.stringify({ name, avatarUrl, rank: idx >= 0 ? idx + 1 : null }), {
+          headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
+        });
+      }
+
 // Configurações públicas do site (Instagram, contato, etc.)
       if (pathname === "/api/site-config") {
         if (request.method === "GET") {
@@ -930,7 +968,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
           excerpt?: string; body?: string; tags?: string;
-          pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number; chapterNumber?: number;
+          pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number; chapterNumber?: number; chapterTitle?: string;
           coverUrl?: string | null; status?: "pending" | "draft";
         };
         // Toda obra é PDF: o arquivo precisa existir na nossa loja, ser PDF de verdade e caber no limite
@@ -962,6 +1000,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         await createInitialChapter({
           workId: submitted.id,
           number: Number(body.chapterNumber ?? 1),
+          title: body.chapterTitle ?? null,
           pdfUrl: body.pdfUrl!,
           previewUrl: previewCheck?.ok ? body.previewUrl ?? null : null,
           pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 ? body.pdfPages! : null,
@@ -1003,7 +1042,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           return json({ status: work.status, chapters: info, pending });
         }
         if (!(await rateLimit(`capitulo:user:${session.user.id}`, 30, 60 * 60))) return tooManyRequests("Muitos envios em pouco tempo.");
-        const body = (await request.json().catch(() => ({}))) as { number?: number; pdfUrl?: string; previewUrl?: string; pdfPages?: number };
+        const body = (await request.json().catch(() => ({}))) as { number?: number; title?: string; pdfUrl?: string; previewUrl?: string; pdfPages?: number };
         const { verifyStoredPdf } = await import("./lib/pdf-storage");
         if (!body.pdfUrl) return json({ error: "Envie o PDF do capítulo." }, 400);
         const check = await verifyStoredPdf(body.pdfUrl);
@@ -1015,6 +1054,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             workId: work.id,
             authorId: session.user.id,
             number: Number(body.number),
+            title: body.title ?? null,
             pdfUrl: body.pdfUrl,
             previewUrl: previewOk ? body.previewUrl! : null,
             pdfPages: Number.isInteger(body.pdfPages) && body.pdfPages! > 0 && body.pdfPages! < 5000 ? body.pdfPages! : null,
@@ -1032,20 +1072,24 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const { auth } = await import("./lib/auth-server");
         const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
         if (!session?.user) return json({ error: "Não autorizado" }, 401);
-        const body = (await request.json().catch(() => ({}))) as { pdfUrl?: string; previewUrl?: string; pdfPages?: number };
+        const body = (await request.json().catch(() => ({}))) as { pdfUrl?: string; previewUrl?: string; pdfPages?: number; title?: string };
         const chapters = await import("./lib/chapters");
         const { verifyStoredPdf } = await import("./lib/pdf-storage");
-        if (!body.pdfUrl) return json({ error: "Envie o PDF novo." }, 400);
-        const check = await verifyStoredPdf(body.pdfUrl);
-        if (!check.ok) return json({ error: check.error }, 400);
-        if (await chapters.blobUrlInUse(body.pdfUrl)) return json({ error: "Envie um PDF novo." }, 400);
-        const previewOk = body.previewUrl && !(await chapters.blobUrlInUse(body.previewUrl)) && (await verifyStoredPdf(body.previewUrl)).ok;
+        const wantsTitle = typeof body.title === "string";
+        if (!body.pdfUrl && !wantsTitle) return json({ error: "Envie o PDF novo ou o nome novo." }, 400);
+        const revData: import("./lib/chapters").ChapterRevisionData = {};
+        if (body.pdfUrl) {
+          const check = await verifyStoredPdf(body.pdfUrl);
+          if (!check.ok) return json({ error: check.error }, 400);
+          if (await chapters.blobUrlInUse(body.pdfUrl)) return json({ error: "Envie um PDF novo." }, 400);
+          const previewOk = body.previewUrl && !(await chapters.blobUrlInUse(body.previewUrl)) && (await verifyStoredPdf(body.previewUrl)).ok;
+          revData.pdfUrl = body.pdfUrl;
+          revData.previewUrl = previewOk ? body.previewUrl! : null;
+          revData.pdfPages = Number.isInteger(body.pdfPages) && body.pdfPages! > 0 ? body.pdfPages! : null;
+        }
+        if (wantsTitle) revData.title = chapters.cleanChapterTitle(body.title);
         try {
-          await chapters.requestChapterRevision(capRevMatch[1]!, session.user.id, {
-            pdfUrl: body.pdfUrl,
-            previewUrl: previewOk ? body.previewUrl! : null,
-            pdfPages: Number.isInteger(body.pdfPages) && body.pdfPages! > 0 ? body.pdfPages! : null,
-          });
+          await chapters.requestChapterRevision(capRevMatch[1]!, session.user.id, revData);
           return json({ ok: true, review: true });
         } catch (e) {
           return json({ error: e instanceof Error ? e.message : "Não foi possível enviar." }, 400);
@@ -1263,7 +1307,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           ...works.map((w) => {
             const cover = dbWorkToWork(w).cover;
             return url(
-              `/work/${encodeURIComponent(w.slug)}`,
+              `/obra/${encodeURIComponent(w.slug)}`,
               w.updatedAt.toISOString(),
               cover ? { loc: cover, title: stripHtml(w.title) } : undefined,
             );
@@ -1294,7 +1338,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             const items = list
               .map((w) => {
                 const desc = oneLine(w.excerpt);
-                return `- [${oneLine(w.title, 120)}](${SITE_URL}/work/${encodeURIComponent(w.slug)}): de ${w.artistName}${desc ? `. ${desc}` : ""}`;
+                return `- [${oneLine(w.title, 120)}](${SITE_URL}/obra/${encodeURIComponent(w.slug)}): de ${w.artistName}${desc ? `. ${desc}` : ""}`;
               })
               .join("\n");
             return `### ${MEDIUM_LABEL[m]}\n${items}`;
@@ -1697,7 +1741,7 @@ ${catalog}
         });
       }
 
-      // Obra individual por slug (público) — usado pelo loader de /work/$slug
+      // Obra individual por slug (público) — usado pelo loader de /obra/$slug
       const workSlugApiMatch = pathname.match(/^\/api\/work\/([^/]+)$/);
       if (workSlugApiMatch && request.method === "GET") {
         const slug = workSlugApiMatch[1];
@@ -1720,7 +1764,7 @@ ${catalog}
         const { listChapters: listWorkChapters, chapterLabel: labelOf } = await import("./lib/chapters");
         const workChapters = (await listWorkChapters(dbWork.id)).info.map((c) => ({
           number: c.number,
-          title: labelOf(c.number),
+          title: labelOf(c.number, c.title),
           date: new Date(c.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
           free: c.free,
           earlyUntil: c.earlyUntil,
@@ -2302,7 +2346,7 @@ ${catalog}
             JSON.stringify({
               work,
               readerMode,
-              chapters: rdInfo.map((c) => ({ number: c.number, label: chapterLabel(c.number), free: c.free, earlyUntil: c.earlyUntil, hasPreview: c.hasPreview, pdfPages: c.pdfPages })),
+              chapters: rdInfo.map((c) => ({ number: c.number, label: chapterLabel(c.number, c.title), free: c.free, earlyUntil: c.earlyUntil, hasPreview: c.hasPreview, pdfPages: c.pdfPages })),
             }),
             { headers: noStore },
           );

@@ -112,7 +112,7 @@ function RankingPage() {
             return (
               <li key={w.slug}>
                 <Link
-                  to="/work/$slug"
+                  to="/obra/$slug"
                   params={{ slug: w.slug }}
                   className="group flex items-center gap-4 py-4 transition-colors hover:bg-surface/50 sm:gap-6 sm:px-3"
                 >

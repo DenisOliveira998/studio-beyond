@@ -109,7 +109,16 @@ export async function submitWork(input: {
 }) {
   // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
   const base = slugify(stripHtml(input.title)) || `obra-${Date.now()}`;
-  const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+  // Endereço limpo, só o título; se já existir (obra ou endereço antigo), vira -2, -3…
+  let slug = base;
+  for (let n = 2; ; n++) {
+    const [taken, alias] = await Promise.all([
+      prisma.work.findUnique({ where: { slug }, select: { id: true } }),
+      prisma.workSlugAlias.findUnique({ where: { oldSlug: slug }, select: { oldSlug: true } }),
+    ]);
+    if (!taken && !alias) break;
+    slug = `${base}-${n}`;
+  }
   const created = await prisma.work.create({
     data: {
       slug,

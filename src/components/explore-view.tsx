@@ -230,7 +230,7 @@ export function ExploreView({
           paginated.map((w) => (
             <Link
               key={w.slug}
-              to="/work/$slug"
+              to="/obra/$slug"
               params={{ slug: w.slug }}
               className="group flex items-center justify-between gap-4 py-4 transition-colors hover:bg-surface/50 sm:px-3"
             >

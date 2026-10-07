@@ -8,6 +8,7 @@ type Revision = {
   data: Record<string, unknown>;
   work: { id: string; slug: string; title: string; excerpt: string; coverUrl: string | null; medium: string; artistName: string } | null;
   chapterNumber: number | null;
+  chapterTitle: string | null;
 };
 
 const strip = (s: string) => s.replace(/<[^>]*>/g, "");
@@ -63,7 +64,15 @@ export function AdminRevisions() {
             </div>
           </div>
           <dl className="mt-4 grid gap-2">
-            {r.kind === "chapter" ? (
+            {r.kind === "chapter" && "title" in r.data && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Nome do capítulo</dt>
+                <dd>
+                  <span className="text-muted-foreground line-through">{r.chapterTitle ?? "sem nome"}</span> → {String(r.data["title"] ?? "") || "sem nome"}
+                </dd>
+              </div>
+            )}
+            {r.kind === "chapter" && typeof r.data["pdfUrl"] !== "string" ? null : r.kind === "chapter" ? (
               <div>
                 <dt className="text-xs text-muted-foreground">Troca do PDF do capítulo</dt>
                 <dd>

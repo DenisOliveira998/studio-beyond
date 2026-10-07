@@ -117,13 +117,13 @@ export async function fetchReports(status: string | null): Promise<ReportRow[]> 
       const c = commentById.get(r.targetId);
       const owner = c?.userId ? ownerById.get(c.userId) : undefined;
       target = c
-        ? { label: `Comentário de ${c.author}`, link: `/work/${c.workSlug}`, excerpt: c.text.slice(0, 300), hidden: c.hidden, ownerId: c.userId, ownerName: c.author, ownerSuspended: owner?.suspended }
+        ? { label: `Comentário de ${c.author}`, link: `/obra/${c.workSlug}`, excerpt: c.text.slice(0, 300), hidden: c.hidden, ownerId: c.userId, ownerName: c.author, ownerSuspended: owner?.suspended }
         : { label: "Comentário removido", link: null, excerpt: "", ownerId: null, ownerName: "" };
     } else if (r.targetType === "work") {
       const w = workBySlug.get(r.targetId);
       const owner = w?.authorId ? ownerById.get(w.authorId) : undefined;
       target = w
-        ? { label: `Obra: ${stripHtml(w.title)}${w.status !== "approved" ? " (despublicada)" : ""}`, link: `/work/${r.targetId}`, excerpt: `de ${w.artistName}`, ownerId: w.authorId, ownerName: w.artistName, ownerSuspended: owner?.suspended }
+        ? { label: `Obra: ${stripHtml(w.title)}${w.status !== "approved" ? " (despublicada)" : ""}`, link: `/obra/${r.targetId}`, excerpt: `de ${w.artistName}`, ownerId: w.authorId, ownerName: w.artistName, ownerSuspended: owner?.suspended }
         : { label: "Obra não encontrada", link: null, excerpt: "", ownerId: null, ownerName: "" };
     } else {
       const a = authorBySlug.get(r.targetId);

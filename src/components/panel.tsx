@@ -224,7 +224,7 @@ export function Ranking({
               </span>
               <div className="min-w-0">
                 <Link
-                  to="/work/$slug"
+                  to="/obra/$slug"
                   params={{ slug: r.slug }}
                   className="rule-hover font-display text-xl"
                 >

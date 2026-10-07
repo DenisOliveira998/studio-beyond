@@ -38,7 +38,7 @@ function ApoioRetorno() {
   });
 
   const back = data?.workSlug ? (
-    <Link to="/work/$slug" params={{ slug: data.workSlug }} className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">
+    <Link to="/obra/$slug" params={{ slug: data.workSlug }} className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">
       Voltar à obra
     </Link>
   ) : data?.artistSlug ? (

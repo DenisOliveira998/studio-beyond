@@ -30,8 +30,8 @@ import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ExplorarCategoriaRouteImport } from './routes/explorar_.$categoria'
 import { Route as LerSlugRouteImport } from './routes/ler.$slug'
+import { Route as ObraSlugRouteImport } from './routes/obra.$slug'
 import { Route as PlanosRetornoRouteImport } from './routes/planos.retorno'
-import { Route as WorkSlugRouteImport } from './routes/work.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -138,15 +138,15 @@ const LerSlugRoute = LerSlugRouteImport.update({
   path: '/ler/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ObraSlugRoute = ObraSlugRouteImport.update({
+  id: '/obra/$slug',
+  path: '/obra/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanosRetornoRoute = PlanosRetornoRouteImport.update({
   id: '/retorno',
   path: '/retorno',
   getParentRoute: () => PlanosRoute,
-} as any)
-const WorkSlugRoute = WorkSlugRouteImport.update({
-  id: '/work/$slug',
-  path: '/work/$slug',
-  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -171,8 +171,8 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
+  '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
-  '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -196,8 +196,8 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
+  '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
-  '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -222,8 +222,8 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/explorar_/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
+  '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
-  '/work/$slug': typeof WorkSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -249,8 +249,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/explorar/$categoria'
     | '/ler/$slug'
+    | '/obra/$slug'
     | '/planos/retorno'
-    | '/work/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -274,8 +274,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/explorar/$categoria'
     | '/ler/$slug'
+    | '/obra/$slug'
     | '/planos/retorno'
-    | '/work/$slug'
   id:
     | '__root__'
     | '/'
@@ -299,8 +299,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/explorar_/$categoria'
     | '/ler/$slug'
+    | '/obra/$slug'
     | '/planos/retorno'
-    | '/work/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -324,7 +324,7 @@ export interface RootRouteChildren {
   ArtistSlugRoute: typeof ArtistSlugRoute
   ExplorarCategoriaRoute: typeof ExplorarCategoriaRoute
   LerSlugRoute: typeof LerSlugRoute
-  WorkSlugRoute: typeof WorkSlugRoute
+  ObraSlugRoute: typeof ObraSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -476,19 +476,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LerSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/obra/$slug': {
+      id: '/obra/$slug'
+      path: '/obra/$slug'
+      fullPath: '/obra/$slug'
+      preLoaderRoute: typeof ObraSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/planos/retorno': {
       id: '/planos/retorno'
       path: '/retorno'
       fullPath: '/planos/retorno'
       preLoaderRoute: typeof PlanosRetornoRouteImport
       parentRoute: typeof PlanosRoute
-    }
-    '/work/$slug': {
-      id: '/work/$slug'
-      path: '/work/$slug'
-      fullPath: '/work/$slug'
-      preLoaderRoute: typeof WorkSlugRouteImport
-      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -535,7 +535,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArtistSlugRoute: ArtistSlugRoute,
   ExplorarCategoriaRoute: ExplorarCategoriaRoute,
   LerSlugRoute: LerSlugRoute,
-  WorkSlugRoute: WorkSlugRoute,
+  ObraSlugRoute: ObraSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

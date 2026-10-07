@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowUp, BookOpen, Bookmark, Check, FileDown, Heart, Link2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DonateDialog } from "@/components/donate-dialog";
+import { SupportCard } from "@/components/support-card";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
 import { LoginPrompt } from "@/components/login-prompt";
@@ -14,7 +14,7 @@ import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import type { CommentData } from "@/lib/beyond-db";
 
-export const Route = createFileRoute("/work/$slug")({
+export const Route = createFileRoute("/obra/$slug")({
   loader: async ({ params }) => {
     const base = typeof window === "undefined" ? SITE_URL : "";
     const res = await fetch(`${base}/api/work/${params.slug}`);
@@ -55,20 +55,20 @@ export const Route = createFileRoute("/work/$slug")({
       meta.push({ property: "og:image", content: absoluteUrl(work.cover) });
       meta.push({ name: "twitter:image", content: absoluteUrl(work.cover) });
     }
-    meta.push({ property: "og:url", content: `${SITE_URL}/work/${work.slug}` });
+    meta.push({ property: "og:url", content: `${SITE_URL}/obra/${work.slug}` });
     const jsonLd: Array<Record<string, unknown>> = [
       { "script:ld+json": workJsonLd(work) },
       {
         "script:ld+json": breadcrumbJsonLd([
           { name: "Início", path: "/" },
           { name: MEDIUM_LABEL[work.medium], path: `/explorar/${work.medium}` },
-          { name: cleanTitle, path: `/work/${work.slug}` },
+          { name: cleanTitle, path: `/obra/${work.slug}` },
         ]),
       },
     ];
     return {
       meta: [...meta, ...jsonLd],
-      links: [{ rel: "canonical", href: `${SITE_URL}/work/${work.slug}` }],
+      links: [{ rel: "canonical", href: `${SITE_URL}/obra/${work.slug}` }],
     };
   },
   component: WorkPage,
@@ -124,7 +124,7 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
         <div className="border border-border bg-surface p-6 text-center">
           <p className="text-sm text-muted-foreground">
             <a
-              href={`/entrar?redirect=${encodeURIComponent(`/work/${workSlug}`)}`}
+              href={`/entrar?redirect=${encodeURIComponent(`/obra/${workSlug}`)}`}
               className="text-gilt underline-offset-2 hover:underline"
             >
               Faça login
@@ -179,7 +179,7 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
                 {new Date(c.createdAt).toLocaleDateString("pt-BR")}
               </span>
               <span className="ml-auto">
-                <ReportButton targetType="comment" targetId={c.id} redirectTo={`/work/${workSlug}`} />
+                <ReportButton targetType="comment" targetId={c.id} redirectTo={`/obra/${workSlug}`} />
               </span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.text}</p>
@@ -236,7 +236,7 @@ const STATUS_CONFIG = {
 function StatusBadge({ status }: { status: keyof typeof STATUS_CONFIG }) {
   const { label, cls } = STATUS_CONFIG[status];
   return (
-    <span className={`inline-block border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${cls}`}>
+    <span className={`inline-block border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${cls}`}>
       {label}
     </span>
   );
@@ -440,8 +440,9 @@ function WorkPage() {
               {shareCopied ? "Copiado!" : "Compartilhar"}
             </button>
 
-            {/* Stats */}
-            <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-xs">
+            {/* Stats (só aparece quando há números para mostrar) */}
+            {(views >= VIEWS_DISPLAY_MIN || likeCount > 0) && (
+            <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-sm">
               {views >= VIEWS_DISPLAY_MIN && (
                 <>
                   <div className="flex items-center justify-between">
@@ -458,11 +459,12 @@ function WorkPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Meta */}
-            <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-xs">
-              <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground uppercase tracking-[0.12em] text-[10px]">Status</span>
+            <div className="border border-border bg-surface p-4 flex flex-col gap-3 text-sm">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-muted-foreground uppercase tracking-[0.12em] text-xs">Status</span>
                 <StatusBadge status={work.workStatus ?? "andamento"} />
               </div>
               <div className="h-px bg-border" />
@@ -486,27 +488,14 @@ function WorkPage() {
               </div>
             </div>
 
-            {/* Donate */}
-            {artistName && (
-              <DonateDialog
-                artistName={artistName}
-                artistSlug={work.artistSlug}
-                workSlug={work.slug}
-                trigger={
-                  <button className="w-full bg-primary py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-                    Apoiar {artistName.split(" ")[0]}
-                  </button>
-                }
-              />
-            )}
           </div>
         </aside>
 
         {/* ── MAIN CONTENT ───────────────────────────────────────── */}
-        <main className="flex-1 min-w-0">
+        <main className="min-w-0 flex-1">
 
           {/* Header (desktop only — mobile is in sidebar row above) */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block lg:max-w-3xl">
             <p className="eyebrow">{MEDIUM_LABEL[work.medium]}</p>
             <p className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl" aria-hidden="true">
               {cleanTitle}
@@ -597,13 +586,13 @@ function WorkPage() {
           {/* ── Conteúdo da obra ─────────────────────────────────── */}
           <div className="mt-8 lg:mt-10">
             {/* Synopsis */}
-            <p className="text-base leading-relaxed text-muted-foreground">
+            <p className="text-base leading-relaxed text-muted-foreground lg:max-w-3xl">
               {stripHtml(work.excerpt)}
             </p>
 
             {/* Body preview — prose teaser only; webtoon works have no readable body here */}
             {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && !teaserRepeatsExcerpt && (
-              <div className="mt-6 prose max-w-none">
+              <div className="mt-6 prose max-w-none lg:max-w-3xl">
                 <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
                 {hasBody && (
                   <Link
@@ -654,8 +643,8 @@ function WorkPage() {
 
             {/* Chapters index */}
             {work.chapters && work.chapters.length > 0 && (
-              <div className="mt-8 border border-border bg-surface">
-                <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
+              <div className="mt-8 flex max-h-[340px] flex-col border border-border bg-surface">
+                <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-2.5">
                   <h2 className="eyebrow text-xs">Capítulos ({work.chapters.length})</h2>
                   <div className="flex items-center gap-1">
                     <button
@@ -680,7 +669,8 @@ function WorkPage() {
                     </button>
                   </div>
                 </div>
-                <ol className="divide-y divide-border">
+                {/* Área fixa: com muitos capítulos, a lista rola por dentro */}
+                <ol className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
                   {[...work.chapters]
                     .sort((a, b) => chapterOrder === "asc" ? a.number - b.number : b.number - a.number)
                     .map((ch) => (
@@ -718,20 +708,20 @@ function WorkPage() {
                 {work.pages && <span>{work.pages} páginas</span>}
               </div>
               {artistName && (
-                <DonateDialog
-                  artistName={artistName}
-                  artistSlug={work.artistSlug}
-                  workSlug={work.slug}
-                  trigger={
-                    <button className="bg-primary px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-primary-foreground transition-opacity hover:opacity-90">
-                      Apoiar {artistName.split(" ")[0]}
-                    </button>
-                  }
-                />
+                <div className="w-full">
+                  <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+                </div>
               )}
             </div>
           </div>
         </main>
+
+        {/* ── Lateral direita: Apoie o autor (desktop) ── */}
+        {artistName && (
+          <aside className="hidden lg:ml-auto lg:block lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-8 lg:self-start">
+            <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+          </aside>
+        )}
       </div>
 
       {/* ── Relacionados ── */}
@@ -756,7 +746,7 @@ function WorkPage() {
         <ReportButton
           targetType="work"
           targetId={work.slug}
-          redirectTo={`/work/${work.slug}`}
+          redirectTo={`/obra/${work.slug}`}
           trigger={
             <button type="button" className="text-xs text-muted-foreground/70 transition-colors hover:text-red-400">
               Denunciar esta obra
@@ -765,7 +755,7 @@ function WorkPage() {
         />
       </div>
 
-      <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/work/${work.slug}`} />
+      <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/obra/${work.slug}`} />
 
       {/* ── Voltar ao topo ── */}
       {showBackTop && (

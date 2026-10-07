@@ -1497,7 +1497,7 @@ function AdminPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`text-sm font-medium ${color}`}>{label}</span>
                           <span className="text-xs text-muted-foreground">·</span>
-                          <Link to="/work/$slug" params={{ slug: entry.workSlug }} className="text-sm text-foreground hover:text-gilt transition-colors">
+                          <Link to="/obra/$slug" params={{ slug: entry.workSlug }} className="text-sm text-foreground hover:text-gilt transition-colors">
                             {entry.workTitle}
                           </Link>
                         </div>
@@ -1756,7 +1756,7 @@ function Ranking({
               </span>
               <div className="min-w-0">
                 <Link
-                  to="/work/$slug"
+                  to="/obra/$slug"
                   params={{ slug: r.slug }}
                   className="rule-hover font-display text-xl"
                 >

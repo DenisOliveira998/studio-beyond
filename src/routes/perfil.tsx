@@ -156,7 +156,7 @@ function PerfilPage() {
             {stats.favorites.map((fav) => (
               <li key={fav.id}>
                 <a
-                  href={`/work/${fav.workSlug}`}
+                  href={`/obra/${fav.workSlug}`}
                   className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface/60"
                 >
                   <Heart className="size-4 shrink-0 text-gilt" strokeWidth={1.5} />
