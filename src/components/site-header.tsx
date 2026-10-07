@@ -148,7 +148,7 @@ export function SiteHeader() {
         {/* ── Direita: busca + links de nav + controles ── */}
         <div className="ml-auto flex items-center gap-2.5 text-sm text-white/85 sm:gap-5">
           {/* Busca exposta no desktop — antes do primeiro link de nav */}
-          <div className="hidden lg:block lg:w-48 xl:w-64">
+          <div className="hidden xl:block xl:w-56 2xl:w-64">
             <SiteSearch inline />
           </div>
 
@@ -156,7 +156,7 @@ export function SiteHeader() {
             <Link
               key={item.to}
               to={item.to}
-              className="rule-hover hidden transition-colors hover:text-gilt lg:inline"
+              className="rule-hover hidden whitespace-nowrap transition-colors hover:text-gilt lg:inline"
               activeProps={{ className: "text-gilt" }}
               activeOptions={{ exact: item.to === "/" }}
             >
@@ -165,7 +165,7 @@ export function SiteHeader() {
           ))}
 
           {/* Ícone de busca no mobile */}
-          <span className="lg:hidden">
+          <span className="xl:hidden">
             <SiteSearch />
           </span>
 
