@@ -175,7 +175,7 @@ export function PdfViewer({
       <div className="overflow-x-auto">
         <div
           ref={bodyRef}
-          className="mx-auto flex select-none flex-col items-center gap-3"
+          className="mx-auto flex select-none flex-col items-center"
           style={{ width: `${zoom * 100}%` }}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
@@ -265,7 +265,7 @@ function PdfPage({
   return (
     <div
       ref={wrapRef}
-      className="w-full overflow-hidden rounded-sm transition-colors"
+      className="w-full overflow-hidden transition-colors"
       style={{ aspectRatio: `1 / ${ratio}`, backgroundColor: paper }}
     >
       <canvas

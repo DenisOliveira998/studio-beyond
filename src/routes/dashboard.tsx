@@ -164,6 +164,7 @@ function Dashboard() {
   const [editingWork, setEditingWork] = useState<Work | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
 
   const DRAFT_KEY = "beyond_dashboard_draft_v1";
 
@@ -243,6 +244,10 @@ function Dashboard() {
     }
     if (synopsis.trim().length > 280) {
       toast.error("A sinopse não pode passar de 280 caracteres.");
+      return;
+    }
+    if (tags.length === 0) {
+      toast.error("Escolha pelo menos um gênero para a obra.");
       return;
     }
     if (!coverFile) {
@@ -480,6 +485,7 @@ function Dashboard() {
                               setEditingWork(w);
                               setEditTitle(w.title);
                               setEditType(WORK_TYPES.find((t) => t.toLowerCase() === w.medium) ?? WORK_TYPES[0] ?? "Livro");
+                              setEditTags(w.tags ?? []);
                             }}
                           >
                             <Pencil className="size-3.5" /> Editar
@@ -656,7 +662,7 @@ function Dashboard() {
                 </p>
               </Field>
 
-              <Field label="Gêneros / categorias" htmlFor="obra-tags">
+              <Field label="Gêneros (escolha pelo menos um)" htmlFor="obra-tags">
                 <div className="flex flex-wrap gap-2">
                   {GENRE_TAGS.map((g) => {
                     const active = tags.includes(g);
@@ -1007,18 +1013,49 @@ function Dashboard() {
                 </label>
               </div>
 
+              <div className="mt-5">
+                <span className="eyebrow">Gêneros (pelo menos um)</span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[...new Set([...GENRE_TAGS, ...editTags])].map((g) => {
+                    const active = editTags.includes(g);
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setEditTags((prev) => (prev.includes(g) ? prev.filter((t) => t !== g) : [...prev, g]))}
+                        className={`border px-3 py-1.5 text-xs transition-colors ${
+                          active ? "border-gilt bg-gilt/10 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="mt-6 flex gap-3">
                 <button
                   disabled={savingEdit}
                   onClick={() => void (async () => {
                     if (!editingWork) return;
+                    if (editTags.length === 0) {
+                      toast.error("Escolha pelo menos um gênero.");
+                      return;
+                    }
                     setSavingEdit(true);
                     try {
                       const mediumMap: Record<string, string> = { Livro: "livro", Mangá: "manga", HQ: "hq", Conto: "conto", Novel: "lightnovel", Manhwa: "manhwa", Manhua: "manhua" };
                       const res = await fetch(`/api/works/${editingWork.id}`, {
                         method: "PATCH",
                         headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ title: editTitle, medium: mediumMap[editType] ?? "livro" }),
+                        // Só manda o que mudou: nome e formato passam pela curadoria, gêneros entram direto
+                        body: JSON.stringify({
+                          ...(editTitle !== editingWork.title ? { title: editTitle } : {}),
+                          ...((mediumMap[editType] ?? "livro") !== editingWork.medium ? { medium: mediumMap[editType] ?? "livro" } : {}),
+                          tags: editTags.join(", "),
+                        }),
                       });
                       if (!res.ok) throw new Error();
                       const out = (await res.json().catch(() => ({}))) as { review?: boolean };

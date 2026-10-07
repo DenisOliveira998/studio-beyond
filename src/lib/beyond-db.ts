@@ -141,10 +141,16 @@ export async function submitWork(input: {
   return { slug, id: created.id };
 }
 
+/** Gêneros da obra: "a, b, c" vira lista limpa, sem repetição, até 8 de até 30 letras. */
+export function cleanTags(raw: string | undefined | null): string[] {
+  const out = (raw ?? "").split(",").map((t) => t.replace(/<[^>]*>/g, "").trim().slice(0, 30)).filter(Boolean);
+  return [...new Set(out)].slice(0, 8);
+}
+
 export async function updateAuthorWork(
   id: string,
   authorId: string,
-  data: { title?: string; medium?: string; status?: "pending" | "draft" },
+  data: { title?: string; medium?: string; tags?: string; status?: "pending" | "draft" },
 ) {
   const work = await prisma.work.findFirst({ where: { id, authorId } });
   if (!work) throw new Error("Obra não encontrada ou sem permissão");
@@ -152,6 +158,7 @@ export async function updateAuthorWork(
   if (data.title !== undefined) patch["title"] = data.title;
   if (data.medium !== undefined) patch["medium"] = data.medium as import("@prisma/client").WorkMedium;
   if (data.status !== undefined) patch["status"] = toAuthorStatus(data.status);
+  if (data.tags !== undefined) patch["tags"] = data.tags;
   const updated = await prisma.work.update({ where: { id }, data: patch, select: { slug: true, title: true } });
   return updated;
 }

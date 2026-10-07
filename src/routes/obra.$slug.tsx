@@ -317,9 +317,11 @@ function WorkPage() {
   const excerptStart = normalize(work.excerpt).slice(0, 60);
   const teaserRepeatsExcerpt = !!work.body[0] && excerptStart.length > 0 && normalize(work.body[0]).startsWith(excerptStart);
 
-  const genreTags = work.genre
-    ? work.genre.split(",").map((g) => g.trim()).filter(Boolean)
-    : [];
+  // Gênero antigo + tags escolhidas pelo autor, sem repetir
+  const genreTags = [...new Set([
+    ...(work.genre ? work.genre.split(",") : []),
+    ...(work.tags ?? []),
+  ].map((g) => g.trim()).filter(Boolean))];
 
   function handleLike() {
     if (!user) { setLoginOpen(true); return; }
@@ -495,7 +497,7 @@ function WorkPage() {
         <main className="min-w-0 flex-1">
 
           {/* Header (desktop only — mobile is in sidebar row above) */}
-          <div className="hidden lg:block lg:max-w-3xl">
+          <div className="hidden lg:block">
             <p className="eyebrow">{MEDIUM_LABEL[work.medium]}</p>
             <p className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl" aria-hidden="true">
               {cleanTitle}
@@ -529,11 +531,11 @@ function WorkPage() {
 
             {/* Genre tags */}
             {genreTags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {genreTags.map((tag) => (
                   <span
                     key={tag}
-                    className="border border-border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
+                    className="rounded-full border border-border px-3 py-1 text-xs text-foreground/80"
                   >
                     {tag}
                   </span>
@@ -586,13 +588,13 @@ function WorkPage() {
           {/* ── Conteúdo da obra ─────────────────────────────────── */}
           <div className="mt-8 lg:mt-10">
             {/* Synopsis */}
-            <p className="text-base leading-relaxed text-muted-foreground lg:max-w-3xl">
+            <p className="text-base leading-relaxed text-muted-foreground">
               {stripHtml(work.excerpt)}
             </p>
 
             {/* Body preview — prose teaser only; webtoon works have no readable body here */}
             {work.body.length > 0 && work.body[0] && !WEBTOON_MEDIUMS.includes(work.medium) && !teaserRepeatsExcerpt && (
-              <div className="mt-6 prose max-w-none lg:max-w-3xl">
+              <div className="mt-6 prose max-w-none">
                 <WorkParagraph content={work.body[0]} className="text-sm leading-relaxed text-foreground/70 line-clamp-4" />
                 {hasBody && (
                   <Link
@@ -604,20 +606,6 @@ function WorkPage() {
                     Começar a ler
                   </Link>
                 )}
-              </div>
-            )}
-
-            {/* Tags */}
-            {work.tags && work.tags.length > 0 && (
-              <div className="mt-6 flex flex-wrap gap-2">
-                {work.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="border border-border/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    {tag}
-                  </span>
-                ))}
               </div>
             )}
 

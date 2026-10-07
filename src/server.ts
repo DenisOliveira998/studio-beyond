@@ -981,6 +981,11 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (body.pdfUrl && (await blobUrlInUse(body.pdfUrl))) {
           return new Response(JSON.stringify({ error: "Envie um PDF novo." }), { status: 400, headers: { "content-type": "application/json" } });
         }
+        const { cleanTags } = await import("./lib/beyond-db");
+        const tagList = cleanTags(body.tags);
+        if (toAuthorStatus(body.status) === "pending" && tagList.length === 0) {
+          return new Response(JSON.stringify({ error: "Escolha pelo menos um gênero para a obra." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
         const previewCheck = body.previewUrl && !(await blobUrlInUse(body.previewUrl)) ? await verifyStoredPdf(body.previewUrl) : null;
         const submitted = await submitWork({
           authorId: session.user.id,
@@ -989,7 +994,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           artistName: body.artistName ?? session.user.name ?? "",
           excerpt: body.excerpt ?? "",
           body: "",
-          tags: body.tags ?? "",
+          tags: tagList.join(", "),
           pdfUrl: body.pdfUrl ?? null,
           previewUrl: previewCheck?.ok ? body.previewUrl ?? null : null,
           pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 && (body.pdfPages ?? 0) < 5000 ? body.pdfPages! : null,
@@ -1145,8 +1150,17 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
         }
         const workId = authorWorkMatch[1]!;
-        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; status?: "pending" | "draft" };
-        const { updateAuthorWork, insertAuditLog } = await import("./lib/beyond-db");
+        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; tags?: string; status?: "pending" | "draft" };
+        const { updateAuthorWork, insertAuditLog, cleanTags } = await import("./lib/beyond-db");
+        // Gêneros entram direto (lista fechada), mas nunca vazios
+        if (body.tags !== undefined) {
+          const list = cleanTags(body.tags);
+          if (list.length === 0) {
+            return new Response(JSON.stringify({ error: "Escolha pelo menos um gênero." }), { status: 400, headers: { "content-type": "application/json" } });
+          }
+          await updateAuthorWork(workId, session.user.id, { tags: list.join(", ") }).catch(() => null);
+          delete body.tags;
+        }
         // Obra já aprovada: nome, sinopse, capa e formato passam pela curadoria de novo (a versão atual segue no ar)
         const { prisma: prismaEd } = await import("./lib/prisma");
         const current = await prismaEd.work.findFirst({ where: { id: workId, authorId: session.user.id }, select: { status: true } });
@@ -1162,6 +1176,9 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
           });
           return new Response(JSON.stringify({ ok: true, review: true }), { headers: { "content-type": "application/json" } });
+        }
+        if (body.title === undefined && body.medium === undefined && body.status === undefined) {
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         try {
           const updated = await updateAuthorWork(workId, session.user.id, body);
