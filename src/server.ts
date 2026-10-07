@@ -930,7 +930,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
           excerpt?: string; body?: string; tags?: string;
-          pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number;
+          pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number; chapterNumber?: number;
           coverUrl?: string | null; status?: "pending" | "draft";
         };
         // Toda obra é PDF: o arquivo precisa existir na nossa loja, ser PDF de verdade e caber no limite
@@ -939,7 +939,11 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (!pdfCheck.ok) {
           return new Response(JSON.stringify({ error: pdfCheck.error }), { status: 400, headers: { "content-type": "application/json" } });
         }
-        const previewCheck = body.previewUrl ? await verifyStoredPdf(body.previewUrl) : null;
+        const { blobUrlInUse, createInitialChapter } = await import("./lib/chapters");
+        if (body.pdfUrl && (await blobUrlInUse(body.pdfUrl))) {
+          return new Response(JSON.stringify({ error: "Envie um PDF novo." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const previewCheck = body.previewUrl && !(await blobUrlInUse(body.previewUrl)) ? await verifyStoredPdf(body.previewUrl) : null;
         const submitted = await submitWork({
           authorId: session.user.id,
           title: body.title ?? "",
@@ -953,6 +957,14 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 && (body.pdfPages ?? 0) < 5000 ? body.pdfPages! : null,
           coverUrl: body.coverUrl ?? null,
           status: toAuthorStatus(body.status),
+        });
+        // O PDF enviado vira o primeiro capítulo (com o número que o autor escolheu)
+        await createInitialChapter({
+          workId: submitted.id,
+          number: Number(body.chapterNumber ?? 1),
+          pdfUrl: body.pdfUrl!,
+          previewUrl: previewCheck?.ok ? body.previewUrl ?? null : null,
+          pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 ? body.pdfPages! : null,
         });
         const { insertAuditLog } = await import("./lib/beyond-db");
         await insertAuditLog({
@@ -972,6 +984,114 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         });
       }
 
+      // ── Capítulos ───────────────────────────────────────────────────────────
+
+      // Autor: capítulos da própria obra (com pedidos de troca pendentes)
+      const capListMatch = pathname.match(/^\/api\/works\/([^/]+)\/capitulos$/);
+      if (capListMatch && (request.method === "GET" || request.method === "POST")) {
+        const json = (h: unknown, status = 200) => new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return json({ error: "Não autorizado" }, 401);
+        const { prisma: prismaCh } = await import("./lib/prisma");
+        const work = await prismaCh.work.findFirst({ where: { id: capListMatch[1]!, authorId: session.user.id }, select: { id: true, status: true } });
+        if (!work) return json({ error: "Obra não encontrada" }, 404);
+        const chapters = await import("./lib/chapters");
+        if (request.method === "GET") {
+          const { info } = await chapters.listChapters(work.id);
+          const pending = await prismaCh.workRevision.findMany({ where: { workId: work.id, status: "pending" }, select: { kind: true, chapterId: true, createdAt: true } });
+          return json({ status: work.status, chapters: info, pending });
+        }
+        if (!(await rateLimit(`capitulo:user:${session.user.id}`, 30, 60 * 60))) return tooManyRequests("Muitos envios em pouco tempo.");
+        const body = (await request.json().catch(() => ({}))) as { number?: number; pdfUrl?: string; previewUrl?: string; pdfPages?: number };
+        const { verifyStoredPdf } = await import("./lib/pdf-storage");
+        if (!body.pdfUrl) return json({ error: "Envie o PDF do capítulo." }, 400);
+        const check = await verifyStoredPdf(body.pdfUrl);
+        if (!check.ok) return json({ error: check.error }, 400);
+        if (await chapters.blobUrlInUse(body.pdfUrl)) return json({ error: "Envie um PDF novo." }, 400);
+        const previewOk = body.previewUrl && !(await chapters.blobUrlInUse(body.previewUrl)) && (await verifyStoredPdf(body.previewUrl)).ok;
+        try {
+          const r = await chapters.createChapter({
+            workId: work.id,
+            authorId: session.user.id,
+            number: Number(body.number),
+            pdfUrl: body.pdfUrl,
+            previewUrl: previewOk ? body.previewUrl! : null,
+            pdfPages: Number.isInteger(body.pdfPages) && body.pdfPages! > 0 && body.pdfPages! < 5000 ? body.pdfPages! : null,
+          });
+          return json({ ok: true, number: r.number });
+        } catch (e) {
+          return json({ error: e instanceof Error ? e.message : "Não foi possível publicar o capítulo." }, 400);
+        }
+      }
+
+      // Autor: pedir troca do PDF de um capítulo (vale depois da curadoria)
+      const capRevMatch = pathname.match(/^\/api\/capitulos\/([^/]+)\/revisao$/);
+      if (capRevMatch && request.method === "POST") {
+        const json = (h: unknown, status = 200) => new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return json({ error: "Não autorizado" }, 401);
+        const body = (await request.json().catch(() => ({}))) as { pdfUrl?: string; previewUrl?: string; pdfPages?: number };
+        const chapters = await import("./lib/chapters");
+        const { verifyStoredPdf } = await import("./lib/pdf-storage");
+        if (!body.pdfUrl) return json({ error: "Envie o PDF novo." }, 400);
+        const check = await verifyStoredPdf(body.pdfUrl);
+        if (!check.ok) return json({ error: check.error }, 400);
+        if (await chapters.blobUrlInUse(body.pdfUrl)) return json({ error: "Envie um PDF novo." }, 400);
+        const previewOk = body.previewUrl && !(await chapters.blobUrlInUse(body.previewUrl)) && (await verifyStoredPdf(body.previewUrl)).ok;
+        try {
+          await chapters.requestChapterRevision(capRevMatch[1]!, session.user.id, {
+            pdfUrl: body.pdfUrl,
+            previewUrl: previewOk ? body.previewUrl! : null,
+            pdfPages: Number.isInteger(body.pdfPages) && body.pdfPages! > 0 ? body.pdfPages! : null,
+          });
+          return json({ ok: true, review: true });
+        } catch (e) {
+          return json({ error: e instanceof Error ? e.message : "Não foi possível enviar." }, 400);
+        }
+      }
+
+      // Admin: alterações pendentes (nome, sinopse, capa, PDF de capítulo)
+      if (pathname === "/api/admin/revisoes" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { listPendingRevisions } = await import("./lib/chapters");
+        return new Response(JSON.stringify(await listPendingRevisions()), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+      const revDecMatch = pathname.match(/^\/api\/admin\/revisoes\/([^/]+)$/);
+      if (revDecMatch && request.method === "POST") {
+        const { error, actorId } = await requireAdmin(request);
+        if (error) return error;
+        const body = (await request.json().catch(() => ({}))) as { aprovar?: boolean; nota?: string };
+        const { decideRevision } = await import("./lib/chapters");
+        try {
+          await decideRevision(revDecMatch[1]!, body.aprovar === true, actorId ?? "", body.nota?.slice(0, 500) || null);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // Notificações de quem está logado
+      if (pathname === "/api/notificacoes" && (request.method === "GET" || request.method === "POST")) {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return new Response(JSON.stringify({ unread: 0, items: [] }), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+        const { listNotifications, markNotificationsRead } = await import("./lib/chapters");
+        if (request.method === "POST") await markNotificationsRead(session.user.id);
+        return new Response(JSON.stringify(await listNotifications(session.user.id)), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+
+      // Favoritos para a home (obras com capítulo novo primeiro)
+      if (pathname === "/api/favoritos" && request.method === "GET") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return new Response("[]", { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+        const { favoritesForHome } = await import("./lib/chapters");
+        return new Response(JSON.stringify(await favoritesForHome(session.user.id)), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+
       // Autor: atualizar obra própria (título, tipo, despublicar/republicar)
       const authorWorkMatch = pathname.match(/^\/api\/works\/([^/]+)$/);
       if (authorWorkMatch && request.method === "PATCH") {
@@ -981,8 +1101,24 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
         }
         const workId = authorWorkMatch[1]!;
-        const body = (await request.json()) as { title?: string; medium?: string; status?: "pending" | "draft" };
+        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; status?: "pending" | "draft" };
         const { updateAuthorWork, insertAuditLog } = await import("./lib/beyond-db");
+        // Obra já aprovada: nome, sinopse, capa e formato passam pela curadoria de novo (a versão atual segue no ar)
+        const { prisma: prismaEd } = await import("./lib/prisma");
+        const current = await prismaEd.work.findFirst({ where: { id: workId, authorId: session.user.id }, select: { status: true } });
+        if (current?.status === "approved" && (body.title !== undefined || body.medium !== undefined || body.excerpt !== undefined || body.coverUrl !== undefined)) {
+          const { requestWorkRevision, blobUrlInUse } = await import("./lib/chapters");
+          if (body.coverUrl && (await blobUrlInUse(body.coverUrl))) {
+            return new Response(JSON.stringify({ error: "Envie uma capa nova." }), { status: 400, headers: { "content-type": "application/json" } });
+          }
+          await requestWorkRevision(workId, session.user.id, {
+            ...(body.title !== undefined ? { title: body.title } : {}),
+            ...(body.medium !== undefined ? { medium: body.medium } : {}),
+            ...(body.excerpt !== undefined ? { excerpt: body.excerpt } : {}),
+            ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
+          });
+          return new Response(JSON.stringify({ ok: true, review: true }), { headers: { "content-type": "application/json" } });
+        }
         try {
           const updated = await updateAuthorWork(workId, session.user.id, body);
           if (updated && body.title) {
@@ -1581,8 +1717,16 @@ ${catalog}
           .filter((w) => w.slug !== work.slug && (w.artistSlug === work.artistSlug || w.medium === work.medium))
           .slice(0, 4)
           .map(dbWorkToCard);
+        const { listChapters: listWorkChapters, chapterLabel: labelOf } = await import("./lib/chapters");
+        const workChapters = (await listWorkChapters(dbWork.id)).info.map((c) => ({
+          number: c.number,
+          title: labelOf(c.number),
+          date: new Date(c.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
+          free: c.free,
+          earlyUntil: c.earlyUntil,
+        }));
         return new Response(
-          JSON.stringify({ work, related, hasBody: !!(dbWork.body?.trim()) || !!dbWork.pdfUrl }),
+          JSON.stringify({ work: { ...work, chapters: workChapters }, related, hasBody: !!(dbWork.body?.trim()) || workChapters.length > 0 }),
           { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } },
         );
       }
@@ -1830,33 +1974,7 @@ ${catalog}
       }
 
       // Atualizar PDF de uma obra (autor dono ou admin)
-      if (pathname.startsWith("/api/works/") && pathname.endsWith("/pdf") && request.method === "PATCH") {
-        const { auth } = await import("./lib/auth-server");
-        const session = await auth.api.getSession({ headers: request.headers });
-        if (!session?.user) {
-          return new Response(JSON.stringify({ error: "Não autorizado" }), {
-            status: 401,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const id = pathname.replace("/api/works/", "").replace("/pdf", "");
-        const { prisma } = await import("./lib/prisma");
-        const work = await prisma.work.findUnique({ where: { id }, select: { authorId: true } });
-        if (!work) {
-          return new Response(JSON.stringify({ error: "Obra não encontrada" }), { status: 404, headers: { "content-type": "application/json" } });
-        }
-        const adminCheck = await requireAdmin(request);
-        const isAdminUser = !adminCheck.error;
-        if (!isAdminUser && work.authorId !== session.user.id) {
-          return new Response(JSON.stringify({ error: "Sem permissão" }), { status: 403, headers: { "content-type": "application/json" } });
-        }
-        const { pdfUrl } = (await request.json()) as { pdfUrl: string | null };
-        const { updateWorkPdf } = await import("./lib/beyond-db");
-        await updateWorkPdf(id, pdfUrl ?? null);
-        return new Response(JSON.stringify({ ok: true }), {
-          headers: { "content-type": "application/json" },
-        });
-      }
+      // (troca de PDF agora é por capítulo e passa pela curadoria: /api/capitulos/:id/revisao)
 
       // ── Quota de leitura ─────────────────────────────────────────────────────
 
@@ -2103,21 +2221,34 @@ ${catalog}
         const { prisma: prismaPdf } = await import("./lib/prisma");
         const dbWork = await prismaPdf.work.findUnique({
           where: { slug: decodeURIComponent(pdfMatch[1]!) },
-          select: { status: true, pdfUrl: true, previewUrl: true },
+          select: { id: true, status: true, authorId: true },
         });
-        if (!dbWork || dbWork.status !== "approved" || !dbWork.pdfUrl) return denied();
-        // Obra inteira só com login; sem login, só a prévia (2 primeiras páginas)
+        if (!dbWork || dbWork.status !== "approved") return denied();
+        const { listChapters, chapterAccess } = await import("./lib/chapters");
+        const { rows: chRows, info: chInfo } = await listChapters(dbWork.id);
+        if (chRows.length === 0) return denied();
+        const capParam = new URL(request.url).searchParams.get("cap");
+        const capIdx = capParam != null ? chInfo.findIndex((c) => c.number === Number(capParam)) : 0;
+        if (capIdx < 0) return denied();
         const wantPreview = new URL(request.url).searchParams.get("previa") === "1";
         const { auth } = await import("./lib/auth-server");
         const sessionPdf = await auth.api.getSession({ headers: request.headers }).catch(() => null);
-        if (!wantPreview && !sessionPdf?.user) return denied(401);
-        const fileUrl = wantPreview ? dbWork.previewUrl : dbWork.pdfUrl;
+        const viewerRole = sessionPdf?.user
+          ? ((await prismaPdf.profile.findUnique({ where: { id: sessionPdf.user.id }, select: { role: true } }))?.role ?? null)
+          : null;
+        // Regras: antecipado só Super Fã/autor/equipe; 2 primeiros capítulos para todos; resto com login (prévia sem login)
+        const access = chapterAccess(chInfo[capIdx]!, {
+          loggedIn: !!sessionPdf?.user,
+          role: viewerRole,
+          isOwner: !!sessionPdf?.user && dbWork.authorId === sessionPdf.user.id,
+        });
+        if (access === "early") return denied(403);
+        if (!wantPreview && access !== "full") return denied(401);
+        const fileUrl = wantPreview ? chRows[capIdx]!.previewUrl : chRows[capIdx]!.pdfUrl;
         if (!fileUrl) return denied();
-        // Limite diário de contas gratuitas: sem cota, sem arquivo
-        if (!wantPreview && sessionPdf?.user) {
-          const { prisma: prismaP } = await import("./lib/prisma");
-          const prof = await prismaP.profile.findUnique({ where: { id: sessionPdf.user.id }, select: { role: true } });
-          const unlimited = prof && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(prof.role);
+        // Limite diário de contas gratuitas (não vale para os capítulos grátis)
+        if (!wantPreview && sessionPdf?.user && !chInfo[capIdx]!.free) {
+          const unlimited = !!viewerRole && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(viewerRole);
           if (!unlimited) {
             const { getReadingQuota } = await import("./lib/beyond-db");
             const quota = await getReadingQuota(sessionPdf.user.id);
@@ -2152,8 +2283,10 @@ ${catalog}
         if (!dbWork || dbWork.status !== "approved") {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
         }
-        // Obra com PDF abre no visor de PDF, qualquer que seja o formato
-        const isPdf = !!dbWork.pdfUrl;
+        // Obra com capítulos (PDF) abre no visor de PDF, qualquer que seja o formato
+        const { listChapters, chapterAccess, chapterLabel } = await import("./lib/chapters");
+        const { rows: rdRows, info: rdInfo } = await listChapters(dbWork.id);
+        const isPdf = rdRows.length > 0;
         const isWebtoon = !isPdf && ["manhwa", "manhua"].includes(dbWork.medium);
         if (!isWebtoon && !isPdf && !dbWork.body?.trim()) {
           return new Response(JSON.stringify({ error: "Não encontrado" }), { status: 404, headers: { "content-type": "application/json" } });
@@ -2165,11 +2298,14 @@ ${catalog}
 
         // ?meta=1 → só os dados da obra (usado pelo loader no servidor, sem cookies)
         if (new URL(request.url).searchParams.get("meta") === "1") {
-          const { prisma: prismaMeta } = await import("./lib/prisma");
-          const extra = isPdf
-            ? await prismaMeta.work.findUnique({ where: { id: dbWork.id }, select: { previewUrl: true, pdfPages: true } })
-            : null;
-          return new Response(JSON.stringify({ work, readerMode, hasPreview: !!extra?.previewUrl, pdfPages: extra?.pdfPages ?? null }), { headers: noStore });
+          return new Response(
+            JSON.stringify({
+              work,
+              readerMode,
+              chapters: rdInfo.map((c) => ({ number: c.number, label: chapterLabel(c.number), free: c.free, earlyUntil: c.earlyUntil, hasPreview: c.hasPreview, pdfPages: c.pdfPages })),
+            }),
+            { headers: noStore },
+          );
         }
 
         // Limite diário conferido no servidor para contas gratuitas logadas.
@@ -2189,7 +2325,24 @@ ${catalog}
         }
 
         if (isPdf) {
-          return new Response(JSON.stringify({ work, readerMode, locked }), { headers: noStore });
+          // Acesso ao capítulo pedido, com a sessão de quem lê
+          const capQ = new URL(request.url).searchParams.get("cap");
+          const idx = capQ != null ? rdInfo.findIndex((c) => c.number === Number(capQ)) : 0;
+          const ch = rdInfo[idx < 0 ? 0 : idx]!;
+          let role: string | null = null;
+          if (readerSession?.user) {
+            const { prisma: prismaAc } = await import("./lib/prisma");
+            role = (await prismaAc.profile.findUnique({ where: { id: readerSession.user.id }, select: { role: true } }))?.role ?? null;
+          }
+          const access = chapterAccess(ch, {
+            loggedIn: !!readerSession?.user,
+            role,
+            isOwner: !!readerSession?.user && dbWork.authorId === readerSession.user.id,
+          });
+          return new Response(
+            JSON.stringify({ work, readerMode, locked: ch.free ? false : locked, access, chapter: ch.number, free: ch.free, earlyUntil: ch.earlyUntil }),
+            { headers: noStore },
+          );
         }
 
         if (isWebtoon) {

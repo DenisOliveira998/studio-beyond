@@ -688,13 +688,19 @@ function WorkPage() {
                         <Link
                           to="/ler/$slug"
                           params={{ slug: work.slug }}
-                          className="flex items-baseline justify-between gap-4 px-5 py-3 text-sm transition-colors hover:bg-surface/80 hover:text-gilt"
+                          search={{ cap: ch.number }}
+                          className="flex items-center justify-between gap-4 px-5 py-3 text-sm transition-colors hover:bg-surface/80 hover:text-gilt"
                         >
-                          <span className="flex items-baseline gap-3">
-                            <span className="tabular-nums text-muted-foreground/50">
-                              {String(ch.number).padStart(2, "0")}
-                            </span>
+                          <span className="flex items-center gap-3">
                             <span>{ch.title}</span>
+                            {ch.free && (
+                              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-400">Grátis</span>
+                            )}
+                            {ch.earlyUntil && (
+                              <span className="rounded bg-gilt/15 px-1.5 py-0.5 text-[11px] text-gilt">
+                                Super Fã até {new Date(ch.earlyUntil).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                              </span>
+                            )}
                           </span>
                           <span className="shrink-0 text-xs text-muted-foreground">{ch.date}</span>
                         </Link>

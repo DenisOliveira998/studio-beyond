@@ -40,7 +40,12 @@ function consumeAnonQuota(pages: number): Quota {
   return { consumed, limit: FREE_DAILY_QUOTA, remaining: Math.max(0, FREE_DAILY_QUOTA - consumed) };
 }
 
+type ChapterMeta = { number: number; label: string; free: boolean; earlyUntil: string | null; hasPreview: boolean; pdfPages: number | null };
+
 export const Route = createFileRoute("/ler/$slug")({
+  // ?cap=N escolhe o capítulo (mantido como chegou: "2" vira número no roteador)
+  validateSearch: (s: Record<string, unknown>): { cap?: number | string } =>
+    typeof s["cap"] === "number" || typeof s["cap"] === "string" ? { cap: s["cap"] as number | string } : {},
   loader: async ({ params }) => {
     const base = typeof window === "undefined" ? SITE_URL : "";
     // Só os dados da obra; o texto é buscado no navegador, com a sessão do leitor,
@@ -48,7 +53,7 @@ export const Route = createFileRoute("/ler/$slug")({
     const res = await fetch(`${base}/api/reader/${params.slug}?meta=1`);
     if (res.status === 404) throw notFound();
     if (!res.ok) throw new Error("Falha ao carregar obra");
-    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" | "pdf"; hasPreview?: boolean; pdfPages?: number | null };
+    return (await res.json()) as { work: Work; readerMode: "text" | "webtoon" | "pdf"; chapters?: ChapterMeta[] };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Obra não encontrada | Go Beyondd" }] };
@@ -130,14 +135,24 @@ function ReaderPage() {
   const isWebtoon = loaderData.readerMode === "webtoon";
   const isPdf = loaderData.readerMode === "pdf";
   const { user, loading: authLoading } = useAuth();
+  // Capítulo atual (o de menor número quando não vem na URL)
+  const { cap } = Route.useSearch();
+  const chapters = loaderData.chapters ?? [];
+  const capIdx = Math.max(0, cap != null ? chapters.findIndex((c) => c.number === Number(cap)) : 0);
+  const chapter = chapters[capIdx];
+  const prevChapter = capIdx > 0 ? chapters[capIdx - 1] : undefined;
+  const nextChapter = capIdx < chapters.length - 1 ? chapters[capIdx + 1] : undefined;
   // Texto/imagens com a sessão do leitor (o servidor confere o limite diário de contas gratuitas)
   const { data: content, isLoading: contentLoading } = useQuery<{
     bodyHtml?: string;
     bodyImages?: string[];
     locked?: boolean;
+    access?: "full" | "preview" | "early" | "login";
+    free?: boolean;
+    earlyUntil?: string | null;
   }>({
-    queryKey: ["reader-content", work.slug, user?.id ?? "anon"],
-    queryFn: () => fetch(`/api/reader/${work.slug}`).then((r) => r.json()),
+    queryKey: ["reader-content", work.slug, chapter?.number ?? "-", user?.id ?? "anon"],
+    queryFn: () => fetch(`/api/reader/${work.slug}${chapter ? `?cap=${chapter.number}` : ""}`).then((r) => r.json()),
     enabled: !authLoading,
     staleTime: 0,
   });
@@ -206,7 +221,7 @@ function ReaderPage() {
   const pagesConsumedRef = useRef(0);
 
   useEffect(() => {
-    if (quotaExhausted) return;
+    if (quotaExhausted || content?.free || content?.access !== undefined && content.access !== "full") return;
     const bodyEl = bodyRef.current;
     if (!bodyEl) return;
     const totalPages = work.pages ? Number(work.pages) : 5;
@@ -313,48 +328,109 @@ function ReaderPage() {
         {/* Corpo da obra */}
         <div className="relative">
           {isPdf ? (
-            authLoading ? (
-              <div className="flex justify-center py-24">
-                <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
-              </div>
-            ) : !user && !loaderData.hasPreview ? (
-              <div ref={bodyRef} className="rounded border border-border bg-surface px-6 py-12 text-center">
-                <h2 className="font-display text-2xl font-bold tracking-tight">Entre para ler esta obra</h2>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                  A leitura é gratuita: basta ter uma conta. Leva menos de um minuto.
-                </p>
-                <div className="mt-6 flex flex-wrap justify-center gap-3">
-                  <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
-                  <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
-                    Já tenho conta
-                  </a>
+            <>
+              {/* Navegação entre capítulos */}
+              {chapters.length > 1 && (
+                <nav aria-label="Capítulos" className="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+                  {prevChapter ? (
+                    <Link to="/ler/$slug" params={{ slug: work.slug }} search={{ cap: prevChapter.number }} className="text-muted-foreground hover:text-foreground">
+                      Capítulo anterior
+                    </Link>
+                  ) : <span />}
+                  <label className="flex items-center gap-2">
+                    <span className="sr-only">Escolher capítulo</span>
+                    <select
+                      value={chapter?.number}
+                      onChange={(e) => { window.location.href = `/ler/${work.slug}?cap=${e.target.value}`; }}
+                      className="rounded border border-border bg-surface px-3 py-1.5"
+                    >
+                      {chapters.map((c) => (
+                        <option key={c.number} value={c.number}>
+                          {c.label}{c.earlyUntil ? " (antecipado)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {nextChapter ? (
+                    <Link to="/ler/$slug" params={{ slug: work.slug }} search={{ cap: nextChapter.number }} className="text-muted-foreground hover:text-foreground">
+                      Próximo capítulo
+                    </Link>
+                  ) : <span />}
+                </nav>
+              )}
+              {authLoading || contentLoading ? (
+                <div className="flex justify-center py-24">
+                  <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
                 </div>
-              </div>
-            ) : (
-              <>
-                <PdfViewer
-                  slug={work.slug}
-                  bodyRef={bodyRef}
-                  enabled={!contentLoading && !quotaExhausted}
-                  preview={!user}
-                  defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"}
-                />
-                {!user && (
-                  <div className="mt-6 rounded border border-border bg-surface px-6 py-10 text-center">
-                    <h2 className="font-display text-2xl font-bold tracking-tight">Gostou do começo?</h2>
-                    <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                      Estas são as 2 primeiras páginas{loaderData.pdfPages ? ` de ${loaderData.pdfPages}` : ""}. Crie sua conta grátis para ler o resto.
-                    </p>
-                    <div className="mt-6 flex flex-wrap justify-center gap-3">
-                      <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
-                      <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
-                        Já tenho conta
-                      </a>
-                    </div>
+              ) : content?.access === "early" ? (
+                <div ref={bodyRef} className="rounded border border-border bg-surface px-6 py-12 text-center">
+                  <h2 className="font-display text-2xl font-bold tracking-tight">{chapter?.label}: acesso antecipado</h2>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                    Super Fãs já podem ler este capítulo. Para todos, ele libera
+                    {content.earlyUntil ? ` em ${new Date(content.earlyUntil).toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}` : " em breve"}.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                    <Link to="/planos" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Conhecer o Super Fã</Link>
+                    {prevChapter && (
+                      <Link to="/ler/$slug" params={{ slug: work.slug }} search={{ cap: prevChapter.number }} className="rounded-full border border-border px-6 py-2.5 text-sm">
+                        Ler o capítulo anterior
+                      </Link>
+                    )}
                   </div>
-                )}
-              </>
-            )
+                </div>
+              ) : content?.access === "login" ? (
+                <div ref={bodyRef} className="rounded border border-border bg-surface px-6 py-12 text-center">
+                  <h2 className="font-display text-2xl font-bold tracking-tight">Entre para ler este capítulo</h2>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                    A leitura é gratuita: basta ter uma conta. Leva menos de um minuto.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                    <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
+                    <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}?cap=${chapter?.number ?? ""}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
+                      Já tenho conta
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <PdfViewer
+                    key={`${chapter?.number}-${content?.access}`}
+                    slug={work.slug}
+                    cap={chapter?.number}
+                    bodyRef={bodyRef}
+                    enabled={!quotaExhausted}
+                    preview={content?.access === "preview"}
+                    defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"}
+                  />
+                  {content?.access === "preview" && (
+                    <div className="mt-6 rounded border border-border bg-surface px-6 py-10 text-center">
+                      <h2 className="font-display text-2xl font-bold tracking-tight">Gostou do começo?</h2>
+                      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                        Estas são as 2 primeiras páginas{chapter?.pdfPages ? ` de ${chapter.pdfPages}` : ""}. Crie sua conta grátis para ler o resto.
+                      </p>
+                      <div className="mt-6 flex flex-wrap justify-center gap-3">
+                        <Link to="/criar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">Criar conta grátis</Link>
+                        <a href={`/entrar?redirect=${encodeURIComponent(`/ler/${work.slug}?cap=${chapter?.number ?? ""}`)}`} className="rounded-full border border-border px-6 py-2.5 text-sm">
+                          Já tenho conta
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {content?.access === "full" && nextChapter && (
+                    <div className="mt-8 flex justify-center">
+                      <Link
+                        to="/ler/$slug"
+                        params={{ slug: work.slug }}
+                        search={{ cap: nextChapter.number }}
+                        className="rounded-full bg-gilt px-8 py-3 text-sm font-bold text-ink"
+                      >
+                        Próximo capítulo
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           ) : isWebtoon ? (
             <WebtoonBody images={bodyImages} bodyRef={bodyRef} loading={authLoading || contentLoading} />
           ) : (
@@ -406,7 +482,7 @@ function ReaderPage() {
         )}
 
         {/* Rodapé do leitor (não aparece para quem ainda não pode ler o PDF inteiro) */}
-        {!quotaExhausted && !(isPdf && !user) && (
+        {!quotaExhausted && !(isPdf && (content?.access !== "full" || !!nextChapter)) && (
           <EndOfWork work={work} title={cleanTitle} />
         )}
       </div>

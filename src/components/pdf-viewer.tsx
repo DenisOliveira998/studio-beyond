@@ -32,12 +32,15 @@ export function PdfViewer({
   slug,
   bodyRef,
   enabled,
+  cap,
   preview = false,
   defaultTheme = "original",
 }: {
   slug: string;
   bodyRef: React.RefObject<HTMLDivElement | null>;
   enabled: boolean;
+  /** Número do capítulo (sem ele, o primeiro) */
+  cap?: number | undefined;
   /** Só as 2 primeiras páginas (visitante sem login) */
   preview?: boolean;
   /** Prosa abre no escuro; quadrinhos, no original (não altera a arte). */
@@ -81,7 +84,10 @@ export function PdfViewer({
         pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
         // Carrega por partes: a primeira página aparece sem baixar o arquivo inteiro
         const doc = await pdfjs.getDocument({
-          url: `/api/reader/${encodeURIComponent(slug)}/arquivo${preview ? "?previa=1" : ""}`,
+          url: `/api/reader/${encodeURIComponent(slug)}/arquivo?${new URLSearchParams({
+            ...(cap != null ? { cap: String(cap) } : {}),
+            ...(preview ? { previa: "1" } : {}),
+          }).toString()}`,
           rangeChunkSize: 512 * 1024,
           disableAutoFetch: true,
           disableStream: true,
@@ -99,7 +105,7 @@ export function PdfViewer({
       setDoc(null);
       void loaded?.destroy();
     };
-  }, [slug, enabled, preview]);
+  }, [slug, enabled, preview, cap]);
 
   if (state === "error") {
     return (

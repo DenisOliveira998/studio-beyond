@@ -276,6 +276,7 @@ model ReadingProgress {
   workSlug  String
   pagesRead Int      @default(0)
   finished  Boolean  @default(false)
+  chapterNumber Decimal? @db.Decimal(7, 2) // último capítulo aberto
   updatedAt DateTime @updatedAt
 
   @@unique([userId, workSlug])
@@ -504,4 +505,61 @@ model Subscription {
   @@index([userId])
   @@index([status])
   @@map("subscriptions")
+}
+
+// -------------------------------------------------- Capítulos, revisões e notificações
+
+// Cada capítulo é um PDF. O autor escolhe o número (0 para prólogo, 1.5 para extra…);
+// a lista é ordenada pelo número. Capítulo novo fica 3 dias só para Super Fã (earlyUntil).
+model Chapter {
+  id          String    @id @default(cuid())
+  workId      String
+  number      Decimal   @db.Decimal(7, 2)
+  pdfUrl      String    @db.Text
+  previewUrl  String?   @db.Text
+  pdfPages    Int?
+  publishedAt DateTime  @default(now())
+  earlyUntil  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workId, number])
+  @@index([workId])
+  @@map("chapters")
+}
+
+// Alteração de título, sinopse, capa ou PDF de capítulo: passa pela curadoria antes de valer.
+// A versão atual continua no ar até a aprovação.
+model WorkRevision {
+  id         String    @id @default(cuid())
+  workId     String
+  authorId   String
+  kind       String // work | chapter
+  chapterId  String?
+  data       String    @db.Text // JSON com os campos novos
+  status     String    @default("pending") // pending | approved | rejected
+  note       String?   @db.Text
+  reviewerId String?
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([status])
+  @@index([workId])
+  @@map("work_revisions")
+}
+
+// Avisos para leitores (ex.: capítulo novo de quem você segue)
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // new_chapter | revision_approved | revision_rejected
+  title     String
+  body      String    @default("") @db.VarChar(500)
+  link      String    @default("") @db.VarChar(500)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+  @@map("notifications")
 }

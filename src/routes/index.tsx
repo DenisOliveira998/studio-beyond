@@ -238,7 +238,7 @@ function DestaqueHero({ works, initialDestaque }: { works: Work[]; initialDestaq
 
 // ── Card compacto (retrato 3/4) ──────────────────────────────────
 
-const BADGE_LABEL = { HOT: "Em alta", NEW: "Novo", NOVO: "Atualizado" } as const;
+const BADGE_LABEL = { HOT: "Em alta", NEW: "Novo", NOVO: "Capítulo novo" } as const;
 
 function CatalogCard({
   work,
@@ -404,6 +404,36 @@ function CatalogGrid({ works, badges }: { works: Work[]; badges: Record<string, 
 
 // ── Continue Lendo ───────────────────────────────────────────────
 
+// ── Seus favoritos: obras favoritas, com capítulo novo primeiro ───
+
+type FavoriteItem = { work: Work; hasNew: boolean; lastChapter: number | null; lastChapterAt: string | null };
+
+function FavoritesRow() {
+  const { user, loading } = useAuth();
+  const { data = [] } = useQuery<FavoriteItem[]>({
+    queryKey: ["favoritos-home", user?.id],
+    queryFn: () => fetch("/api/favoritos").then((r) => r.json() as Promise<FavoriteItem[]>),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  if (loading || !user || data.length === 0) return null;
+  return (
+    <section className="border-b border-border/70 px-5 py-10 sm:px-10 lg:px-14">
+      <h2 className="font-display text-2xl font-bold tracking-tight">Seus favoritos</h2>
+      <div className="no-scrollbar -mx-5 mt-5 flex gap-3 overflow-x-auto px-5 sm:-mx-10 sm:px-10 lg:mx-0 lg:px-0">
+        {data.map((f) => (
+          <div key={f.work.id} className="w-[120px] shrink-0 sm:w-[140px]">
+            <CatalogCard work={f.work} {...(f.hasNew ? { badge: "NOVO" as const } : {})} />
+            {f.lastChapter != null && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Até o capítulo {String(f.lastChapter).replace(".", ",")}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ContinueReading({ works }: { works: Work[] }) {
   const { user, loading } = useAuth();
   const [hasUpdates, setHasUpdates] = useState<Record<string, boolean>>({});
@@ -511,6 +541,8 @@ function Home() {
       <DestaqueHero works={works} initialDestaque={initial.destaque} />
 
       {/* Continue lendo */}
+      <FavoritesRow />
+
       <ContinueReading works={works} />
 
       {/* Catálogo: um bloco só, filtrado por categoria */}

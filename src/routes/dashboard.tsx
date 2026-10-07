@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ChapterManager } from "@/components/chapter-manager";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -188,6 +189,8 @@ function Dashboard() {
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<"idle" | "cover" | "pdf" | "work">("idle");
   const [pdfProgress, setPdfProgress] = useState<{ message: string; percent: number } | null>(null);
+  const [firstChapter, setFirstChapter] = useState("1");
+  const [chaptersOf, setChaptersOf] = useState<{ id: string; title: string; medium: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
 
@@ -331,6 +334,7 @@ function Dashboard() {
           pdfUrl,
           previewUrl,
           pdfPages,
+          chapterNumber: Number(firstChapter.replace(",", ".")) || 1,
           coverUrl,
           status: kind === "publish" ? "pending" : "draft",
         }),
@@ -478,6 +482,11 @@ function Dashboard() {
                           >
                             <Pencil className="size-3.5" /> Editar
                           </ActionButton>
+                          {live && (
+                            <ActionButton onClick={() => setChaptersOf({ id: w.id, title: w.title, medium: w.medium })}>
+                              Capítulos
+                            </ActionButton>
+                          )}
                           <ActionButton danger onClick={() => void togglePublish(w.id, w.title)}>
                             {live ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                             {live ? "Despublicar" : "Republicar"}
@@ -491,6 +500,10 @@ function Dashboard() {
             </table>
           </div>
         </section>
+
+        {chaptersOf && (
+          <ChapterManager workId={chaptersOf.id} title={chaptersOf.title} medium={chaptersOf.medium} onClose={() => setChaptersOf(null)} />
+        )}
 
         {/* Publicar Obra */}
         <section id="publicar" className="mt-16 scroll-mt-24">
@@ -578,6 +591,20 @@ function Dashboard() {
                   <ImagePlus className="size-5 text-gilt" strokeWidth={1.5} />
                   {coverName ?? "Clique para enviar a capa (obrigatório)"}
                 </button>
+              </Field>
+
+              <Field label="Número do capítulo deste PDF" htmlFor="obra-cap">
+                <input
+                  id="obra-cap"
+                  type="text"
+                  inputMode="decimal"
+                  value={firstChapter}
+                  onChange={(e) => setFirstChapter(e.target.value)}
+                  className="w-28 border border-border bg-transparent px-4 py-2 text-sm outline-none focus:border-gilt"
+                />
+                <p className="mt-1 text-xs text-muted-foreground/60">
+                  Normalmente 1. Use 0 para prólogo. Depois da aprovação, os próximos capítulos entram pelo botão Capítulos.
+                </p>
               </Field>
 
               <Field label="Arquivo da obra *" htmlFor="obra-pdf">
@@ -980,8 +1007,13 @@ function Dashboard() {
                         body: JSON.stringify({ title: editTitle, medium: mediumMap[editType] ?? "livro" }),
                       });
                       if (!res.ok) throw new Error();
+                      const out = (await res.json().catch(() => ({}))) as { review?: boolean };
                       void refetchDash();
-                      toast.success(`Alterações em "${editTitle}" salvas.`);
+                      toast.success(
+                        out.review
+                          ? "Alteração enviada para a curadoria. A versão atual continua no ar até a aprovação."
+                          : `Alterações em "${editTitle}" salvas.`,
+                      );
                       setEditingWork(null);
                     } catch {
                       toast.error("Erro ao salvar alterações.");

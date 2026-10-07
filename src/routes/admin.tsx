@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AdminRevisions } from "@/components/admin-revisions";
 import { AdminPayments } from "@/components/admin-payments";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -95,6 +96,7 @@ const NAV = [
   { id: "denuncias", label: "Denúncias", icon: Flag },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
   { id: "pagamentos", label: "Pagamentos", icon: CircleDollarSign },
+  { id: "revisoes", label: "Alterações", icon: FileClock },
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "lista-espera", label: "Lista de espera", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
@@ -1082,6 +1084,12 @@ function AdminPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Alterações pedidas em obras aprovadas (nome, sinopse, capa, PDF de capítulo) */}
+        <section id="revisoes" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={FileClock}>Alterações para revisar</SectionTitle>
+          <AdminRevisions />
         </section>
 
         {/* Pagamentos (Mercado Pago) */}

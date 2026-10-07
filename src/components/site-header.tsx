@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { NotificationBell } from "@/components/notification-bell";
 import { Instagram, LayoutDashboard, LogOut, Menu, Shield, X, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
@@ -171,7 +172,10 @@ export function SiteHeader() {
           {loading ? (
             <div className="size-8 rounded-full bg-white/10 animate-pulse" />
           ) : user ? (
-            <UserMenu />
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <UserMenu />
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link

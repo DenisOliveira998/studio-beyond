@@ -110,7 +110,7 @@ export async function submitWork(input: {
   // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
   const base = slugify(stripHtml(input.title)) || `obra-${Date.now()}`;
   const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
-  await prisma.work.create({
+  const created = await prisma.work.create({
     data: {
       slug,
       title: input.title,
@@ -129,7 +129,7 @@ export async function submitWork(input: {
       status: toAuthorStatus(input.status),
     },
   });
-  return { slug };
+  return { slug, id: created.id };
 }
 
 export async function updateAuthorWork(
@@ -906,7 +906,7 @@ export async function fetchDistinctArtists(): Promise<ArtistSummary[]> {
 /* ---------- helpers internos ---------- */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function workToDb(w: any): DbWork {
+export function workToDb(w: any): DbWork {
   return {
     id: w.id,
     slug: w.slug,

@@ -11,7 +11,7 @@ export function getReaderMode(medium: Medium): "text" | "webtoon" {
   return WEBTOON_MEDIUMS.includes(medium) ? "webtoon" : "text";
 }
 
-export type WorkChapter = { number: number; title: string; date: string };
+export type WorkChapter = { number: number; title: string; date: string; free?: boolean; earlyUntil?: string | null };
 
 export type Work = {
   id: string;
