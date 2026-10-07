@@ -480,6 +480,11 @@ function Dashboard() {
                             Despublicada
                           </p>
                         )}
+                        {live && myDbWorks.find((d) => d.id === w.id)?.curatorNote && (
+                          <p className="mt-1 max-w-xs text-xs text-amber-400">
+                            Curadoria pediu ajustes: {myDbWorks.find((d) => d.id === w.id)?.curatorNote}
+                          </p>
+                        )}
                       </Td>
                       <Td className="text-muted-foreground">{w.published}</Td>
                       <Td>{compact(w.clicks)}</Td>
@@ -863,7 +868,7 @@ function Dashboard() {
                   type: "publish",
                 });
               }
-              if ((w.status === "changes" || w.status === "rejected") && w.curatorNote) {
+              if ((w.status === "changes" || w.status === "rejected" || w.status === "approved") && w.curatorNote) {
                 entries.push({
                   date: new Date(w.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
                   work: w.title,

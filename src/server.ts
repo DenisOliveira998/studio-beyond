@@ -2001,7 +2001,7 @@ ${catalog}
         if (request.method === "PATCH") {
           const { status, note } = (await request.json()) as { status: string; note?: string };
           const { decideWork, insertAuditLog } = await import("./lib/beyond-db");
-          const { authorEmail, authorName, title, slug } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
+          const { authorEmail, authorName, title, slug, keptLive } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
           await insertAuditLog({
             action: status === "approved" ? "work_approved" : status === "rejected" ? "work_rejected" : "work_changes",
             workSlug: slug,
@@ -2024,7 +2024,9 @@ ${catalog}
             const bodies: Record<string, string> = {
               approved: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> foi <strong>aprovada</strong> pela curadoria da <strong>Go Beyondd</strong> e já está publicada no feed.<br><br>Obrigado por publicar conosco.<br><em>Equipe Go Beyondd</em>`,
               rejected: `Olá, ${safeName}.<br><br>Após análise, sua obra <strong>${safeTitle}</strong> não foi aprovada neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br><em>Equipe Go Beyondd</em>`,
-              changes: `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
+              changes: keptLive
+                ? `Olá, ${safeName}.<br><br>A curadoria pediu alguns ajustes em <strong>${safeTitle}</strong>. A obra continua no ar enquanto isso.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Faça os ajustes pelo botão Editar no seu painel.<br><em>Equipe Go Beyondd</em>`
+                : `Olá, ${safeName}.<br><br>Sua obra <strong>${safeTitle}</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };
             await fetch("https://api.resend.com/emails", {
               method: "POST",

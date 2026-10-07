@@ -167,24 +167,40 @@ export async function decideWork(
   id: string,
   status: "approved" | "rejected" | "changes",
   note?: string,
-): Promise<{ authorEmail: string; authorName: string; title: string; slug: string }> {
+): Promise<{ authorEmail: string; authorName: string; title: string; slug: string; keptLive: boolean }> {
   const work = await prisma.work.findUnique({
     where: { id },
-    select: { title: true, slug: true, authorId: true },
+    select: { title: true, slug: true, authorId: true, status: true, publishedAt: true },
   });
   if (!work) throw new Error("Work not found");
   const author = work.authorId
     ? await prisma.profile.findUnique({ where: { id: work.authorId }, select: { email: true, name: true } })
     : null;
+  // Obra no ar com pedido de ajuste: continua no ar; o autor só recebe a nota
+  const keptLive = work.status === "approved" && status === "changes";
   await prisma.work.update({
     where: { id },
-    data: {
-      status,
-      curatorNote: note ?? null,
-      ...(status === "approved" ? { publishedAt: new Date() } : {}),
-    },
+    data: keptLive
+      ? { curatorNote: note ?? null }
+      : {
+          status,
+          curatorNote: note ?? null,
+          // Data de publicação é a primeira aprovação; reaprovar não muda
+          ...(status === "approved" && !work.publishedAt ? { publishedAt: new Date() } : {}),
+        },
   });
-  return { authorEmail: author?.email ?? "", authorName: author?.name ?? "Autor", title: work.title, slug: work.slug };
+  if (keptLive && work.authorId) {
+    await prisma.notification.create({
+      data: {
+        userId: work.authorId,
+        type: "curator_note",
+        title: `A curadoria pediu ajustes em ${work.title.replace(/<[^>]*>/g, "")}`,
+        body: (note ?? "Veja o pedido no seu painel.").slice(0, 500),
+        link: "/dashboard#minhas-obras",
+      },
+    }).catch(() => {});
+  }
+  return { authorEmail: author?.email ?? "", authorName: author?.name ?? "Autor", title: work.title, slug: work.slug, keptLive };
 }
 
 export async function updateWorkPdf(id: string, pdfUrl: string | null) {
