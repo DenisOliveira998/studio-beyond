@@ -129,7 +129,7 @@ export async function fetchReports(status: string | null): Promise<ReportRow[]> 
       const a = authorBySlug.get(r.targetId);
       const owner = a?.authorId ? ownerById.get(a.authorId) : undefined;
       target = a
-        ? { label: `Autor: ${a.artistName}`, link: `/artist/${r.targetId}`, excerpt: "", ownerId: a.authorId, ownerName: a.artistName, ownerSuspended: owner?.suspended }
+        ? { label: `Autor: ${a.artistName}`, link: `/autor/${r.targetId}`, excerpt: "", ownerId: a.authorId, ownerName: a.artistName, ownerSuspended: owner?.suspended }
         : { label: "Autor não encontrado", link: null, excerpt: "", ownerId: null, ownerName: "" };
     }
     return {

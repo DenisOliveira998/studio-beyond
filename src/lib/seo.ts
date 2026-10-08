@@ -63,7 +63,7 @@ export function workJsonLd(work: Work) {
           author: {
             "@type": "Person",
             name: work.artistName,
-            url: siteUrl(`/artist/${work.artistSlug}`),
+            url: siteUrl(`/autor/${work.artistSlug}`),
           },
         }
       : {}),
@@ -76,11 +76,11 @@ export function authorProfileJsonLd(input: { name: string; slug: string; bio: Au
   return {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    url: siteUrl(`/artist/${input.slug}`),
+    url: siteUrl(`/autor/${input.slug}`),
     mainEntity: {
       "@type": "Person",
       name: input.name,
-      url: siteUrl(`/artist/${input.slug}`),
+      url: siteUrl(`/autor/${input.slug}`),
       ...(input.bio.bio ? { description: input.bio.bio } : {}),
       ...(input.bio.avatarUrl ? { image: absoluteUrl(input.bio.avatarUrl) } : {}),
       ...(input.bio.city ? { homeLocation: { "@type": "Place", name: input.bio.city } } : {}),

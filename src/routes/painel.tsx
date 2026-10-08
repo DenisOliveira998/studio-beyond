@@ -25,7 +25,7 @@ import { PLATFORM_FEE, RATE_PER_CLICK, compact, money, MEDIUM_LABEL } from "@/li
 import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/painel")({
   head: () => ({
     meta: [
       { title: "Painel do autor | Go Beyondd" },
@@ -113,7 +113,7 @@ function Dashboard() {
 
   const { data: dashData, refetch: refetchDash } = useQuery<DashboardData>({
     queryKey: ["author-dashboard"],
-    queryFn: () => fetch("/api/author/dashboard").then((r) => r.json() as Promise<DashboardData>),
+    queryFn: () => fetch("/api/autor/painel").then((r) => r.json() as Promise<DashboardData>),
     enabled: !!user,
     staleTime: 30_000,
   });
@@ -1148,7 +1148,7 @@ function Dashboard() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   {initialWorks.length > 0 && (
                     <Link
-                      to="/artist/$slug"
+                      to="/autor/$slug"
                       params={{ slug: initialWorks[0]!.artistSlug }}
                       className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-gilt hover:text-gilt"
                     >

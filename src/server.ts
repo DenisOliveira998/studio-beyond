@@ -339,6 +339,13 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
     const host = (request.headers.get("x-forwarded-host") ?? url.host).split(",")[0]!.trim().toLowerCase();
+    // Endereços em português: /dashboard → /painel, /artist/<autor> → /autor/<autor>
+    if (request.method === "GET" && !OLD_HOSTS.has(host)) {
+      const ptPath = url.pathname === "/dashboard" ? "/painel" : url.pathname.replace(/^\/artist\/([^/]+)\/?$/, "/autor/$1");
+      if (ptPath !== url.pathname) {
+        return new Response(null, { status: 308, headers: { location: `${ptPath}${url.search}`, "cache-control": "public, max-age=3600" } });
+      }
+    }
     // /work/<obra> virou /obra/<obra>; endereços antigos de obra (ex.: com sufixo) levam ao atual
     const obraPath = url.pathname.match(/^\/(work|obra|ler)\/([^/]+)(\/?.*)$/);
     if (obraPath && request.method === "GET" && !OLD_HOSTS.has(host)) {
@@ -488,7 +495,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
       }
 
       // Better Auth intercepta /api/auth/*
-      if (pathname.startsWith("/api/auth")) {
+      // Só /api/auth e /api/auth/... (não pegar /api/author/...)
+      if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
         const { auth } = await import("./lib/auth-server");
         return auth.handler(request);
       }
@@ -1295,7 +1303,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           "User-agent: *",
           "Allow: /",
           "Disallow: /admin",
-          "Disallow: /dashboard",
+          "Disallow: /painel",
           "Disallow: /perfil",
           "",
           `Sitemap: ${SITE_URL}/sitemap.xml`,
@@ -1350,7 +1358,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
               cover ? { loc: cover, title: stripHtml(w.title) } : undefined,
             );
           }),
-          ...artists.filter((a) => a.slug).map((a) => url(`/artist/${encodeURIComponent(a.slug)}`, artistMod.get(a.slug))),
+          ...artists.filter((a) => a.slug).map((a) => url(`/autor/${encodeURIComponent(a.slug)}`, artistMod.get(a.slug))),
         ];
         const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${lines.join("\n")}\n</urlset>\n`;
         return new Response(xml, {
@@ -1835,7 +1843,7 @@ ${catalog}
       }
 
       // Dashboard do autor — retorna works convertidos para Work[] + donations
-      if (pathname === "/api/author/dashboard" && request.method === "GET") {
+      if (pathname === "/api/autor/painel" && request.method === "GET") {
         const { auth } = await import("./lib/auth-server");
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) {
@@ -1960,7 +1968,7 @@ ${catalog}
               changes: "Ajustes solicitados — Go Beyondd",
             };
             const bodies: Record<string, string> = {
-              approved: `Olá, ${safeName}!<br><br>Sua candidatura à <strong>Go Beyondd</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://www.gobeyondd.com.br/dashboard">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe Go Beyondd</em>`,
+              approved: `Olá, ${safeName}!<br><br>Sua candidatura à <strong>Go Beyondd</strong> foi <strong>aprovada</strong>. Acesse o Painel do Autor para começar a publicar suas obras:<br><br><a href="https://www.gobeyondd.com.br/painel">Painel do Autor</a><br><br>Bem-vindo(a) à plataforma!<br><em>Equipe Go Beyondd</em>`,
               rejected: `Olá, ${safeName}.<br><br>Agradecemos o interesse em fazer parte da <strong>Go Beyondd</strong>. Após análise cuidadosa, não foi possível aprovar sua candidatura neste momento.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Você poderá candidatar-se novamente no futuro.<br><em>Equipe Go Beyondd</em>`,
               changes: `Olá, ${safeName}.<br><br>Sua candidatura à <strong>Go Beyondd</strong> precisa de alguns ajustes antes de ser aprovada.${safeNote ? `<br><br><em>Nota da curadoria: ${safeNote}</em>` : ""}<br><br>Por favor, entre em contato conosco para mais informações.<br><em>Equipe Go Beyondd</em>`,
             };

@@ -196,7 +196,7 @@ export async function decideWork(
         type: "curator_note",
         title: `A curadoria pediu ajustes em ${work.title.replace(/<[^>]*>/g, "")}`,
         body: (note ?? "Veja o pedido no seu painel.").slice(0, 500),
-        link: "/dashboard#minhas-obras",
+        link: "/painel#minhas-obras",
       },
     }).catch(() => {});
   }

@@ -16,7 +16,7 @@ import { stripHtml } from "@/lib/utils";
 
 const EMPTY_BIO: AuthorBioData = { bio: "", avatarUrl: "", city: "", instagram: "", website: "" };
 
-export const Route = createFileRoute("/artist/$slug")({
+export const Route = createFileRoute("/autor/$slug")({
   loader: async ({ params }) => {
     const base = typeof window === "undefined" ? SITE_URL : "";
     const res = await fetch(`${base}/api/artists/${encodeURIComponent(params.slug)}`);
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/artist/$slug")({
       meta.push({ property: "og:image", content: absoluteUrl(image) });
       meta.push({ name: "twitter:image", content: absoluteUrl(image) });
     }
-    meta.push({ property: "og:url", content: `${SITE_URL}/artist/${artistSlug}` });
+    meta.push({ property: "og:url", content: `${SITE_URL}/autor/${artistSlug}` });
     meta.push({
       "script:ld+json": authorProfileJsonLd({ name: artistName, slug: artistSlug, bio, worksCount: works.length }),
     });
@@ -66,12 +66,12 @@ export const Route = createFileRoute("/artist/$slug")({
       "script:ld+json": breadcrumbJsonLd([
         { name: "Início", path: "/" },
         { name: "Ranking", path: "/ranking?aba=autores" },
-        { name: artistName, path: `/artist/${artistSlug}` },
+        { name: artistName, path: `/autor/${artistSlug}` },
       ]),
     });
     return {
       meta,
-      links: [{ rel: "canonical", href: `${SITE_URL}/artist/${artistSlug}` }],
+      links: [{ rel: "canonical", href: `${SITE_URL}/autor/${artistSlug}` }],
     };
   },
   component: ArtistPage,
@@ -201,7 +201,7 @@ function ArtistPage() {
         <ReportButton
           targetType="author"
           targetId={artistSlug}
-          redirectTo={`/artist/${artistSlug}`}
+          redirectTo={`/autor/${artistSlug}`}
           trigger={
             <button type="button" className="text-xs text-muted-foreground/70 transition-colors hover:text-red-400">
               Denunciar este autor
@@ -210,7 +210,7 @@ function ArtistPage() {
         />
       </div>
 
-      <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/artist/${artistSlug}`} />
+      <LoginPrompt open={loginOpen} onOpenChange={setLoginOpen} redirectTo={`/autor/${artistSlug}`} />
     </div>
   );
 }

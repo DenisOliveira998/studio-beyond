@@ -152,7 +152,7 @@ function RankingPage() {
           {data.authors.map((a, i) => (
             <li key={a.slug}>
               <Link
-                to="/artist/$slug"
+                to="/autor/$slug"
                 params={{ slug: a.slug }}
                 className="group flex items-center gap-4 py-4 transition-colors hover:bg-surface/50 sm:gap-6 sm:px-3"
               >

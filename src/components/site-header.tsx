@@ -85,7 +85,7 @@ function UserMenu() {
           </div>
           <div className="py-1">
             <Link
-              to={isStaff || profile?.role === "author" ? "/dashboard" : "/perfil"}
+              to={isStaff || profile?.role === "author" ? "/painel" : "/perfil"}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
             >

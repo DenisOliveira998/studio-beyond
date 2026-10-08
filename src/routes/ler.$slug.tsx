@@ -571,7 +571,7 @@ function EndOfWork({ work, title }: { work: Work; title: string }) {
                 Seguir {artistName.split(" ")[0]}
               </a>
             )}
-            <Link to="/artist/$slug" params={{ slug: artistSlug }} className={btn}>
+            <Link to="/autor/$slug" params={{ slug: artistSlug }} className={btn}>
               Mais de {artistName.split(" ")[0]}
             </Link>
           </div>

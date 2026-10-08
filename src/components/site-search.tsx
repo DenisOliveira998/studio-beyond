@@ -145,7 +145,7 @@ export function SiteSearch({ inline = false }: SiteSearchProps) {
               {results.artists.map((hit) => (
                 <Link
                   key={hit.slug}
-                  to="/artist/$slug"
+                  to="/autor/$slug"
                   params={{ slug: hit.slug }}
                   onClick={close}
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background"

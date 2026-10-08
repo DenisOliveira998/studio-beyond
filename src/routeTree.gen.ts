@@ -16,9 +16,9 @@ import { Route as BibliotecaRouteImport } from './routes/biblioteca'
 import { Route as CandidaturaAutorRouteImport } from './routes/candidatura-autor'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as CriarRouteImport } from './routes/criar'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as ExplorarRouteImport } from './routes/explorar'
+import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -26,8 +26,8 @@ import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as ApoioRetornoRouteImport } from './routes/apoio.retorno'
-import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AutorSlugRouteImport } from './routes/autor.$slug'
 import { Route as ExplorarCategoriaRouteImport } from './routes/explorar_.$categoria'
 import { Route as LerSlugRouteImport } from './routes/ler.$slug'
 import { Route as ObraSlugRouteImport } from './routes/obra.$slug'
@@ -68,11 +68,6 @@ const CriarRoute = CriarRouteImport.update({
   path: '/criar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const EntrarRoute = EntrarRouteImport.update({
   id: '/entrar',
   path: '/entrar',
@@ -81,6 +76,11 @@ const EntrarRoute = EntrarRouteImport.update({
 const ExplorarRoute = ExplorarRouteImport.update({
   id: '/explorar',
   path: '/explorar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerfilRoute = PerfilRouteImport.update({
@@ -118,15 +118,15 @@ const ApoioRetornoRoute = ApoioRetornoRouteImport.update({
   path: '/apoio/retorno',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ArtistSlugRoute = ArtistSlugRouteImport.update({
-  id: '/artist/$slug',
-  path: '/artist/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => AuthRoute,
+} as any)
+const AutorSlugRoute = AutorSlugRouteImport.update({
+  id: '/autor/$slug',
+  path: '/autor/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorarCategoriaRoute = ExplorarCategoriaRouteImport.update({
   id: '/explorar_/$categoria',
@@ -157,9 +157,9 @@ export interface FileRoutesByFullPath {
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
-  '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
   '/privacidade': typeof PrivacidadeRoute
@@ -167,8 +167,8 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/apoio/retorno': typeof ApoioRetornoRoute
-  '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
@@ -182,9 +182,9 @@ export interface FileRoutesByTo {
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
-  '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
   '/privacidade': typeof PrivacidadeRoute
@@ -192,8 +192,8 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/apoio/retorno': typeof ApoioRetornoRoute
-  '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
@@ -208,9 +208,9 @@ export interface FileRoutesById {
   '/candidatura-autor': typeof CandidaturaAutorRoute
   '/contato': typeof ContatoRoute
   '/criar': typeof CriarRoute
-  '/dashboard': typeof DashboardRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
   '/privacidade': typeof PrivacidadeRoute
@@ -218,8 +218,8 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/apoio/retorno': typeof ApoioRetornoRoute
-  '/artist/$slug': typeof ArtistSlugRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autor/$slug': typeof AutorSlugRoute
   '/explorar_/$categoria': typeof ExplorarCategoriaRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
@@ -235,9 +235,9 @@ export interface FileRouteTypes {
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
-    | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/painel'
     | '/perfil'
     | '/planos'
     | '/privacidade'
@@ -245,8 +245,8 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/apoio/retorno'
-    | '/artist/$slug'
     | '/auth/callback'
+    | '/autor/$slug'
     | '/explorar/$categoria'
     | '/ler/$slug'
     | '/obra/$slug'
@@ -260,9 +260,9 @@ export interface FileRouteTypes {
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
-    | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/painel'
     | '/perfil'
     | '/planos'
     | '/privacidade'
@@ -270,8 +270,8 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/apoio/retorno'
-    | '/artist/$slug'
     | '/auth/callback'
+    | '/autor/$slug'
     | '/explorar/$categoria'
     | '/ler/$slug'
     | '/obra/$slug'
@@ -285,9 +285,9 @@ export interface FileRouteTypes {
     | '/candidatura-autor'
     | '/contato'
     | '/criar'
-    | '/dashboard'
     | '/entrar'
     | '/explorar'
+    | '/painel'
     | '/perfil'
     | '/planos'
     | '/privacidade'
@@ -295,8 +295,8 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/apoio/retorno'
-    | '/artist/$slug'
     | '/auth/callback'
+    | '/autor/$slug'
     | '/explorar_/$categoria'
     | '/ler/$slug'
     | '/obra/$slug'
@@ -311,9 +311,9 @@ export interface RootRouteChildren {
   CandidaturaAutorRoute: typeof CandidaturaAutorRoute
   ContatoRoute: typeof ContatoRoute
   CriarRoute: typeof CriarRoute
-  DashboardRoute: typeof DashboardRoute
   EntrarRoute: typeof EntrarRoute
   ExplorarRoute: typeof ExplorarRoute
+  PainelRoute: typeof PainelRoute
   PerfilRoute: typeof PerfilRoute
   PlanosRoute: typeof PlanosRouteWithChildren
   PrivacidadeRoute: typeof PrivacidadeRoute
@@ -321,7 +321,7 @@ export interface RootRouteChildren {
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
   ApoioRetornoRoute: typeof ApoioRetornoRoute
-  ArtistSlugRoute: typeof ArtistSlugRoute
+  AutorSlugRoute: typeof AutorSlugRoute
   ExplorarCategoriaRoute: typeof ExplorarCategoriaRoute
   LerSlugRoute: typeof LerSlugRoute
   ObraSlugRoute: typeof ObraSlugRoute
@@ -378,13 +378,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CriarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/entrar': {
       id: '/entrar'
       path: '/entrar'
@@ -397,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/explorar'
       fullPath: '/explorar'
       preLoaderRoute: typeof ExplorarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/perfil': {
@@ -448,19 +448,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApoioRetornoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/artist/$slug': {
-      id: '/artist/$slug'
-      path: '/artist/$slug'
-      fullPath: '/artist/$slug'
-      preLoaderRoute: typeof ArtistSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/autor/$slug': {
+      id: '/autor/$slug'
+      path: '/autor/$slug'
+      fullPath: '/autor/$slug'
+      preLoaderRoute: typeof AutorSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/explorar_/$categoria': {
       id: '/explorar_/$categoria'
@@ -522,9 +522,9 @@ const rootRouteChildren: RootRouteChildren = {
   CandidaturaAutorRoute: CandidaturaAutorRoute,
   ContatoRoute: ContatoRoute,
   CriarRoute: CriarRoute,
-  DashboardRoute: DashboardRoute,
   EntrarRoute: EntrarRoute,
   ExplorarRoute: ExplorarRoute,
+  PainelRoute: PainelRoute,
   PerfilRoute: PerfilRoute,
   PlanosRoute: PlanosRouteWithChildren,
   PrivacidadeRoute: PrivacidadeRoute,
@@ -532,7 +532,7 @@ const rootRouteChildren: RootRouteChildren = {
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
   ApoioRetornoRoute: ApoioRetornoRoute,
-  ArtistSlugRoute: ArtistSlugRoute,
+  AutorSlugRoute: AutorSlugRoute,
   ExplorarCategoriaRoute: ExplorarCategoriaRoute,
   LerSlugRoute: LerSlugRoute,
   ObraSlugRoute: ObraSlugRoute,

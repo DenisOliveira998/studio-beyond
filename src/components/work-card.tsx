@@ -46,7 +46,7 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
         <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
           {artistName && (
             <Link
-              to="/artist/$slug"
+              to="/autor/$slug"
               params={{ slug: artistSlug }}
               className="text-foreground transition-colors hover:text-gilt"
             >

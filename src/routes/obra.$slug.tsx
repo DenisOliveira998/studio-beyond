@@ -45,7 +45,7 @@ export const Route = createFileRoute("/obra/$slug")({
     // Prosa (livro, conto, novel) é "book" no Open Graph; quadrinhos ficam como "website"
     if (["livro", "conto", "lightnovel"].includes(work.medium)) {
       meta.push({ property: "og:type", content: "book" });
-      if (work.artistSlug) meta.push({ property: "book:author", content: `${SITE_URL}/artist/${work.artistSlug}` });
+      if (work.artistSlug) meta.push({ property: "book:author", content: `${SITE_URL}/autor/${work.artistSlug}` });
       if (work.publishedAt) meta.push({ property: "book:release_date", content: work.publishedAt.slice(0, 10) });
       for (const tag of (work.tags ?? []).slice(0, 5)) meta.push({ property: "book:tag", content: tag });
     } else {
@@ -373,7 +373,7 @@ function WorkPage() {
             </div>
             {artistName && (
               <div className="flex flex-wrap items-center gap-2">
-                <Link to="/artist/$slug" params={{ slug: artistSlug }} className="text-sm rule-hover">
+                <Link to="/autor/$slug" params={{ slug: artistSlug }} className="text-sm rule-hover">
                   {artistName}
                 </Link>
                 <button
@@ -507,7 +507,7 @@ function WorkPage() {
             {artistName && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Link
-                  to="/artist/$slug"
+                  to="/autor/$slug"
                   params={{ slug: artistSlug }}
                   className="text-sm rule-hover"
                 >

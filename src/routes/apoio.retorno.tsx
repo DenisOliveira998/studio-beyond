@@ -42,7 +42,7 @@ function ApoioRetorno() {
       Voltar à obra
     </Link>
   ) : data?.artistSlug ? (
-    <Link to="/artist/$slug" params={{ slug: data.artistSlug }} className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">
+    <Link to="/autor/$slug" params={{ slug: data.artistSlug }} className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">
       Voltar ao perfil de {data.artistName}
     </Link>
   ) : (
