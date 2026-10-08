@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, BookMarked, Heart, Users, User, Bookmark, UserCheck } from "lucide-react";
+import { ArrowRight, BookOpen, BookMarked, Heart, Users, User, Bookmark, UserCheck } from "lucide-react";
 import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import type { ReaderProfileStats } from "@/lib/beyond-db";
 
@@ -191,7 +191,12 @@ function PerfilPage() {
               </button>
             </div>
           )}
-          <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {user.email} <span className="text-xs">(só você vê)</span>
+          </p>
+          <a href={`/leitor/${user.id}`} className="mt-1 inline-block text-xs text-gilt underline underline-offset-4">
+            Ver como os outros veem meu perfil
+          </a>
           <span className="mt-3 inline-block border border-gilt/30 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.2em] text-gilt">
             {roleLabel}
           </span>
@@ -216,7 +221,8 @@ function PerfilPage() {
               icon={Heart}
               label="Obras favoritadas"
               value={stats?.favoritedCount ?? 0}
-              note="Obras que você marcou"
+              note="Ver quais são"
+              href="#favoritos"
             />
             <StatCard
               icon={BookOpen}
@@ -233,16 +239,17 @@ function PerfilPage() {
             />
             <StatCard
               icon={Users}
-              label="Autores favoritos"
-              value={stats?.favoriteAuthorsCount ?? 0}
-              note="Por obras curtidas"
+              label="Seguindo"
+              value={stats?.following?.length ?? 0}
+              note="Ver os autores"
+              href="#seguindo"
             />
           </div>
         )}
       </section>
 
       {/* Lista de favoritos */}
-      <section className="mt-16">
+      <section id="favoritos" className="mt-16 scroll-mt-24">
         <div className="flex items-center gap-3">
           <Bookmark className="size-5 text-gilt" strokeWidth={1.5} />
           <h2 className="font-display text-3xl tracking-tight">Obras favoritas</h2>
@@ -291,7 +298,7 @@ function PerfilPage() {
       </section>
 
       {/* Autores que a pessoa segue */}
-      <section className="mt-16">
+      <section id="seguindo" className="mt-16 scroll-mt-24">
         <div className="flex items-center gap-3">
           <UserCheck className="size-5 text-gilt" strokeWidth={1.5} />
           <h2 className="font-display text-3xl tracking-tight">Seguindo</h2>
@@ -351,15 +358,17 @@ function StatCard({
   value,
   note,
   accent = false,
+  href,
 }: {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   value: number;
   note: string;
   accent?: boolean;
+  href?: string;
 }) {
-  return (
-    <div className="border border-gilt/25 bg-background p-7">
+  const body = (
+    <>
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-gilt" strokeWidth={1.5} />
         <p className="eyebrow">{label}</p>
@@ -367,7 +376,18 @@ function StatCard({
       <p className={`mt-4 font-display text-4xl tracking-tight ${accent ? "text-gilt" : ""}`}>
         {value.toLocaleString("pt-BR")}
       </p>
-      <p className="mt-3 text-xs text-muted-foreground">{note}</p>
-    </div>
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        {note}
+        {href && <ArrowRight className="size-3.5 text-gilt transition-transform group-hover:translate-x-1" strokeWidth={1.75} />}
+      </p>
+    </>
   );
+  if (href) {
+    return (
+      <a href={href} className="group block border border-gilt/25 bg-background p-7 transition-colors hover:border-gilt/60">
+        {body}
+      </a>
+    );
+  }
+  return <div className="border border-gilt/25 bg-background p-7">{body}</div>;
 }

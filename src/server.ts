@@ -2283,6 +2283,15 @@ ${catalog}
       }
 
       // Comentários de obra
+      // Perfil público de quem comenta (sem e-mail ou dados da conta)
+      const leitorMatch = pathname.match(/^\/api\/leitor\/([A-Za-z0-9_-]{1,64})$/);
+      if (leitorMatch && request.method === "GET") {
+        const { getPublicProfile } = await import("./lib/beyond-db");
+        const data = await getPublicProfile(leitorMatch[1]!);
+        if (!data) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify(data), { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } });
+      }
+
       const workCommentsMatch = pathname.match(/^\/api\/works\/([^/]+)\/comments$/);
       if (workCommentsMatch) {
         const slug = decodeURIComponent(workCommentsMatch[1]!);

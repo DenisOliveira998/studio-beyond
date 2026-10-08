@@ -742,6 +742,10 @@ export type CommentData = {
   createdAt: string;
   /** Selo pelo cargo de quem comentou: Fã, Super Fã, Autor ou Equipe */
   badge?: string;
+  /** Foto de quem comentou */
+  avatarUrl?: string;
+  /** Página de quem comentou: /autor/<slug> para autor com obra no ar, senão /leitor/<id> */
+  profilePath?: string;
 };
 
 const COMMENT_BADGE: Record<string, string> = {
@@ -763,14 +767,25 @@ export async function getWorkComments(workSlug: string): Promise<CommentData[]> 
     ? await prisma.profile.findMany({ where: { id: { in: userIds } }, select: { id: true, role: true } })
     : [];
   const roleById = new Map(profiles.map((p) => [p.id, p.role as string]));
+  const [bios, authorWorks] = userIds.length
+    ? await Promise.all([
+        prisma.authorBio.findMany({ where: { userId: { in: userIds } }, select: { userId: true, avatarUrl: true } }).catch(() => []),
+        prisma.work.findMany({ where: { authorId: { in: userIds }, status: "approved" }, select: { authorId: true, artistSlug: true }, orderBy: { createdAt: "desc" } }),
+      ])
+    : [[], []];
   return rows.map((r) => {
     const badge = r.userId ? COMMENT_BADGE[roleById.get(r.userId) ?? ""] : undefined;
+    const avatar = r.userId ? blobProxy(bios.find((b) => b.userId === r.userId)?.avatarUrl) : undefined;
+    const artistSlug = r.userId ? authorWorks.find((w) => w.authorId === r.userId)?.artistSlug : undefined;
+    const profilePath = r.userId ? (artistSlug ? `/autor/${artistSlug}` : `/leitor/${r.userId}`) : undefined;
     return {
       id: r.id,
       author: r.author,
       text: r.text,
       createdAt: r.createdAt.toISOString(),
       ...(badge ? { badge } : {}),
+      ...(avatar ? { avatarUrl: avatar } : {}),
+      ...(profilePath ? { profilePath } : {}),
     };
   });
 }
@@ -880,6 +895,54 @@ export async function setUserAvatar(userId: string, avatarUrl: string): Promise<
     create: { userId, bio: "", avatarUrl },
     update: { avatarUrl },
   });
+}
+
+const PUBLIC_ROLE_LABEL: Record<string, string> = { reader: "Leitor", vip: "Fã", superfa: "Super Fã", author: "Autor", gerente: "Equipe", admin: "Equipe", owner: "Equipe" };
+
+/** Perfil público (visto por qualquer visitante): nunca inclui e-mail nem dados da conta. */
+export async function getPublicProfile(userId: string) {
+  const p = await prisma.profile.findUnique({ where: { id: userId }, select: { name: true, role: true, suspended: true, createdAt: true } });
+  if (!p || p.suspended) return null;
+  const [avatarUrl, artistSlug, comments, follows, favRows] = await Promise.all([
+    getUserAvatar(userId),
+    getOwnArtistSlug(userId),
+    prisma.workComment.count({ where: { userId, hidden: false } }),
+    prisma.artistFollow.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 60, select: { artistSlug: true } }),
+    prisma.userFavorite.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 60, select: { workSlug: true } }),
+  ]);
+  // Favoritos: só obras no ar
+  const favWorks = favRows.length
+    ? await prisma.work.findMany({
+        where: { slug: { in: favRows.map((f) => f.workSlug) }, status: "approved" },
+        select: { slug: true, title: true, artistName: true, coverUrl: true, medium: true },
+      })
+    : [];
+  const favorites = favRows.flatMap((f) => {
+    const w = favWorks.find((x) => x.slug === f.workSlug);
+    if (!w) return [];
+    return [{ slug: w.slug, title: w.title.replace(/<[^>]*>/g, ""), artistName: w.artistName, cover: blobProxy(w.coverUrl) ?? "", medium: w.medium as string }];
+  });
+  const works = follows.length
+    ? await prisma.work.findMany({ where: { artistSlug: { in: follows.map((f) => f.artistSlug) }, status: "approved" }, select: { artistSlug: true, artistName: true, authorId: true } })
+    : [];
+  const bios = await prisma.authorBio
+    .findMany({ where: { userId: { in: works.map((w) => w.authorId).filter((x): x is string => !!x) } }, select: { userId: true, avatarUrl: true } })
+    .catch(() => []);
+  const following = follows.flatMap((f) => {
+    const w = works.find((x) => x.artistSlug === f.artistSlug);
+    if (!w) return [];
+    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(bios.find((b) => b.userId === w.authorId)?.avatarUrl) ?? "" }];
+  });
+  return {
+    name: p.name || "Leitor",
+    avatarUrl,
+    badge: PUBLIC_ROLE_LABEL[p.role] ?? "Leitor",
+    since: p.createdAt.toISOString(),
+    artistSlug,
+    comments,
+    following,
+    favorites,
+  };
 }
 
 /** Endereço da página pública do autor (pelo nome usado nas obras). */

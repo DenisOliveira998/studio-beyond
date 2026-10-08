@@ -83,6 +83,15 @@ function WorkParagraph({ content, className }: { content: string; className?: st
 
 // ── Comentários ─────────────────────────────────────────────────
 
+function CommentAvatar({ name, url }: { name: string; url?: string | undefined }) {
+  if (url) return <img src={url} alt="" className="size-8 shrink-0 rounded-full object-cover" />;
+  const words = name.replace(/[^A-Za-zÀ-ÿ ]/g, "").split(/\s+/).filter(Boolean);
+  const ini = (words.length > 1 ? words.map((w) => w[0] ?? "").join("") : (words[0] ?? "?")).slice(0, 2).toUpperCase();
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#5a3b5e] text-[11px] font-bold text-white">{ini}</span>
+  );
+}
+
 function CommentsSection({ workSlug }: { workSlug: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -168,8 +177,18 @@ function CommentsSection({ workSlug }: { workSlug: string }) {
         )}
         {comments.map((c) => (
           <div key={c.id} className="py-6">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <span className="font-display text-base">{c.author}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              {c.profilePath ? (
+                <a href={c.profilePath} className="group flex items-center gap-2.5" title={`Ver o perfil de ${c.author}`}>
+                  <CommentAvatar name={c.author} url={c.avatarUrl} />
+                  <span className="font-display text-base group-hover:text-gilt group-hover:underline group-hover:underline-offset-4">{c.author}</span>
+                </a>
+              ) : (
+                <span className="flex items-center gap-2.5">
+                  <CommentAvatar name={c.author} url={c.avatarUrl} />
+                  <span className="font-display text-base">{c.author}</span>
+                </span>
+              )}
               {c.badge && (
                 <span className="border border-gilt/50 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-gilt">
                   {c.badge}

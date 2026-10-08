@@ -29,6 +29,7 @@ import { Route as ApoioRetornoRouteImport } from './routes/apoio.retorno'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AutorSlugRouteImport } from './routes/autor.$slug'
 import { Route as ExplorarCategoriaRouteImport } from './routes/explorar_.$categoria'
+import { Route as LeitorIdRouteImport } from './routes/leitor.$id'
 import { Route as LerSlugRouteImport } from './routes/ler.$slug'
 import { Route as ObraSlugRouteImport } from './routes/obra.$slug'
 import { Route as PlanosRetornoRouteImport } from './routes/planos.retorno'
@@ -133,6 +134,11 @@ const ExplorarCategoriaRoute = ExplorarCategoriaRouteImport.update({
   path: '/explorar/$categoria',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LeitorIdRoute = LeitorIdRouteImport.update({
+  id: '/leitor/$id',
+  path: '/leitor/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LerSlugRoute = LerSlugRouteImport.update({
   id: '/ler/$slug',
   path: '/ler/$slug',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
+  '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
+  '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar_/$categoria': typeof ExplorarCategoriaRoute
+  '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar/$categoria'
+    | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar/$categoria'
+    | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar_/$categoria'
+    | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   ApoioRetornoRoute: typeof ApoioRetornoRoute
   AutorSlugRoute: typeof AutorSlugRoute
   ExplorarCategoriaRoute: typeof ExplorarCategoriaRoute
+  LeitorIdRoute: typeof LeitorIdRoute
   LerSlugRoute: typeof LerSlugRoute
   ObraSlugRoute: typeof ObraSlugRoute
 }
@@ -469,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorarCategoriaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/leitor/$id': {
+      id: '/leitor/$id'
+      path: '/leitor/$id'
+      fullPath: '/leitor/$id'
+      preLoaderRoute: typeof LeitorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ler/$slug': {
       id: '/ler/$slug'
       path: '/ler/$slug'
@@ -534,6 +554,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApoioRetornoRoute: ApoioRetornoRoute,
   AutorSlugRoute: AutorSlugRoute,
   ExplorarCategoriaRoute: ExplorarCategoriaRoute,
+  LeitorIdRoute: LeitorIdRoute,
   LerSlugRoute: LerSlugRoute,
   ObraSlugRoute: ObraSlugRoute,
 }
