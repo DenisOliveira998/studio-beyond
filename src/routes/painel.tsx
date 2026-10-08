@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type { Work } from "@/lib/beyond-data";
-import { PLATFORM_FEE, RATE_PER_CLICK, compact, money, MEDIUM_LABEL } from "@/lib/beyond-data";
+import { PLATFORM_FEE, compact, money, MEDIUM_LABEL } from "@/lib/beyond-data";
 import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/painel")({
       {
         name: "description",
         content:
-          "Acompanhe a receita por cliques, as doações recebidas, publique novas obras e gerencie seu perfil de autor.",
+          "Acompanhe as doações recebidas, publique novas obras e gerencie seu perfil de autor.",
       },
       { property: "og:title", content: "Painel do autor — Go Beyondd" },
       {
@@ -125,12 +125,9 @@ function Dashboard() {
   const [published, setPublished] = useState<Record<string, boolean>>({});
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const totalViews = Object.entries(stats.views)
-    .filter(([slug]) => initialWorks.some((w) => w.slug === slug))
-    .reduce((s, [, v]) => s + v, 0);
-  const clickGross = totalViews * RATE_PER_CLICK;
+  // Ganhos vêm só das doações (não há mais pagamento por visualização)
   const donationGross = donations.reduce((s, d) => s + d.amount, 0);
-  const gross = clickGross + donationGross;
+  const gross = donationGross;
   const fee = gross * PLATFORM_FEE;
   const net = gross - fee;
 
@@ -423,12 +420,7 @@ function Dashboard() {
         {/* Visão Geral */}
         <section id="visao-geral" className="scroll-mt-24">
           <SectionTitle icon={LayoutDashboard}>Visão Geral</SectionTitle>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <Stat
-              label="Total de Visualizações"
-              value={compact(totalViews)}
-              note="Todas as obras"
-            />
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             <Stat
               label="Doações Recebidas"
               value={money(donationGross)}
@@ -457,7 +449,6 @@ function Dashboard() {
                 <tr className="border-b border-border bg-surface">
                   <Th>Obra</Th>
                   <Th>Publicação</Th>
-                  <Th>Visualizações</Th>
                   <Th>Doações</Th>
                   <Th className="text-right">Ações</Th>
                 </tr>
@@ -487,7 +478,6 @@ function Dashboard() {
                         )}
                       </Td>
                       <Td className="text-muted-foreground">{w.published}</Td>
-                      <Td>{compact(w.clicks)}</Td>
                       <Td className="text-gilt">{money(donations.filter((d) => d.workSlug === w.slug).reduce((s, d) => s + d.amount, 0))}</Td>
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
@@ -918,11 +908,6 @@ function Dashboard() {
             <div className="border border-gilt/25 bg-background p-8">
               <p className="eyebrow">Composição dos ganhos</p>
               <div className="mt-6 space-y-5">
-                <RevenueRow
-                  label="Receita por cliques"
-                  value={clickGross}
-                  total={gross}
-                />
                 <RevenueRow label="Doações recebidas" value={donationGross} total={gross} />
               </div>
               <div className="mt-8 border-t border-border pt-6">

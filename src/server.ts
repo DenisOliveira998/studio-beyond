@@ -1450,7 +1450,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 
 ## Para autores
 - Entrada por curadoria humana. As candidaturas de autor abrem em breve, por etapas (lista de espera aberta). Candidatar-se não custa nada.
-- Renda: R$ 0,004 por visualização + doações diretas dos leitores.
+- Renda: doações diretas dos leitores.
 - A maior parte da receita é do autor; repasse semanal, sem valor mínimo.
 - Exclusividade de 6 meses por obra, renovável; depois o autor pode publicar onde quiser.
 - A obra continua do autor; a Go Beyondd tem apenas licença para exibi-la.

@@ -160,31 +160,6 @@ function ApplicationPage() {
           Prazo: <strong className="text-muted-foreground">até 15 dias úteis</strong>. Nenhuma cobrança.
         </p>
 
-        <div className="mt-10 border border-gilt/30 bg-surface p-7">
-          <h2 className="eyebrow">Como você ganha</h2>
-          <ul className="mt-5 space-y-3 text-sm leading-relaxed text-muted-foreground">
-            <li>
-              <strong className="text-foreground">Leituras:</strong> R$ 0,004 por visualização.
-            </li>
-            <li>
-              <strong className="text-foreground">Apoio direto</strong> dos leitores, no valor que eles escolherem.
-            </li>
-            <li>
-              <strong className="text-foreground">A maior parte da receita é sua.</strong> Os percentuais
-              aparecem no seu Painel do Autor.
-            </li>
-            <li>
-              <strong className="text-foreground">Repasse semanal</strong>, sem valor mínimo.
-            </li>
-            <li>
-              <strong className="text-foreground">A obra continua sua.</strong> A Go Beyondd só tem licença para exibi-la.
-            </li>
-            <li>
-              <strong className="text-foreground">Exclusividade de 6 meses, renovável.</strong> Depois desse
-              período, você pode publicar onde quiser.
-            </li>
-          </ul>
-        </div>
       </div>
 
       {loading ? (
