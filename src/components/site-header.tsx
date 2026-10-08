@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { NotificationBell } from "@/components/notification-bell";
-import { Instagram, LayoutDashboard, LogOut, Menu, Shield, X, Youtube } from "lucide-react";
+import { ExternalLink, Instagram, LayoutDashboard, LogOut, Menu, Shield, User, X, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -65,7 +65,11 @@ function UserMenu() {
         className="flex size-8 items-center justify-center rounded-full border border-white/30 bg-gilt/20 text-xs font-bold text-gilt transition-colors hover:border-gilt"
         aria-label="Menu da conta"
       >
-        {initials}
+        {profile?.avatarUrl ? (
+          <img src={profile.avatarUrl} alt="" className="size-full rounded-full object-cover" />
+        ) : (
+          initials
+        )}
       </button>
 
       {open && (
@@ -84,14 +88,35 @@ function UserMenu() {
             )}
           </div>
           <div className="py-1">
+            {(isStaff || profile?.role === "author") && (
+              <Link
+                to="/painel"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
+              >
+                <LayoutDashboard className="size-3.5" strokeWidth={1.5} />
+                Painel do autor
+              </Link>
+            )}
             <Link
-              to={isStaff || profile?.role === "author" ? "/painel" : "/perfil"}
+              to="/perfil"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
             >
-              <LayoutDashboard className="size-3.5" strokeWidth={1.5} />
-              {isStaff || profile?.role === "author" ? "Painel do autor" : "Meu perfil"}
+              <User className="size-3.5" strokeWidth={1.5} />
+              Meu perfil
             </Link>
+            {(isStaff || profile?.role === "author") && profile?.artistSlug && (
+              <Link
+                to="/autor/$slug"
+                params={{ slug: profile.artistSlug }}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
+              >
+                <ExternalLink className="size-3.5" strokeWidth={1.5} />
+                Minha página pública
+              </Link>
+            )}
             {isStaff && (
               <Link
                 to="/admin"

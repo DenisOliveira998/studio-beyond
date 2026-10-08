@@ -95,7 +95,7 @@ type DashboardData = {
 };
 
 function Dashboard() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refresh: refreshAuth } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -1127,6 +1127,7 @@ function Dashboard() {
             onSaved={() => {
               void queryClient.invalidateQueries({ queryKey: ["author-dashboard"] });
               void queryClient.invalidateQueries({ queryKey: ["me"] });
+              void refreshAuth();
               setShowEditProfile(false);
             }}
           />
@@ -1341,17 +1342,15 @@ function AuthorProfileEditor({
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error();
-      const { url } = (await res.json()) as { url: string };
+      const { uploadAvatar } = await import("@/lib/avatar-upload");
+      const url = await uploadAvatar(file);
       setForm((prev) => ({ ...prev, avatarUrl: url }));
       toast.success("Foto enviada. Salve para aplicar.");
-    } catch {
-      toast.error("Erro ao enviar a foto.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar a foto.");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -1414,7 +1413,7 @@ function AuthorProfileEditor({
             <span className="eyebrow block">Foto</span>
             <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 border border-dashed border-border bg-background px-4 py-4 text-sm text-muted-foreground transition-colors hover:border-gilt hover:text-gilt">
               {uploading ? "Enviando…" : form.avatarUrl ? "Foto enviada — trocar" : "Selecionar foto"}
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden onChange={(e) => void handleAvatar(e)} />
+              <input type="file" accept="image/png,image/jpeg" hidden onChange={(e) => void handleAvatar(e)} />
             </label>
           </div>
           <label className="block">

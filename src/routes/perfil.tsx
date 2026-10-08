@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, BookMarked, Heart, Users, User, Bookmark } from "lucide-react";
+import { BookOpen, BookMarked, Heart, Users, User, Bookmark, UserCheck } from "lucide-react";
 import { useAuth, ROLE_LABEL } from "@/lib/auth";
 import type { ReaderProfileStats } from "@/lib/beyond-db";
 
@@ -25,7 +26,57 @@ async function fetchProfileStats(): Promise<ReaderProfileStats> {
 }
 
 function PerfilPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refresh } = useAuth();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [sendingPhoto, setSendingPhoto] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  async function changePhoto(file: File) {
+    setSendingPhoto(true);
+    try {
+      const { uploadAvatar } = await import("@/lib/avatar-upload");
+      const url = await uploadAvatar(file);
+      const res = await fetch("/api/profile/foto", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const out = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(out.error ?? "Não foi possível salvar a foto.");
+      await refresh();
+      toast.success("Foto atualizada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível enviar a foto.");
+    } finally {
+      setSendingPhoto(false);
+    }
+  }
+
+  async function saveName() {
+    const next = nameDraft.trim();
+    if (!next) {
+      toast.error("O nome não pode ficar vazio.");
+      return;
+    }
+    setSavingName(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: next }),
+      });
+      if (!res.ok) throw new Error();
+      await refresh();
+      setEditingName(false);
+      toast.success("Nome atualizado.");
+    } catch {
+      toast.error("Não foi possível salvar o nome.");
+    } finally {
+      setSavingName(false);
+    }
+  }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,14 +120,77 @@ function PerfilPage() {
     <div className="px-5 py-16 sm:px-10 sm:py-24 lg:px-14">
       {/* Cabeçalho do perfil */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10">
-        <div className="flex size-20 shrink-0 items-center justify-center border border-gilt/40 font-display text-3xl text-gilt">
-          {initials}
+        <div className="flex shrink-0 flex-col items-start gap-2">
+          {profile?.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="Sua foto" className="size-20 rounded-full object-cover" />
+          ) : (
+            <div className="flex size-20 items-center justify-center rounded-full border border-gilt/40 font-display text-3xl text-gilt">
+              {initials}
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={sendingPhoto}
+            onClick={() => photoRef.current?.click()}
+            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+          >
+            {sendingPhoto ? "Enviando…" : profile?.avatarUrl ? "Trocar foto" : "Colocar foto"}
+          </button>
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void changePhoto(f);
+            }}
+          />
         </div>
         <div className="min-w-0">
           <p className="eyebrow">Perfil</p>
-          <h1 className="mt-2 font-display text-4xl tracking-tight sm:text-5xl">
-            {user.name ?? user.email}
-          </h1>
+          {editingName ? (
+            <form
+              className="mt-2 flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void saveName();
+              }}
+            >
+              <label className="sr-only" htmlFor="perfil-nome">Seu nome</label>
+              <input
+                id="perfil-nome"
+                autoFocus
+                maxLength={80}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                className="min-w-0 flex-1 border border-input bg-background px-3 py-2 font-display text-2xl outline-none focus:border-gilt"
+              />
+              <button type="submit" disabled={savingName} className="rounded-full bg-gilt px-4 py-2 text-sm font-bold text-ink disabled:opacity-50">
+                {savingName ? "Salvando…" : "Salvar"}
+              </button>
+              <button type="button" onClick={() => setEditingName(false)} className="text-sm text-muted-foreground hover:text-foreground">
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <div className="mt-2 flex flex-wrap items-baseline gap-3">
+              <h1 className="font-display text-4xl tracking-tight sm:text-5xl">
+                {profile?.name || user.name || user.email}
+              </h1>
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(profile?.name || user.name || "");
+                  setEditingName(true);
+                }}
+                className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                Editar nome
+              </button>
+            </div>
+          )}
           <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
           <span className="mt-3 inline-block border border-gilt/30 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.2em] text-gilt">
             {roleLabel}
@@ -168,6 +282,46 @@ function PerfilPage() {
                   </div>
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                     {new Date(fav.createdAt).toLocaleDateString("pt-BR")}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Autores que a pessoa segue */}
+      <section className="mt-16">
+        <div className="flex items-center gap-3">
+          <UserCheck className="size-5 text-gilt" strokeWidth={1.5} />
+          <h2 className="font-display text-3xl tracking-tight">Seguindo</h2>
+        </div>
+        <div className="mt-4 h-px w-full bg-gradient-to-r from-gilt/60 via-gilt/25 to-transparent" />
+        {statsLoading ? (
+          <div className="mt-8 h-16 animate-pulse border border-border bg-surface" />
+        ) : !stats?.following?.length ? (
+          <p className="mt-8 text-sm text-muted-foreground">
+            Você ainda não segue nenhum autor. Na página de uma obra, use o botão Seguir ao lado do nome do autor para
+            saber quando sair capítulo novo.
+          </p>
+        ) : (
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {stats.following.map((a) => (
+              <li key={a.slug}>
+                <a
+                  href={`/autor/${a.slug}`}
+                  className="flex items-center gap-3 border border-border px-4 py-3 transition-colors hover:bg-surface/60"
+                >
+                  {a.avatarUrl ? (
+                    <img src={a.avatarUrl} alt="" className="size-11 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#5a3b5e] text-sm font-bold text-white">
+                      {a.name.replace(/[^A-Za-zÀ-ÿ ]/g, "").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-display text-lg leading-tight">{a.name}</span>
+                    <span className="caption block">Seguindo desde {new Date(a.since).toLocaleDateString("pt-BR")}</span>
                   </span>
                 </a>
               </li>

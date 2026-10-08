@@ -31,6 +31,10 @@ export type Profile = {
   suspended: boolean;
   /** Data de nascimento já informada (ou papel isento: autor/equipe) */
   hasBirthDate?: boolean;
+  /** Foto de perfil (endereço já pronto para <img>) */
+  avatarUrl?: string;
+  /** Página pública do autor (/autor/<slug>), quando ele tem obra publicada */
+  artistSlug?: string | null;
 };
 
 type AuthValue = {

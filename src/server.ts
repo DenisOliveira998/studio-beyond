@@ -260,6 +260,47 @@ async function blobAccess(request: Request, blobUrl: string): Promise<"public" |
 
 const ADMIN_ROLES = ["owner", "admin", "gerente"] as const;
 
+/** Arquivo do nosso armazenamento, ainda sem dono (não é PDF de obra nem foto de outra pessoa) e do tipo imagem. */
+/** Endereço de arquivo do nosso armazenamento na forma exata em que foi gravado (sem ?, #, maiúsculas etc.). */
+function isCanonicalBlobUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.protocol === "https:" &&
+      /^[a-z0-9]+\.(private|public)\.blob\.vercel-storage\.com$/.test(u.hostname) &&
+      !u.search &&
+      !u.hash &&
+      !u.username &&
+      !u.port &&
+      u.toString() === url
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Pasta das fotos de perfil de cada conta (o nome não revela o id). */
+async function avatarFolder(userId: string): Promise<string> {
+  const { createHash } = await import("node:crypto");
+  return `fotos/${createHash("sha256").update(`foto:${userId}`).digest("hex").slice(0, 20)}/`;
+}
+
+/** Foto enviada pela própria pessoa, ainda sem uso e do tipo imagem. */
+async function isFreshImageBlob(url: string, userId: string): Promise<boolean> {
+  if (!isCanonicalBlobUrl(url) || !/\.private\.blob\./.test(url)) return false;
+  // Só arquivos da pasta de fotos de quem está pedindo: nunca capa, página ou envio de outra pessoa
+  if (!new URL(url).pathname.startsWith(`/${await avatarFolder(userId)}`)) return false;
+  const { blobUrlInUse } = await import("./lib/chapters");
+  if (await blobUrlInUse(url)) return false;
+  try {
+    const { head } = await import("@vercel/blob");
+    const info = await head(url);
+    return (info.contentType === "image/jpeg" || info.contentType === "image/png") && info.size <= 5 * 1024 * 1024;
+  } catch {
+    return false;
+  }
+}
+
 async function requireAdmin(request: Request): Promise<{ error?: Response; actorId?: string; actorEmail?: string }> {
   const { auth } = await import("./lib/auth-server");
   const session = await auth.api.getSession({ headers: request.headers });
@@ -325,7 +366,12 @@ async function handleMe(request: Request): Promise<Response> {
   }
 
   const birthOk = BIRTH_EXEMPT_ROLES.includes(profile.role) || (await hasBirthDate(session.user.id));
-  return new Response(JSON.stringify({ ...profile, hasBirthDate: birthOk }), {
+  const { getUserAvatar, getOwnArtistSlug } = await import("./lib/beyond-db");
+  const [avatarUrl, artistSlug] = await Promise.all([
+    getUserAvatar(session.user.id).catch(() => ""),
+    getOwnArtistSlug(session.user.id).catch(() => null),
+  ]);
+  return new Response(JSON.stringify({ ...profile, hasBirthDate: birthOk, avatarUrl, artistSlug }), {
     headers: { "content-type": "application/json" },
   });
 }
@@ -937,10 +983,12 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           const purpose = String(formData.get("purpose") ?? "");
           if (purpose === "work" && kind.type !== "application/pdf") return uploadError("O arquivo da obra precisa ser PDF.");
           if (purpose === "cover" && !kind.type.startsWith("image/")) return uploadError("A capa precisa ser uma imagem JPG, PNG ou WebP.");
+          if (purpose === "avatar" && kind.type !== "image/jpeg" && kind.type !== "image/png") return uploadError("A foto precisa ser PNG ou JPEG.");
           if (kind.ext === "epub") return uploadError("EPUB não é aceito. Envie a obra em PDF.");
           const { put } = await import("@vercel/blob");
           const base = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "arquivo";
-          const blob = await put(`${base}.${kind.ext}`, new Blob([bytes], { type: kind.type }), {
+          const pathname = purpose === "avatar" ? `${await avatarFolder(session.user.id)}foto.${kind.ext}` : `${base}.${kind.ext}`;
+          const blob = await put(pathname, new Blob([bytes], { type: kind.type }), {
             access: "private",
             addRandomSuffix: true,
             contentType: kind.type,
@@ -1587,9 +1635,15 @@ ${catalog}
           const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>;
           const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
           const httpOnly = (v: string) => (v === "" || /^https?:\/\//i.test(v) ? v : `https://${v}`);
+          const wanted = str(raw["avatarUrl"], 1000);
+          const { getOwnAuthorBio: currentBio } = await import("./lib/beyond-db");
+          const nowAvatar = (await currentBio(session.user.id)).avatarUrl;
+          if (wanted && wanted !== nowAvatar && !(await isFreshImageBlob(wanted, session.user.id))) {
+            return new Response(JSON.stringify({ error: "Envie a foto de novo." }), { status: 400, headers: { "content-type": "application/json" } });
+          }
           const data = {
             bio: str(raw["bio"], 1200),
-            avatarUrl: str(raw["avatarUrl"], 1000),
+            avatarUrl: wanted,
             city: str(raw["city"], 80),
             instagram: str(raw["instagram"], 200),
             website: httpOnly(str(raw["website"], 300)),
@@ -2458,7 +2512,7 @@ ${catalog}
 
       if (pathname === "/api/blob-proxy" && request.method === "GET") {
         const blobUrl = new URL(request.url).searchParams.get("url");
-        if (!blobUrl || !blobUrl.includes("blob.vercel-storage.com")) {
+        if (!blobUrl || !isCanonicalBlobUrl(blobUrl)) {
           return new Response("Forbidden", { status: 403 });
         }
         // Quem pode abrir: arquivos públicos (capa/PDF de obra publicada, foto de autor) para todos;
@@ -2552,6 +2606,19 @@ ${catalog}
       }
 
       // Atualizar perfil
+      // Foto de perfil (qualquer conta): só arquivo novo de imagem enviado pelo /api/upload
+      if (pathname === "/api/profile/foto" && request.method === "POST") {
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers });
+        const json = (h: unknown, status = 200) => new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        if (!session?.user) return json({ error: "Não autorizado" }, 401);
+        const { url: fotoUrl } = (await request.json().catch(() => ({}))) as { url?: string };
+        if (!fotoUrl || !(await isFreshImageBlob(fotoUrl, session.user.id))) return json({ error: "Envie a foto de novo." }, 400);
+        const { setUserAvatar, getUserAvatar } = await import("./lib/beyond-db");
+        await setUserAvatar(session.user.id, fotoUrl);
+        return json({ ok: true, avatarUrl: await getUserAvatar(session.user.id) });
+      }
+
       if (pathname === "/api/profile" && request.method === "PATCH") {
         const { auth } = await import("./lib/auth-server");
         const session = await auth.api.getSession({ headers: request.headers });
@@ -2564,7 +2631,7 @@ ${catalog}
         }
         const { updateProfile } = await import("./lib/beyond-db");
         const patch: { name?: string } = {};
-        if (name !== undefined) patch.name = name.trim();
+        if (name !== undefined) patch.name = name.trim().slice(0, 80);
         await updateProfile(session.user.id, patch);
         return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
       }

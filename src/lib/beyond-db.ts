@@ -630,7 +630,10 @@ export async function upsertReadingProgress(
 
 /* ---------- perfil do leitor (stats consolidadas) ---------- */
 
+export type FollowedAuthor = { slug: string; name: string; avatarUrl: string; since: string };
+
 export type ReaderProfileStats = {
+  following: FollowedAuthor[];
   favoritedCount: number;
   totalPagesRead: number;
   finishedCount: number;
@@ -645,7 +648,25 @@ export async function getReaderProfileStats(userId: string): Promise<ReaderProfi
     getUserReadingStats(userId),
   ]);
   const uniqueAuthors = new Set(favorites.map((f) => f.artistSlug).filter(Boolean));
+  // Autores que a pessoa segue: nome e foto vêm das obras publicadas e do perfil do autor
+  const follows = await prisma.artistFollow.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 200 });
+  const authorWorks = follows.length
+    ? await prisma.work.findMany({
+        where: { artistSlug: { in: follows.map((f) => f.artistSlug) }, status: "approved" },
+        select: { artistSlug: true, artistName: true, authorId: true },
+      })
+    : [];
+  const bios = await prisma.authorBio
+    .findMany({ where: { userId: { in: authorWorks.map((w) => w.authorId).filter((x): x is string => !!x) } }, select: { userId: true, avatarUrl: true } })
+    .catch(() => []);
+  const following: FollowedAuthor[] = follows.flatMap((f) => {
+    const w = authorWorks.find((x) => x.artistSlug === f.artistSlug);
+    if (!w) return [];
+    const avatar = bios.find((b) => b.userId === w.authorId)?.avatarUrl;
+    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(avatar) ?? "", since: f.createdAt.toISOString() }];
+  });
   return {
+    following,
     favoritedCount: favorites.length,
     totalPagesRead,
     finishedCount,
@@ -846,6 +867,26 @@ export async function fetchEmailEvents(limit = 100): Promise<EmailEventData[]> {
 }
 
 /* ---------- atualizar perfil ---------- */
+
+/** Foto de perfil de qualquer conta (fica na mesma tabela da bio pública do autor). */
+export async function getUserAvatar(userId: string): Promise<string> {
+  const row = await prisma.authorBio.findUnique({ where: { userId }, select: { avatarUrl: true } }).catch(() => null);
+  return blobProxy(row?.avatarUrl) ?? "";
+}
+
+export async function setUserAvatar(userId: string, avatarUrl: string): Promise<void> {
+  await prisma.authorBio.upsert({
+    where: { userId },
+    create: { userId, bio: "", avatarUrl },
+    update: { avatarUrl },
+  });
+}
+
+/** Endereço da página pública do autor (pelo nome usado nas obras). */
+export async function getOwnArtistSlug(userId: string): Promise<string | null> {
+  const w = await prisma.work.findFirst({ where: { authorId: userId, status: "approved" }, orderBy: { createdAt: "desc" }, select: { artistSlug: true } });
+  return w?.artistSlug ?? null;
+}
 
 export async function updateProfile(userId: string, data: { name?: string }): Promise<void> {
   const patch: Record<string, unknown> = {};

@@ -74,7 +74,7 @@ export function chapterAccess(
 /** O arquivo já é usado por alguma obra, capítulo, candidatura ou foto? (impede apontar para arquivo alheio) */
 export async function blobUrlInUse(url: string): Promise<boolean> {
   const [w, c, a, b, r] = await Promise.all([
-    prisma.work.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }, { coverUrl: url }] }, select: { id: true } }),
+    prisma.work.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }, { coverUrl: url }, { body: { contains: url } }] }, select: { id: true } }),
     prisma.chapter.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }] }, select: { id: true } }),
     prisma.authorApplication.findFirst({ where: { portfolioFiles: { contains: url } }, select: { id: true } }),
     prisma.authorBio.findFirst({ where: { avatarUrl: url }, select: { userId: true } }).catch(() => null),
