@@ -90,21 +90,25 @@ export function SupportCard({
     <section aria-label={`Apoie ${name}`} className="overflow-hidden rounded-xl bg-transparent">
       <div className="p-[18px]">
         <div className="flex items-center gap-3">
-          {author?.avatarUrl ? (
-            <img
-              src={author.avatarUrl}
-              alt={`Foto de ${name}`}
-              width={52}
-              height={52}
-              className="size-[52px] shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-[#5a3b5e] text-[15px] font-bold text-white">
-              {initials(name)}
-            </span>
-          )}
+          <a href={`/autor/${artistSlug}`} title={`Ver o perfil de ${name}`} className="shrink-0 rounded-full transition-opacity hover:opacity-85">
+            {author?.avatarUrl ? (
+              <img
+                src={author.avatarUrl}
+                alt={`Foto de ${name}`}
+                width={52}
+                height={52}
+                className="size-[52px] rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex size-[52px] items-center justify-center rounded-full bg-[#5a3b5e] text-[15px] font-bold text-white">
+                {initials(name)}
+              </span>
+            )}
+          </a>
           <p className="flex min-w-0 items-baseline gap-2 text-[15px] font-bold text-foreground">
-            <span className="truncate">Apoie {name}</span>
+            <a href={`/autor/${artistSlug}`} className="truncate hover:text-gilt hover:underline hover:underline-offset-4">
+              Apoie {name}
+            </a>
             {author?.rank != null && (
               <a
                 href="/ranking?aba=autores"
