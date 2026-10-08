@@ -268,18 +268,20 @@ function CatalogCard({
             <span className="font-display text-sm text-muted-foreground/50">{MEDIUM_LABEL[work.medium]}</span>
           </div>
         )}
-        {/* Selo da categoria, na cor dela */}
-        <span
-          className="absolute left-2 top-2 rounded px-1.5 py-0.5 text-[11px] font-bold leading-tight shadow-sm"
-          style={{ backgroundColor: color.bg, color: color.ink }}
-        >
-          {MEDIUM_LABEL[work.medium]}
-        </span>
-        {badge && (
-          <span className="absolute right-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[11px] leading-tight text-white">
-            {BADGE_LABEL[badge]}
+        {/* Selo da categoria (na cor dela) e selo de destaque: quebram linha em capa estreita */}
+        <div className="absolute inset-x-1.5 top-1.5 flex flex-wrap items-start justify-between gap-1">
+          <span
+            className="rounded px-1.5 py-0.5 text-[11px] font-bold leading-tight shadow-sm"
+            style={{ backgroundColor: color.bg, color: color.ink }}
+          >
+            {MEDIUM_LABEL[work.medium]}
           </span>
-        )}
+          {badge && (
+            <span className="rounded bg-black/75 px-1.5 py-0.5 text-[11px] leading-tight text-white">
+              {BADGE_LABEL[badge]}
+            </span>
+          )}
+        </div>
         {pagesRead !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
             <div

@@ -73,7 +73,7 @@ function UserMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-52 border border-border bg-ink shadow-lg">
+        <div className="fixed right-3 top-16 z-50 w-56 max-w-[calc(100vw-1.5rem)] border border-border bg-ink shadow-lg sm:absolute sm:right-0 sm:top-10 sm:w-52">
           <div className="border-b border-border/50 px-4 py-3">
             <p className="text-xs font-medium text-white">{user?.name ?? user?.email}</p>
             {profile?.role && profile.role !== "reader" && (
@@ -160,7 +160,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone/60 bg-ink text-chalk">
-      <div className="flex h-16 items-center gap-3 px-4 sm:gap-6 sm:px-10 lg:px-14">
+      <div className="flex h-16 items-center gap-2 px-3 sm:gap-6 sm:px-10 lg:px-14">
 
         {/* ── Esquerda: logo ── */}
         <Link to="/" className="flex shrink-0 items-baseline gap-2">
@@ -171,7 +171,7 @@ export function SiteHeader() {
         </Link>
 
         {/* ── Direita: busca + links de nav + controles ── */}
-        <div className="ml-auto flex items-center gap-2.5 text-sm text-white/85 sm:gap-5">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 text-sm text-white/85 sm:gap-5">
           {/* Busca exposta no desktop — antes do primeiro link de nav */}
           <div className="hidden xl:block xl:w-56 2xl:w-64">
             <SiteSearch inline />
@@ -217,7 +217,9 @@ export function SiteHeader() {
               </Link>
             </div>
           )}
-          <ThemeToggle />
+          <span className="hidden sm:inline-flex">
+            <ThemeToggle />
+          </span>
 
           {/* Hamburger — apenas mobile */}
           <button
@@ -261,6 +263,10 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
+              <div className="flex items-center justify-between py-3 text-sm text-white/80 sm:hidden">
+                Tema
+                <ThemeToggle />
+              </div>
             </nav>
             {!loading && !user && (
               <div className="mt-auto flex flex-col gap-3 px-5 pb-6">

@@ -70,14 +70,14 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-80 max-w-[calc(100vw-2rem)] rounded border border-border bg-ink shadow-lg">
+        <div className="fixed inset-x-3 top-16 z-50 rounded border border-border bg-ink shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-10 sm:w-80">
           <p className="border-b border-border/60 px-4 py-2.5 text-sm font-bold text-white">Notificações</p>
           {!data?.items.length ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               Siga autores e favorite obras para saber quando sair capítulo novo.
             </p>
           ) : (
-            <ul className="max-h-96 divide-y divide-border/40 overflow-y-auto">
+            <ul className="max-h-[min(24rem,calc(100dvh-8rem))] divide-y divide-border/40 overflow-y-auto overscroll-contain">
               {data.items.map((n) => (
                 <li key={n.id}>
                   <a

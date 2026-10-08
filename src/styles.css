@@ -151,6 +151,18 @@
     font-size: 0.9rem;
     line-height: 1.75;
     -webkit-font-smoothing: antialiased;
+    /* Rede de segurança para celular: nada empurra a página para os lados
+       e palavras/links longos quebram linha em vez de vazar */
+    overflow-x: clip;
+    overflow-wrap: break-word;
+  }
+
+  img,
+  video,
+  canvas,
+  iframe,
+  select {
+    max-width: 100%;
   }
 
   h1,

@@ -109,7 +109,7 @@ function ContactPage() {
         dois dias úteis.
       </p>
 
-      <div className="mt-16 grid gap-16 lg:grid-cols-[1fr_380px]">
+      <div className="mt-16 grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Formulário */}
         {sent ? (
           <div className="flex flex-col justify-center gap-4 border border-gilt/25 bg-background p-10">
