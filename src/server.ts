@@ -2111,6 +2111,13 @@ ${catalog}
       }
 
       // Admin: estatísticas de receita (views + doações)
+      if (pathname === "/api/admin/autores" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { fetchAuthorRevenue } = await import("./lib/beyond-db");
+        return new Response(JSON.stringify(await fetchAuthorRevenue()), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+
       if (pathname === "/api/admin/stats" && request.method === "GET") {
         const { error } = await requireAdmin(request);
         if (error) return error;

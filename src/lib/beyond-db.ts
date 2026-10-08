@@ -967,6 +967,35 @@ export async function getPublicProfile(userId: string) {
   };
 }
 
+/** Equipe: o que cada autor gerou, somando as obras publicadas dele. */
+export async function fetchAuthorRevenue() {
+  const { RATE_PER_CLICK } = await import("@/lib/beyond-data");
+  const works = await prisma.work.findMany({ where: { status: "approved" }, select: { slug: true, artistSlug: true, artistName: true } });
+  const slugs = works.map((w) => w.slug);
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  const [views, week, legacy, payments] = await Promise.all([
+    prisma.workView.findMany({ where: { workSlug: { in: slugs } }, select: { workSlug: true, views: true } }),
+    prisma.workViewDaily.groupBy({ by: ["workSlug"], where: { workSlug: { in: slugs }, date: { gte: since } }, _sum: { views: true } }),
+    prisma.donation.groupBy({ by: ["artistSlug"], _sum: { amount: true } }),
+    prisma.payment.groupBy({ by: ["artistSlug"], where: { kind: "donation", status: "approved" }, _sum: { grossCents: true } }),
+  ]);
+  const map = new Map<string, { artistSlug: string; artistName: string; works: number; clicks: number; clicksWeek: number }>();
+  for (const w of works) {
+    const cur = map.get(w.artistSlug) ?? { artistSlug: w.artistSlug, artistName: w.artistName, works: 0, clicks: 0, clicksWeek: 0 };
+    cur.works += 1;
+    cur.clicks += Number(views.find((v) => v.workSlug === w.slug)?.views ?? 0);
+    cur.clicksWeek += week.find((v) => v.workSlug === w.slug)?._sum.views ?? 0;
+    map.set(w.artistSlug, cur);
+  }
+  return [...map.values()].map((a) => {
+    const donations =
+      Number(legacy.find((d) => d.artistSlug === a.artistSlug)?._sum.amount ?? 0) +
+      (payments.find((p) => p.artistSlug === a.artistSlug)?._sum.grossCents ?? 0) / 100;
+    const clickRevenue = Math.round(a.clicks * RATE_PER_CLICK * 100) / 100;
+    return { ...a, clickRevenue, donations, total: Math.round((clickRevenue + donations) * 100) / 100 };
+  });
+}
+
 /** Endereço da página pública do autor (pelo nome usado nas obras). */
 export async function getOwnArtistSlug(userId: string): Promise<string | null> {
   const w = await prisma.work.findFirst({ where: { authorId: userId, status: "approved" }, orderBy: { createdAt: "desc" }, select: { artistSlug: true } });

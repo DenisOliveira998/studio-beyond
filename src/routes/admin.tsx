@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminRevisions } from "@/components/admin-revisions";
 import { AdminPayments } from "@/components/admin-payments";
+import { AdminAuthors } from "@/components/admin-authors";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -95,6 +96,7 @@ const NAV = [
   { id: "contas", label: "Gestão de Contas", icon: Users },
   { id: "denuncias", label: "Denúncias", icon: Flag },
   { id: "receita", label: "Receita", icon: CircleDollarSign },
+  { id: "por-autor", label: "Por autor", icon: Users },
   { id: "pagamentos", label: "Pagamentos", icon: CircleDollarSign },
   { id: "revisoes", label: "Alterações", icon: FileClock },
   { id: "emails", label: "E-mails", icon: Mail },
@@ -1084,6 +1086,12 @@ function AdminPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Quanto cada autor gerou (cliques e doações de todas as obras) */}
+        <section id="por-autor" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Users}>Por autor</SectionTitle>
+          <AdminAuthors />
         </section>
 
         {/* Alterações pedidas em obras aprovadas (nome, sinopse, capa, PDF de capítulo) */}
