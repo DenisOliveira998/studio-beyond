@@ -2249,9 +2249,33 @@ ${catalog}
       const workViewMatch = pathname.match(/^\/api\/works\/([^/]+)\/view$/);
       if (workViewMatch && request.method === "POST") {
         const slug = decodeURIComponent(workViewMatch[1]!);
+        const done = (extra: Record<string, string> = {}) =>
+          new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json", "cache-control": "private, no-store", ...extra } });
+        // Robôs e buscadores não contam
+        const ua = request.headers.get("user-agent") ?? "";
+        if (!ua || /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|curl|wget|python|axios|node-fetch/i.test(ua)) return done();
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        let userId: string | null = null;
+        if (session?.user) {
+          userId = session.user.id;
+          // Equipe não conta
+          const { prisma: prismaV } = await import("./lib/prisma");
+          const prof = await prismaV.profile.findUnique({ where: { id: userId }, select: { role: true } });
+          if (prof && ["owner", "admin", "gerente"].includes(prof.role)) return done();
+        }
+        // Quem é: a conta (com login) ou um código do navegador (sem login), sempre embaralhado
+        const { createHash, randomBytes } = await import("node:crypto");
+        const cookieId = /(?:^|;\s*)gb_vid=([A-Za-z0-9_-]{16,64})/.exec(request.headers.get("cookie") ?? "")?.[1];
+        const browserId = cookieId ?? randomBytes(18).toString("base64url");
+        const setCookie = cookieId ? {} : { "set-cookie": `gb_vid=${browserId}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax` };
+        const salt = process.env["BETTER_AUTH_SECRET"] ?? "gb";
+        const viewer = createHash("sha256").update(`${salt}:${userId ? `u:${userId}` : `b:${browserId}`}`).digest("hex").slice(0, 64);
+        // Sem login e sem código do navegador (pedido automático), no máximo algumas por IP por hora
+        if (!userId && !(await rateLimit(`view:ip:${clientIp(request)}`, cookieId ? 120 : 20, 60 * 60))) return done(setCookie);
         const { registerWorkView } = await import("./lib/beyond-db");
-        const views = await registerWorkView(slug);
-        return new Response(JSON.stringify({ views }), { headers: { "content-type": "application/json" } });
+        await registerWorkView(slug, viewer, userId);
+        return done(setCookie);
       }
 
       // Like/unlike obra

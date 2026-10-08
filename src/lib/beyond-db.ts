@@ -315,14 +315,35 @@ export async function fetchWorkStats(): Promise<WorkStats> {
   return { views, donations, supporters };
 }
 
-export async function registerWorkView(slug: string): Promise<number | null> {
+const VIEW_WINDOW_MS = 7 * 86_400_000;
+
+/**
+ * Conta 1 visualização por pessoa por obra a cada 7 dias.
+ * viewer: código embaralhado da conta ou do navegador. ownerId: autor da obra não conta.
+ * Devolve "skip" quando não contou (já viu na semana, autor, obra fora do ar).
+ */
+export async function registerWorkView(slug: string, viewer: string, viewerUserId: string | null): Promise<"counted" | "skip"> {
   try {
     // Só conta se a obra existir e estiver aprovada
     const work = await prisma.work.findFirst({
       where: { slug, status: "approved" },
-      select: { slug: true },
+      select: { slug: true, authorId: true },
     });
-    if (!work) return null;
+    if (!work) return "skip";
+    if (viewerUserId && work.authorId === viewerUserId) return "skip";
+
+    const now = new Date();
+    const seen = await prisma.workViewSeen.findUnique({ where: { viewer_workSlug: { viewer, workSlug: slug } } });
+    if (seen && now.getTime() - seen.seenAt.getTime() < VIEW_WINDOW_MS) return "skip";
+    await prisma.workViewSeen.upsert({
+      where: { viewer_workSlug: { viewer, workSlug: slug } },
+      update: { seenAt: now },
+      create: { viewer, workSlug: slug, seenAt: now },
+    });
+    // Limpeza de vez em quando: registros com mais de 8 dias não servem mais
+    if (Math.random() < 0.02) {
+      void prisma.workViewSeen.deleteMany({ where: { seenAt: { lt: new Date(now.getTime() - VIEW_WINDOW_MS - 86_400_000) } } }).catch(() => {});
+    }
 
     const row = await prisma.workView.upsert({
       where: { workSlug: slug },
@@ -338,9 +359,10 @@ export async function registerWorkView(slug: string): Promise<number | null> {
         create: { workSlug: slug, date, views: 1 },
       })
       .catch(() => {});
-    return Number(row.views);
+    void row;
+    return "counted";
   } catch {
-    return null;
+    return "skip";
   }
 }
 

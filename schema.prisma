@@ -574,3 +574,15 @@ model WorkSlugAlias {
   @@index([newSlug])
   @@map("work_slug_aliases")
 }
+
+// Quem já viu cada obra: conta 1 visualização por pessoa a cada 7 dias.
+// viewer é um código embaralhado (conta ou navegador), nunca o id ou o IP em texto.
+model WorkViewSeen {
+  viewer   String   @db.VarChar(64)
+  workSlug String   @db.VarChar(191)
+  seenAt   DateTime @default(now())
+
+  @@id([viewer, workSlug])
+  @@index([seenAt])
+  @@map("work_view_seen")
+}

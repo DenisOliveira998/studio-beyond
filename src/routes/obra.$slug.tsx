@@ -462,17 +462,8 @@ function WorkPage() {
             </button>
 
             {/* Stats (só aparece quando há números para mostrar) */}
-            {(views >= VIEWS_DISPLAY_MIN || likeCount > 0) && (
+            {likeCount > 0 && (
             <div className="border border-border bg-surface p-3 flex flex-col gap-2.5 text-sm">
-              {views >= VIEWS_DISPLAY_MIN && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Visualizações</span>
-                    <span className="font-mono tabular-nums">{compact(views)}</span>
-                  </div>
-                  <div className="h-px bg-border" />
-                </>
-              )}
               {likeCount > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Curtidas</span>
@@ -710,7 +701,6 @@ function WorkPage() {
             {/* Mobile donate + stats */}
             <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-border pt-6 lg:hidden">
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                {views >= VIEWS_DISPLAY_MIN && <span>{compact(views)} visualizações</span>}
                 {likeCount > 0 && <span>{compact(likeCount)} {likeCount === 1 ? "curtida" : "curtidas"}</span>}
                 {work.pages && <span>{work.pages} páginas</span>}
               </div>

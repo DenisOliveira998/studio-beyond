@@ -61,11 +61,7 @@ function Position({ n }: { n: number }) {
   );
 }
 
-function Reads({ week, total }: { week: number; total: number }) {
-  if (week >= VIEWS_DISPLAY_MIN) return <span>{compact(week)} leituras na semana</span>;
-  if (total >= VIEWS_DISPLAY_MIN) return <span>{compact(total)} leituras</span>;
-  return null;
-}
+
 
 function RankingPage() {
   const initial = Route.useLoaderData();
@@ -136,7 +132,6 @@ function RankingPage() {
                     <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                       <span className="uppercase tracking-[0.12em]">{MEDIUM_LABEL[w.medium]}</span>
                       {w.artistName && <span>{w.artistName}</span>}
-                      <Reads week={w.weekViews} total={w.totalViews} />
                     </p>
                   </div>
                 </Link>
@@ -183,7 +178,6 @@ function RankingPage() {
                       </span>
                     )}
                     {a.topWork && <span className="truncate">Destaque: {a.topWork.title}</span>}
-                    <Reads week={a.weekViews} total={a.totalViews} />
                   </p>
                 </div>
               </Link>

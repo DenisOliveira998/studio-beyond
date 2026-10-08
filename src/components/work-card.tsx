@@ -53,12 +53,6 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
               {artistName}
             </Link>
           )}
-          {work.clicks >= VIEWS_DISPLAY_MIN && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{compact(work.clicks)} visualizações</span>
-            </>
-          )}
         </div>
       </div>
     </article>
