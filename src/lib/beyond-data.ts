@@ -2,6 +2,16 @@ import { formatMoney, formatNumber } from "@/lib/i18n";
 
 export type Medium = "livro" | "manga" | "hq" | "conto" | "lightnovel" | "manhwa" | "manhua";
 
+/** Endereço da categoria (/explorar/<slug>): "lightnovel" aparece como "novel", o nome que o leitor usa. */
+export function mediumSlug(m: Medium): string {
+  return m === "lightnovel" ? "novel" : m;
+}
+export function mediumFromSlug(slug: string): Medium | null {
+  if (slug === "novel") return "lightnovel";
+  const all: Medium[] = ["livro", "manga", "hq", "conto", "manhwa", "manhua"];
+  return (all as string[]).includes(slug) ? (slug as Medium) : null;
+}
+
 // Mediums com leitor de imagem vertical (webtoon/scroll)
 export const WEBTOON_MEDIUMS: Medium[] = ["manhwa", "manhua"];
 // Mediums com leitor de texto
@@ -11,7 +21,7 @@ export function getReaderMode(medium: Medium): "text" | "webtoon" {
   return WEBTOON_MEDIUMS.includes(medium) ? "webtoon" : "text";
 }
 
-export type WorkChapter = { number: number; title: string; date: string; free?: boolean; earlyUntil?: string | null };
+export type WorkChapter = { number: number; title: string; date: string; free?: boolean; earlyUntil?: string | null; pages?: number | null };
 
 export type Work = {
   id: string;
@@ -37,6 +47,8 @@ export type Work = {
   pdfUrl?: string;
   tags?: string[];
   chapters?: WorkChapter[];
+  /** Foto do autor (dados estruturados) */
+  authorAvatar?: string;
   updatedAt?: string;
   workStatus?: "andamento" | "finalizado" | "paralisado";
 };

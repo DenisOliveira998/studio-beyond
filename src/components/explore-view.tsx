@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, compact, type Work, type Medium } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, compact, mediumSlug, type Work, type Medium } from "@/lib/beyond-data";
 import { stripHtml } from "@/lib/utils";
 
 export const MEDIA: Medium[] = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
@@ -168,7 +168,7 @@ export function ExploreView({
           Tudo
         </Link>
         {MEDIA.map((m) => (
-          <Link key={m} to="/explorar/$categoria" params={{ categoria: m }} className={pillCls(medium === m)}>
+          <Link key={m} to="/explorar/$categoria" params={{ categoria: mediumSlug(m) }} className={pillCls(medium === m)}>
             {MEDIUM_LABEL[m]}
           </Link>
         ))}

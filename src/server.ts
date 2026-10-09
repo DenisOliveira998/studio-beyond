@@ -182,7 +182,7 @@ const PUBLIC_API_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate
 
 // Páginas cujo HTML não depende de quem está logado (o login é resolvido no navegador)
 const CACHEABLE_HTML = [
-  /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/ranking$/, /^\/artist\/[^/]+$/, /^\/work\/[^/]+$/,
+  /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/ranking$/, /^\/autor\/[^/]+$/, /^\/obra\/[^/]+$/,
   /^\/biblioteca$/, /^\/planos$/, /^\/sobre$/, /^\/contato$/, /^\/termos$/, /^\/privacidade$/,
   /^\/candidatura-autor$/,
 ];
@@ -1406,7 +1406,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const lines = [
           url("/", latest || undefined),
           url("/explorar", latest || undefined),
-          ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m}`)),
+          ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m === "lightnovel" ? "novel" : m}`)),
           url("/ranking"),
           url("/biblioteca"),
           url("/planos"),
@@ -1885,9 +1885,12 @@ ${catalog}
           date: new Date(c.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
           free: c.free,
           earlyUntil: c.earlyUntil,
+          pages: c.pdfPages,
         }));
+        const { getAuthorBio } = await import("./lib/beyond-db");
+        const authorAvatar = (await getAuthorBio(dbWork.authorId)).avatarUrl;
         return new Response(
-          JSON.stringify({ work: { ...work, chapters: workChapters }, related, hasBody: !!(dbWork.body?.trim()) || workChapters.length > 0 }),
+          JSON.stringify({ work: { ...work, chapters: workChapters, ...(authorAvatar ? { authorAvatar } : {}) }, related, hasBody: !!(dbWork.body?.trim()) || workChapters.length > 0 }),
           { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } },
         );
       }

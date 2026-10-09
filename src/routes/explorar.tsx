@@ -1,3 +1,4 @@
+import { mediumSlug } from "@/lib/beyond-data";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { SITE_URL } from "@/lib/site-url";
 import type { Work } from "@/lib/beyond-data";
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/explorar")({
   }),
   beforeLoad: ({ search }) => {
     if (search.m && isMedium(search.m)) {
-      throw redirect({ to: "/explorar/$categoria", params: { categoria: search.m }, statusCode: 301 });
+      throw redirect({ to: "/explorar/$categoria", params: { categoria: mediumSlug(search.m) }, statusCode: 301 });
     }
   },
   loader: async () => ({ works: await loaderFetch<Work[]>("/api/works", []) }),

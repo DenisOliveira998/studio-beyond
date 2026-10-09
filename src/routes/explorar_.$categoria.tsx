@@ -1,4 +1,5 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { mediumFromSlug, mediumSlug } from "@/lib/beyond-data";
 import { SITE_URL } from "@/lib/site-url";
 import type { Work } from "@/lib/beyond-data";
 import { loaderFetch } from "@/lib/loader-fetch";
@@ -9,9 +10,14 @@ import { CATEGORY_SEO, ExploreView, ITEMS_PER_PAGE, isMedium, parsePagina } from
 export const Route = createFileRoute("/explorar_/$categoria")({
   validateSearch: (search: Record<string, unknown>): { pagina?: number } =>
     parsePagina(search["pagina"]) > 1 ? { pagina: parsePagina(search["pagina"]) } : {},
+  beforeLoad: ({ params }) => {
+    // Endereço antigo da categoria Novel
+    if (params.categoria === "lightnovel") throw redirect({ to: "/explorar/$categoria", params: { categoria: "novel" }, statusCode: 301 });
+  },
   loader: async ({ params }) => {
-    if (!isMedium(params.categoria)) throw notFound();
-    return { medium: params.categoria, works: await loaderFetch<Work[]>("/api/works", []) };
+    const medium = mediumFromSlug(params.categoria);
+    if (!medium) throw notFound();
+    return { medium, works: await loaderFetch<Work[]>("/api/works", []) };
   },
   head: ({ loaderData, params, match }) => {
     if (!loaderData) {
@@ -61,5 +67,5 @@ export const Route = createFileRoute("/explorar_/$categoria")({
 function CategoryPage() {
   const { medium, works } = Route.useLoaderData();
   const { pagina } = Route.useSearch();
-  return <ExploreView medium={medium} initialWorks={works} page={pagina ?? 1} basePath={`/explorar/${medium}`} />;
+  return <ExploreView medium={medium} initialWorks={works} page={pagina ?? 1} basePath={`/explorar/${mediumSlug(medium)}`} />;
 }

@@ -127,7 +127,7 @@ export async function submitWork(input: {
       artistName: input.artistName,
       artistSlug: slugify(input.artistName),
       authorId: input.authorId,
-      excerpt: input.excerpt.slice(0, 240),
+      excerpt: input.excerpt.slice(0, 280),
       // obras de texto: HTML limpo; webtoon (manhwa/manhua): JSON com URLs de imagem
       body: ["manhwa", "manhua"].includes(input.medium) ? input.body : sanitizeWorkHtml(input.body),
       tags: input.tags,

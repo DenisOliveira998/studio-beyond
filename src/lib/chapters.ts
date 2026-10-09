@@ -255,7 +255,7 @@ export async function decideRevision(id: string, approve: boolean, reviewerId: s
     if (rev.kind === "work") {
       const patch: Record<string, unknown> = {};
       if (typeof data["title"] === "string" && data["title"].trim()) patch["title"] = data["title"];
-      if (typeof data["excerpt"] === "string" && data["excerpt"].trim()) patch["excerpt"] = String(data["excerpt"]).slice(0, 240);
+      if (typeof data["excerpt"] === "string" && data["excerpt"].trim()) patch["excerpt"] = String(data["excerpt"]).slice(0, 280);
       if (typeof data["coverUrl"] === "string") patch["coverUrl"] = data["coverUrl"];
       if (typeof data["medium"] === "string") patch["medium"] = data["medium"];
       if (data["workStatus"] === "andamento" || data["workStatus"] === "finalizado" || data["workStatus"] === "paralisado") patch["workStatus"] = data["workStatus"];

@@ -272,7 +272,10 @@ function Dashboard() {
       if (coverFile) {
         setUploadStep("cover");
         const fd = new FormData();
-        fd.append("file", coverFile);
+        // Nome do arquivo = título da obra (ajuda na busca de imagens)
+        const coverExt = coverFile.name.match(/\.[a-z0-9]+$/i)?.[0]?.toLowerCase() ?? ".jpg";
+        const coverName = title.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 50) || "obra";
+        fd.append("file", coverFile, `${coverName}-capa${coverExt}`);
         fd.append("purpose", "cover");
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         const data = (await res.json()) as { url?: string; error?: string };

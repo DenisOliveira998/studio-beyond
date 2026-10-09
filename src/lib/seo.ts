@@ -47,6 +47,8 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 export function workJsonLd(work: Work) {
   const isComic = ["manga", "hq", "manhwa", "manhua"].includes(work.medium);
   const tags = work.tags ?? [];
+  const chapters = work.chapters ?? [];
+  const pages = chapters.reduce((s, c) => s + (c.pages ?? 0), 0);
   return {
     "@context": "https://schema.org",
     "@type": isComic ? "ComicStory" : "Book",
@@ -64,7 +66,20 @@ export function workJsonLd(work: Work) {
             "@type": "Person",
             name: work.artistName,
             url: siteUrl(`/autor/${work.artistSlug}`),
+            ...(work.authorAvatar ? { image: absoluteUrl(work.authorAvatar) } : {}),
           },
+        }
+      : {}),
+    ...(pages > 0 ? { numberOfPages: pages } : {}),
+    ...(chapters.length
+      ? {
+          hasPart: chapters.map((c) => ({
+            "@type": "Chapter",
+            name: c.title,
+            position: c.number,
+            url: siteUrl(`/ler/${work.slug}?cap=${c.number}`),
+            ...(c.pages ? { pagination: `1-${c.pages}` } : {}),
+          })),
         }
       : {}),
     publisher: { "@id": ORGANIZATION_ID },

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupportCard } from "@/components/support-card";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact, mediumSlug } from "@/lib/beyond-data";
 import { LoginPrompt } from "@/components/login-prompt";
 import { ReportButton } from "@/components/report-dialog";
 import { breadcrumbJsonLd, workJsonLd, workSeo } from "@/lib/seo";
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/obra/$slug")({
       {
         "script:ld+json": breadcrumbJsonLd([
           { name: "Início", path: "/" },
-          { name: MEDIUM_LABEL[work.medium], path: `/explorar/${work.medium}` },
+          { name: MEDIUM_LABEL[work.medium], path: `/explorar/${mediumSlug(work.medium)}` },
           { name: cleanTitle, path: `/obra/${work.slug}` },
         ]),
       },
