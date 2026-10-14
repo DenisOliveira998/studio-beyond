@@ -401,6 +401,7 @@ function ReaderPage() {
                     enabled={!quotaExhausted}
                     preview={content?.access === "preview"}
                     defaultTheme={["livro", "conto", "lightnovel"].includes(work.medium) ? "escuro" : "original"}
+                    textMode={["livro", "conto", "lightnovel"].includes(work.medium)}
                   />
                   {content?.access === "preview" && (
                     <div className="mt-6 rounded border border-border bg-surface px-6 py-10 text-center">
@@ -461,14 +462,14 @@ function ReaderPage() {
               Você chegou ao limite de leitura de hoje
             </p>
             <p className="caption mt-3">
-              Volte amanhã para continuar — ou entre na lista dos planos Fã e Super Fã para ler sem limite e sem anúncios.
+              Volte amanhã para continuar, ou assine o Super Fã para ler sem limite e sem anúncios.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 to="/planos"
                 className="btn-type border border-gilt bg-gilt/10 px-5 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
               >
-                Ver os planos Fã e Super Fã
+                Conhecer o Super Fã
               </Link>
               <Link
                 to="/obra/$slug"

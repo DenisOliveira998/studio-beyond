@@ -706,7 +706,9 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (!(await paymentsOpenFor(prof?.role))) return json({ error: "Os planos abrem em breve." }, 503);
         if (prof?.suspended) return json({ error: "Conta suspensa." }, 403);
         const body = (await request.json().catch(() => ({}))) as { plano?: string; email?: string };
-        const plan = body.plano === "superfa" ? "superfa" : body.plano === "fa" ? "fa" : null;
+        // Só o Super Fã aceita assinatura nova (o Fã foi encerrado; quem já tinha continua)
+        if (body.plano === "fa") return json({ error: "O plano Fã foi encerrado. Assine o Super Fã." }, 400);
+        const plan = body.plano === "superfa" ? "superfa" : null;
         if (!plan) return json({ error: "Plano inválido." }, 400);
         const email = String(body.email ?? s.user.email ?? "").trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return json({ error: "Informe um e-mail válido." }, 400);
@@ -1040,7 +1042,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const { submitWork, toAuthorStatus } = await import("./lib/beyond-db");
         const body = (await request.json()) as {
           title: string; medium: string; artistName: string;
-          excerpt?: string; body?: string; tags?: string;
+          excerpt?: string; body?: string; tags?: string; ageRating?: string;
           pdfUrl?: string | null; previewUrl?: string | null; pdfPages?: number; chapterNumber?: number; chapterTitle?: string;
           coverUrl?: string | null; status?: "pending" | "draft";
         };
@@ -1056,6 +1058,14 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
         const { cleanTags } = await import("./lib/beyond-db");
         const tagList = cleanTags(body.tags);
+        // Classificação indicativa: obrigatória para enviar; +18 não é aceito por enquanto
+        if (body.ageRating === "18") {
+          return new Response(JSON.stringify({ error: "Obras para maiores de 18 anos não são aceitas no momento." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        const ageRating = body.ageRating && ["L", "10", "12", "14", "16"].includes(body.ageRating) ? body.ageRating : null;
+        if (toAuthorStatus(body.status) === "pending" && !ageRating) {
+          return new Response(JSON.stringify({ error: "Escolha a classificação indicativa da obra." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
         if (toAuthorStatus(body.status) === "pending" && tagList.length === 0) {
           return new Response(JSON.stringify({ error: "Escolha pelo menos um gênero para a obra." }), { status: 400, headers: { "content-type": "application/json" } });
         }
@@ -1068,6 +1078,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           excerpt: body.excerpt ?? "",
           body: "",
           tags: tagList.join(", "),
+          ageRating,
           pdfUrl: body.pdfUrl ?? null,
           previewUrl: previewCheck?.ok ? body.previewUrl ?? null : null,
           pdfPages: Number.isInteger(body.pdfPages) && (body.pdfPages ?? 0) > 0 && (body.pdfPages ?? 0) < 5000 ? body.pdfPages! : null,
@@ -1224,7 +1235,13 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
         }
         const workId = authorWorkMatch[1]!;
-        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; tags?: string; workStatus?: string; status?: "pending" | "draft" };
+        const body = (await request.json()) as { title?: string; medium?: string; excerpt?: string; coverUrl?: string; tags?: string; workStatus?: string; ageRating?: string; status?: "pending" | "draft" };
+        if (body.ageRating === "18") {
+          return new Response(JSON.stringify({ error: "Obras para maiores de 18 anos não são aceitas no momento." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
+        if (body.ageRating !== undefined && !["L", "10", "12", "14", "16"].includes(body.ageRating)) {
+          return new Response(JSON.stringify({ error: "Classificação inválida." }), { status: 400, headers: { "content-type": "application/json" } });
+        }
         if (body.workStatus !== undefined && !["andamento", "finalizado", "paralisado"].includes(body.workStatus)) {
           return new Response(JSON.stringify({ error: "Situação inválida." }), { status: 400, headers: { "content-type": "application/json" } });
         }
@@ -1248,7 +1265,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         }
         if (current.status === "approved") delete body.status; // já está no ar
         // Obra no ar: nome, sinopse, capa, formato, situação e gêneros passam pela curadoria (a versão atual segue no ar)
-        if (current.status === "approved" && (body.title !== undefined || body.medium !== undefined || body.excerpt !== undefined || body.coverUrl !== undefined || body.workStatus !== undefined || body.tags !== undefined)) {
+        if (current.status === "approved" && (body.title !== undefined || body.medium !== undefined || body.excerpt !== undefined || body.coverUrl !== undefined || body.workStatus !== undefined || body.tags !== undefined || body.ageRating !== undefined)) {
           const { requestWorkRevision, blobUrlInUse } = await import("./lib/chapters");
           if (body.coverUrl && (await blobUrlInUse(body.coverUrl))) {
             return new Response(JSON.stringify({ error: "Envie uma capa nova." }), { status: 400, headers: { "content-type": "application/json" } });
@@ -1260,6 +1277,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
             ...(body.workStatus !== undefined ? { workStatus: body.workStatus } : {}),
             ...(body.tags !== undefined ? { tags: body.tags } : {}),
+            ...(body.ageRating !== undefined ? { ageRating: body.ageRating } : {}),
           });
           return new Response(JSON.stringify({ ok: true, review: true }), { headers: { "content-type": "application/json" } });
         }
@@ -1271,7 +1289,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
             data: { workStatus: body.workStatus as "andamento" | "finalizado" | "paralisado" },
           });
         }
-        if (body.title === undefined && body.medium === undefined && body.status === undefined && body.tags === undefined) {
+        if (body.title === undefined && body.medium === undefined && body.status === undefined && body.tags === undefined && body.ageRating === undefined) {
           return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
         }
         try {
@@ -1461,9 +1479,9 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 > Plataforma digital de leitura e publicação autoral de livros, mangás, HQs, contos e novels, com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
 
 ## Para leitores
-- Leitura gratuita, com limite diário e anúncios; os planos Fã e Super Fã removem o limite e os anúncios.
+- Leitura gratuita, com limite diário e anúncios; o plano Super Fã (R$ 14,90/mês) remove o limite e os anúncios.
 - Apoio direto: o leitor pode doar para o autor que gostar; o apoio vai para quem escreveu.
-- Planos Fã e Super Fã (em construção): sem anúncios, sem limite diário; o Super Fã inclui acesso antecipado e clube de fãs. Lista de espera aberta.
+- Plano Super Fã (R$ 14,90/mês): capítulos novos 3 dias antes, sem anúncios, sem limite diário e selo no perfil.
 
 ## Para autores
 - Entrada por curadoria humana. As candidaturas de autor abrem em breve, por etapas (lista de espera aberta). Candidatar-se não custa nada.
@@ -1477,7 +1495,7 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 - [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
 - [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
 - [Ranking](${SITE_URL}/ranking): Top 50 da semana, com as obras e os autores mais lidos
-- [Planos](${SITE_URL}/planos): planos Fã e Super Fã (em construção)
+- [Planos](${SITE_URL}/planos): leitura grátis e plano Super Fã
 - [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
 - [Sitemap](${SITE_URL}/sitemap.xml)
@@ -2081,7 +2099,21 @@ ${catalog}
         if (error) return error;
         const workId = adminWorkMatch[1]!;
         if (request.method === "PATCH") {
-          const { status, note } = (await request.json()) as { status: string; note?: string };
+          const { status, note, ageRating: setRating } = (await request.json()) as { status?: string; note?: string; ageRating?: string };
+          if (setRating !== undefined) {
+            if (!["L", "10", "12", "14", "16"].includes(setRating)) {
+              return new Response(JSON.stringify({ error: "Classificação inválida (+18 não é aceito no momento)." }), { status: 400, headers: { "content-type": "application/json" } });
+            }
+            const { prisma: prismaR } = await import("./lib/prisma");
+            await prismaR.work.update({ where: { id: workId }, data: { ageRating: setRating } });
+            if (!status) return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+          }
+          if (!status) return new Response(JSON.stringify({ error: "Nada para alterar." }), { status: 400, headers: { "content-type": "application/json" } });
+          if (status === "approved") {
+            const { prisma: prismaR2 } = await import("./lib/prisma");
+            const w = await prismaR2.work.findUnique({ where: { id: workId }, select: { ageRating: true } });
+            if (!w?.ageRating) return new Response(JSON.stringify({ error: "Defina a classificação indicativa antes de aprovar." }), { status: 400, headers: { "content-type": "application/json" } });
+          }
           const { decideWork, insertAuditLog } = await import("./lib/beyond-db");
           const { authorEmail, authorName, title, slug, keptLive } = await decideWork(workId, status as "approved" | "rejected" | "changes", note);
           await insertAuditLog({
@@ -2348,11 +2380,13 @@ ${catalog}
         const slug = decodeURIComponent(workCommentsMatch[1]!);
         if (request.method === "GET") {
           const { getWorkComments } = await import("./lib/beyond-db");
-          const comments = await getWorkComments(slug);
+          const capParam = new URL(request.url).searchParams.get("cap");
+          const capNum = capParam != null && capParam !== "" ? Number(capParam) : undefined;
+          const comments = await getWorkComments(slug, capNum != null && Number.isFinite(capNum) ? capNum : undefined);
           return new Response(JSON.stringify(comments), { headers: { "content-type": "application/json" } });
         }
         if (request.method === "POST") {
-          const { text } = (await request.json()) as { author?: string; text: string };
+          const { text, cap: commentCap } = (await request.json()) as { author?: string; text: string; cap?: number };
           if (!text?.trim()) {
             return new Response(JSON.stringify({ error: "Texto obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
           }
@@ -2373,11 +2407,22 @@ ${catalog}
             return tooManyRequests("Você comentou muitas vezes seguidas. Aguarde alguns minutos.");
           }
           const { addWorkComment } = await import("./lib/beyond-db");
+          // Comentário de capítulo: o capítulo precisa existir nesta obra
+          let chapterNum: number | null = null;
+          if (commentCap != null) {
+            const n = Number(commentCap);
+            const { prisma: prismaC } = await import("./lib/prisma");
+            const w = await prismaC.work.findUnique({ where: { slug }, select: { id: true } });
+            const ch = w && Number.isFinite(n) ? await prismaC.chapter.findFirst({ where: { workId: w.id, number: n }, select: { id: true } }) : null;
+            if (!ch) return new Response(JSON.stringify({ error: "Capítulo não encontrado." }), { status: 400, headers: { "content-type": "application/json" } });
+            chapterNum = n;
+          }
           const comment = await addWorkComment({
             workSlug: slug,
             userId: session?.user?.id ?? null,
             author: session.user.name || "Leitor",
             text: text.trim(),
+            chapter: chapterNum,
           });
           const { pushEvent: pushComment } = await import("./lib/pusher");
           void pushComment({ event: "new-comment", data: { workSlug: slug, author: comment.author } });

@@ -24,7 +24,7 @@ export async function getPaymentConfig(): Promise<PaymentConfigData> {
     feeRate: row ? Number(row.feeRate) : 0.12,
     feeMode: mode && FEE_MODES.includes(mode) ? mode : "descontada",
     priceFaCents: row?.priceFaCents ?? 990,
-    priceSuperFaCents: row?.priceSuperFaCents ?? 1990,
+    priceSuperFaCents: row?.priceSuperFaCents ?? 1490,
   };
 }
 
@@ -38,7 +38,7 @@ export async function savePaymentConfig(input: {
   const feeMode = FEE_MODES.includes(input.feeMode) ? input.feeMode : "descontada";
   const price = (v: number, fallback: number) => (Number.isFinite(v) && v >= 100 && v <= 100_000 ? Math.round(v) : fallback);
   const priceFaCents = price(input.priceFaCents, 990);
-  const priceSuperFaCents = price(input.priceSuperFaCents, 1990);
+  const priceSuperFaCents = price(input.priceSuperFaCents, 1490);
   await prisma.paymentConfig.upsert({
     where: { id: "default" },
     create: { id: "default", feeRate, feeMode, priceFaCents, priceSuperFaCents },

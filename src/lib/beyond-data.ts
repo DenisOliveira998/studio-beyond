@@ -2,6 +2,22 @@ import { formatMoney, formatNumber } from "@/lib/i18n";
 
 export type Medium = "livro" | "manga" | "hq" | "conto" | "lightnovel" | "manhwa" | "manhua";
 
+/** Classificação indicativa (padrão brasileiro). +18 não é aceito por enquanto. */
+export type AgeRating = "L" | "10" | "12" | "14" | "16" | "18";
+export const AGE_RATINGS: AgeRating[] = ["L", "10", "12", "14", "16", "18"];
+export const AGE_RATINGS_ALLOWED: AgeRating[] = ["L", "10", "12", "14", "16"];
+export const AGE_RATING_LABEL: Record<AgeRating, string> = {
+  L: "Livre",
+  "10": "Não recomendado para menores de 10 anos",
+  "12": "Não recomendado para menores de 12 anos",
+  "14": "Não recomendado para menores de 14 anos",
+  "16": "Não recomendado para menores de 16 anos",
+  "18": "Não recomendado para menores de 18 anos",
+};
+export function isAgeRating(v: unknown): v is AgeRating {
+  return typeof v === "string" && (AGE_RATINGS as string[]).includes(v);
+}
+
 /** Endereço da categoria (/explorar/<slug>): "lightnovel" aparece como "novel", o nome que o leitor usa. */
 export function mediumSlug(m: Medium): string {
   return m === "lightnovel" ? "novel" : m;
@@ -51,6 +67,8 @@ export type Work = {
   authorAvatar?: string;
   updatedAt?: string;
   workStatus?: "andamento" | "finalizado" | "paralisado";
+  /** Classificação indicativa (padrão brasileiro) */
+  ageRating?: AgeRating;
 };
 
 export type Artist = {

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminRevisions } from "@/components/admin-revisions";
 import { AdminPayments } from "@/components/admin-payments";
 import { AdminAuthors } from "@/components/admin-authors";
+import { AgeBadge } from "@/components/age-badge";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -385,6 +386,20 @@ function AdminPage() {
     },
     onError: () => toast.error("Erro ao atualizar candidatura."),
   });
+
+  async function setWorkRating(id: string, ageRating: string) {
+    const res = await fetch(`/api/admin/works/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ageRating }),
+    });
+    if (!res.ok) {
+      toast.error("Não foi possível salvar a classificação.");
+      return;
+    }
+    toast.success("Classificação salva.");
+    void queryClient.invalidateQueries({ queryKey: ["admin-works"] });
+  }
 
   const patchWork = useMutation({
     mutationFn: ({ id, status, note }: { id: string; status: ReviewStatus; note?: string }) =>
@@ -886,6 +901,7 @@ function AdminPage() {
                   <Th>Autor</Th>
                   <Th>Enviada em</Th>
                   <Th>PDF</Th>
+                  <Th>Classificação</Th>
                   <Th>Status</Th>
                   <Th className="text-right">Ações</Th>
                 </tr>
@@ -919,6 +935,24 @@ function AdminPage() {
                       ) : (
                         <span className="text-xs text-muted-foreground/50">—</span>
                       )}
+                    </Td>
+                    <Td>
+                      <span className="flex items-center gap-2">
+                        <AgeBadge rating={(w.ageRating ?? null) as "L" | "10" | "12" | "14" | "16" | "18" | null} />
+                        <select
+                          aria-label={`Classificação de ${w.title}`}
+                          value={w.ageRating ?? ""}
+                          onChange={(e) => void setWorkRating(w.id, e.target.value)}
+                          className="border border-input bg-background px-2 py-1 text-xs"
+                        >
+                          <option value="" disabled>Definir</option>
+                          <option value="L">Livre</option>
+                          <option value="10">10 anos</option>
+                          <option value="12">12 anos</option>
+                          <option value="14">14 anos</option>
+                          <option value="16">16 anos</option>
+                        </select>
+                      </span>
                     </Td>
                     <Td><ReviewBadge status={w.status} /></Td>
                     <Td className="text-right">

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteSearch } from "@/components/site-search";
+import { InstallAppButton } from "@/components/install-app";
 import { useAuth } from "@/lib/auth";
 import type { SiteConfigData } from "@/lib/beyond-db";
 
@@ -26,7 +27,6 @@ const DEFAULT_CONFIG: SiteConfigData = {
 const nav = [
   { to: "/explorar", label: "Explorar" },
   { to: "/ranking", label: "Ranking" },
-  { to: "/biblioteca", label: "Biblioteca" },
   { to: "/planos", label: "Planos" },
   { to: "/candidatura-autor", label: "Publique aqui" },
 ];
@@ -267,6 +267,7 @@ export function SiteHeader() {
                 Tema
                 <ThemeToggle />
               </div>
+              <InstallAppButton />
             </nav>
             {!loading && !user && (
               <div className="mt-auto flex flex-col gap-3 px-5 pb-6">
@@ -297,7 +298,6 @@ const navLinks = [
   { to: "/", label: "Início" },
   { to: "/explorar", label: "Explorar categorias" },
   { to: "/ranking", label: "Ranking da semana" },
-  { to: "/biblioteca", label: "Biblioteca clássica" },
   { to: "/planos", label: "Planos de leitura" },
   { to: "/sobre", label: "Quem somos" },
   { to: "/contato", label: "Contato" },

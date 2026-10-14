@@ -32,7 +32,7 @@ function PrivacyPage() {
         <p>
           Não vendemos nem alugamos dados pessoais. A leitura gratuita exibe anúncios de parceiros
           (como o Google), que podem usar cookies para medir e personalizar anúncios; você poderá
-          ajustar essa escolha no aviso de cookies. Quem assina os planos Fã e Super Fã não vê
+          ajustar essa escolha no aviso de cookies. Quem assina o Super Fã não vê
           anúncios.
         </p>
         <p>

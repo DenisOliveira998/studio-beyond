@@ -6,9 +6,11 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupportCard } from "@/components/support-card";
 import { WorkCard } from "@/components/work-card";
-import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact, mediumSlug } from "@/lib/beyond-data";
+import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact, mediumSlug, AGE_RATING_LABEL } from "@/lib/beyond-data";
+import { AgeBadge } from "@/components/age-badge";
 import { LoginPrompt } from "@/components/login-prompt";
 import { ReportButton } from "@/components/report-dialog";
+import { Comments } from "@/components/comments";
 import { breadcrumbJsonLd, workJsonLd, workSeo } from "@/lib/seo";
 import { stripHtml, isHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -79,134 +81,6 @@ function WorkParagraph({ content, className }: { content: string; className?: st
     return <div className={className} dangerouslySetInnerHTML={{ __html: content }} />;
   }
   return <p className={className}>{content}</p>;
-}
-
-// ── Comentários ─────────────────────────────────────────────────
-
-function CommentAvatar({ name, url }: { name: string; url?: string | undefined }) {
-  if (url) return <img src={url} alt="" className="size-8 shrink-0 rounded-full object-cover" />;
-  const words = name.replace(/[^A-Za-zÀ-ÿ ]/g, "").split(/\s+/).filter(Boolean);
-  const ini = (words.length > 1 ? words.map((w) => w[0] ?? "").join("") : (words[0] ?? "?")).slice(0, 2).toUpperCase();
-  return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#5a3b5e] text-[11px] font-bold text-white">{ini}</span>
-  );
-}
-
-function CommentsSection({ workSlug }: { workSlug: string }) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const { data: comments = [], isLoading: commentsLoading } = useQuery<CommentData[]>({
-    queryKey: ["comments", workSlug],
-    queryFn: () => fetch(`/api/works/${workSlug}/comments`).then((r) => r.json() as Promise<CommentData[]>),
-    staleTime: 30_000,
-  });
-  const addComment = useMutation({
-    mutationFn: (payload: { author: string; text: string }) =>
-      fetch(`/api/works/${workSlug}/comments`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      }).then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json() as Promise<CommentData>;
-      }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["comments", workSlug] });
-      toast.success("Comentário publicado.");
-    },
-    onError: () => toast.error("Erro ao publicar comentário."),
-  });
-
-  const [draft, setDraft] = useState("");
-  const [name, setName] = useState(user?.name ?? "");
-
-  function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!draft.trim()) return;
-    addComment.mutate({ author: name.trim() || user?.name || "Anônimo", text: draft.trim() });
-    setDraft("");
-  }
-
-  return (
-    <div className="pt-6">
-      {!user ? (
-        <div className="border border-border bg-surface p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            <a
-              href={`/entrar?redirect=${encodeURIComponent(`/obra/${workSlug}`)}`}
-              className="text-gilt underline-offset-2 hover:underline"
-            >
-              Faça login
-            </a>{" "}
-            para deixar um comentário.
-          </p>
-        </div>
-      ) : (
-      <form onSubmit={handleSend} className="border border-border bg-surface p-6">
-        <label className="block">
-          <span className="eyebrow">Seu comentário</span>
-          <textarea
-            required
-            rows={3}
-            maxLength={500}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="O que achou da obra?"
-            className="mt-2 w-full resize-y border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-gilt"
-          />
-          <span className="caption mt-1 block text-right">{draft.length}/500</span>
-        </label>
-        <button
-          type="submit"
-          disabled={addComment.isPending}
-          className="btn-type mt-4 border border-gilt px-5 py-2 text-xs text-gilt transition-colors hover:bg-gilt hover:text-primary-foreground disabled:opacity-60"
-        >
-          {addComment.isPending ? "Publicando…" : "Publicar comentário"}
-        </button>
-      </form>
-      )}
-
-      <div className="mt-6 divide-y divide-border">
-        {commentsLoading && (
-          <div className="py-8 text-center">
-            <span className="size-5 animate-spin rounded-full border-2 border-border border-t-gilt inline-block" />
-          </div>
-        )}
-        {!commentsLoading && comments.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">Seja o primeiro a comentar.</p>
-        )}
-        {comments.map((c) => (
-          <div key={c.id} className="py-6">
-            <div className="flex flex-wrap items-center gap-3">
-              {c.profilePath ? (
-                <a href={c.profilePath} className="group flex items-center gap-2.5" title={`Ver o perfil de ${c.author}`}>
-                  <CommentAvatar name={c.author} url={c.avatarUrl} />
-                  <span className="font-display text-base group-hover:text-gilt group-hover:underline group-hover:underline-offset-4">{c.author}</span>
-                </a>
-              ) : (
-                <span className="flex items-center gap-2.5">
-                  <CommentAvatar name={c.author} url={c.avatarUrl} />
-                  <span className="font-display text-base">{c.author}</span>
-                </span>
-              )}
-              {c.badge && (
-                <span className="border border-gilt/50 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-gilt">
-                  {c.badge}
-                </span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-              </span>
-              <span className="ml-auto">
-                <ReportButton targetType="comment" targetId={c.id} redirectTo={`/obra/${workSlug}`} />
-              </span>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.text}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ── Bookmark ─────────────────────────────────────────────────────
@@ -367,12 +241,15 @@ function WorkPage() {
 
           {/* Cover */}
           {work.cover ? (
-            <img
-              width={300} height={400}
-              src={work.cover}
-              alt={stripHtml(work.title)}
-              className="w-28 flex-shrink-0 object-cover object-center bg-surface lg:w-full aspect-[3/4]"
-            />
+            <div className="relative w-28 flex-shrink-0 lg:w-full">
+              <img
+                width={300} height={400}
+                src={work.cover}
+                alt={stripHtml(work.title)}
+                className="w-full object-cover object-center bg-surface aspect-[3/4]"
+              />
+              <AgeBadge rating={work.ageRating} size="md" className="absolute bottom-2 right-2" />
+            </div>
           ) : (
             <div className="w-28 flex-shrink-0 aspect-[3/4] border border-gilt/15 bg-gradient-to-b from-gilt/5 to-transparent flex flex-col items-center justify-center gap-2 lg:w-full">
               <span className="font-display text-4xl font-bold text-gilt/20">
@@ -479,6 +356,18 @@ function WorkPage() {
                 <span className="text-muted-foreground uppercase tracking-[0.12em] text-xs">Status</span>
                 <StatusBadge status={work.workStatus ?? "andamento"} />
               </div>
+              {work.ageRating && (
+                <>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Classificação</span>
+                    <span className="flex items-center gap-2 text-right">
+                      <AgeBadge rating={work.ageRating} />
+                      {work.ageRating === "L" ? "Livre" : `${work.ageRating} anos`}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="h-px bg-border" />
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tipo</span>
@@ -734,9 +623,9 @@ function WorkPage() {
       )}
 
       {/* ── Comentários ── */}
-      <section className="mt-16 border-t border-border pt-10">
+      <section id="comentarios" className="mt-16 scroll-mt-24 border-t border-border pt-10">
         <h2 className="eyebrow mb-6">Comentários</h2>
-        <CommentsSection workSlug={work.slug} />
+        <Comments workSlug={work.slug} redirectTo={`/obra/${work.slug}`} />
       </section>
 
       <div className="mt-12 flex justify-end">

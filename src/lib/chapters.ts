@@ -196,7 +196,7 @@ export async function createInitialChapter(input: { workId: string; number: numb
 
 /* ---------- revisões (curadoria de alterações) ---------- */
 
-export type WorkRevisionData = { title?: string; excerpt?: string; coverUrl?: string; medium?: string; workStatus?: string; tags?: string; unpublish?: boolean };
+export type WorkRevisionData = { title?: string; excerpt?: string; coverUrl?: string; medium?: string; workStatus?: string; tags?: string; ageRating?: string; unpublish?: boolean };
 export type ChapterRevisionData = { pdfUrl?: string; previewUrl?: string | null; pdfPages?: number | null; title?: string | null };
 
 export async function requestWorkRevision(workId: string, authorId: string, data: WorkRevisionData) {
@@ -260,6 +260,7 @@ export async function decideRevision(id: string, approve: boolean, reviewerId: s
       if (typeof data["medium"] === "string") patch["medium"] = data["medium"];
       if (data["workStatus"] === "andamento" || data["workStatus"] === "finalizado" || data["workStatus"] === "paralisado") patch["workStatus"] = data["workStatus"];
       if (typeof data["tags"] === "string" && data["tags"].trim()) patch["tags"] = data["tags"];
+      if (typeof data["ageRating"] === "string" && ["L", "10", "12", "14", "16"].includes(data["ageRating"])) patch["ageRating"] = data["ageRating"];
       if (data["unpublish"] === true) patch["status"] = "draft";
       await prisma.work.update({ where: { id: rev.workId }, data: patch });
     } else if (rev.kind === "new_chapter") {

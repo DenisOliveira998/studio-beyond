@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { FileWarning, Minus, Plus } from "lucide-react";
+import { FileText, FileWarning, Image as ImageIcon, Minus, Plus } from "lucide-react";
+import type { TextBlock } from "@/lib/pdf-text";
 
 type PdfTheme = "original" | "sepia" | "escuro";
 
@@ -10,6 +11,13 @@ const THEMES: Record<PdfTheme, { label: string; filter: string; paper: string }>
   escuro: { label: "Escuro", filter: "invert(0.9) hue-rotate(180deg) contrast(0.92)", paper: "#262626" },
 };
 const THEME_KEY = "beyond_pdf_theme";
+const MODE_KEY = "beyond_pdf_mode";
+/** Cores do modo Texto (o texto é do site, não da página: dá para trocar de verdade). */
+const TEXT_COLORS: Record<PdfTheme, { bg: string; fg: string }> = {
+  original: { bg: "#ffffff", fg: "#1b1b1b" },
+  sepia: { bg: "#f1e6cf", fg: "#3b2f20" },
+  escuro: { bg: "#1c1c1e", fg: "#e6e1d8" },
+};
 const ZOOM_KEY = "beyond_pdf_zoom";
 const ZOOM_MIN = 0.8;
 const ZOOM_MAX = 2;
@@ -35,6 +43,7 @@ export function PdfViewer({
   cap,
   preview = false,
   defaultTheme = "original",
+  textMode = false,
 }: {
   slug: string;
   bodyRef: React.RefObject<HTMLDivElement | null>;
@@ -45,11 +54,78 @@ export function PdfViewer({
   preview?: boolean;
   /** Prosa abre no escuro; quadrinhos, no original (não altera a arte). */
   defaultTheme?: PdfTheme;
+  /** Livros, contos e novels: oferece o modo Texto (letra ajustável, sem zoom). */
+  textMode?: boolean;
 }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [doc, setDoc] = useState<import("pdfjs-dist").PDFDocumentProxy | null>(null);
   const [theme, setTheme] = useState<PdfTheme>(defaultTheme);
   const [zoom, setZoom] = useState(1);
+  const [mode, setMode] = useState<"texto" | "pagina">("pagina");
+  const [blocks, setBlocks] = useState<TextBlock[] | null>(null);
+  const [noText, setNoText] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
+
+  // Prosa: no celular abre em Texto; no computador, na página original. A escolha fica salva.
+  useEffect(() => {
+    if (!textMode) return;
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(MODE_KEY); } catch {}
+    if (saved === "texto" || saved === "pagina") setMode(saved);
+    else setMode(window.matchMedia("(max-width: 767px)").matches ? "texto" : "pagina");
+  }, [textMode]);
+
+  function chooseMode(m: "texto" | "pagina") {
+    setMode(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch {}
+  }
+
+  // Extrai o texto do PDF quando o modo Texto é usado
+  useEffect(() => {
+    if (!textMode || mode !== "texto" || !doc || blocks || noText) return;
+    let cancelled = false;
+    (async () => {
+      const { pageBlocks, mergePages } = await import("@/lib/pdf-text");
+      const pages: TextBlock[][] = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i).catch(() => null);
+        if (!page) continue;
+        const tc = await page.getTextContent().catch(() => null);
+        if (!tc) continue;
+        pages.push(pageBlocks(tc.items as Parameters<typeof pageBlocks>[0], page.getViewport({ scale: 1 }).width));
+        if (cancelled) return;
+      }
+      const merged = mergePages(pages);
+      const chars = merged.reduce((n, b) => n + b.text.length, 0);
+      if (cancelled) return;
+      // PDF escaneado (só imagem): não há texto para mostrar
+      if (chars < 40 * Math.min(doc.numPages, 3)) setNoText(true);
+      else setBlocks(merged);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [textMode, mode, doc, blocks, noText]);
+
+  /** Dois toques (ou duplo clique) na página: aproxima naquele ponto; de novo, volta ao tamanho normal. */
+  function zoomAt(clientX: number, clientY: number) {
+    const body = bodyRef.current;
+    const scroller = scrollerRef.current;
+    if (!body || !scroller) return;
+    const rect = body.getBoundingClientRect();
+    const fx = (clientX - rect.left) / rect.width;
+    const fy = (clientY - rect.top) / rect.height;
+    const next = zoom > 1 ? 1 : 2;
+    setZoom(next);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const r2 = body.getBoundingClientRect();
+        scroller.scrollLeft = Math.max(0, fx * r2.width - scroller.clientWidth / 2);
+        window.scrollBy({ top: r2.top + fy * r2.height - clientY });
+      }),
+    );
+  }
 
   // Preferência salva só depois de montar (evita diferença entre servidor e navegador)
   useEffect(() => { setTheme(readTheme(defaultTheme)); }, [defaultTheme]);
@@ -123,15 +199,43 @@ export function PdfViewer({
     );
   }
   const t = THEMES[theme];
+  const showText = textMode && mode === "texto" && !noText;
+  const colors = TEXT_COLORS[theme];
   return (
     <div>
+      {textMode && (
+        <div role="group" aria-label="Modo de leitura" className="mb-4 inline-flex rounded-full border border-border p-0.5 text-sm">
+          {([
+            ["texto", "Texto", FileText],
+            ["pagina", "Página original", ImageIcon],
+          ] as const).map(([m, label, Icon]) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => chooseMode(m)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-colors ${
+                mode === m ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {textMode && mode === "texto" && noText && (
+        <p className="mb-4 rounded border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
+          Esta obra é formada por imagens, sem texto para ajustar. Mostrando a página original.
+        </p>
+      )}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-sm">
-      <div role="group" aria-label="Tamanho da página" className="flex items-center gap-1">
+      <div role="group" aria-label={showText ? "Tamanho da letra" : "Tamanho da página"} className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => changeZoom(-ZOOM_STEP)}
           disabled={zoom <= ZOOM_MIN}
-          aria-label="Diminuir"
+          aria-label={showText ? "Diminuir a letra" : "Diminuir"}
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface hover:text-foreground disabled:opacity-30"
         >
           <Minus className="size-4" />
@@ -143,7 +247,7 @@ export function PdfViewer({
           type="button"
           onClick={() => changeZoom(ZOOM_STEP)}
           disabled={zoom >= ZOOM_MAX}
-          aria-label="Aumentar"
+          aria-label={showText ? "Aumentar a letra" : "Aumentar"}
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface hover:text-foreground disabled:opacity-30"
         >
           <Plus className="size-4" />
@@ -171,20 +275,68 @@ export function PdfViewer({
         ))}
       </div>
       </div>
-      {/* Com zoom acima de 100%, a página passa da coluna: rola para o lado */}
-      <div className="overflow-x-auto">
+      {showText ? (
+        <div
+          ref={bodyRef}
+          className="select-none rounded-sm px-5 py-8 transition-colors sm:px-10 sm:py-12"
+          style={{ backgroundColor: colors.bg, color: colors.fg, fontSize: `${Math.round(18 * zoom)}px`, lineHeight: 1.75 }}
+          onContextMenu={(e) => e.preventDefault()}
+          onCopy={(e) => e.preventDefault()}
+        >
+          {!blocks ? (
+            <div className="flex justify-center py-16">
+              <span className="size-6 animate-spin rounded-full border-2 border-current/20 border-t-gilt" />
+            </div>
+          ) : (
+            <div className="mx-auto max-w-[38em] font-serif">
+              {blocks.map((b, i) =>
+                b.kind === "h" ? (
+                  <p key={i} className="mb-6 mt-10 text-center text-[1.35em] font-bold leading-snug first:mt-0">
+                    {b.text}
+                  </p>
+                ) : b.kind === "center" ? (
+                  <p key={i} className="my-2 text-center">
+                    {b.text}
+                  </p>
+                ) : (
+                  <p key={i} className="mb-[0.9em] text-pretty">
+                    {b.text}
+                  </p>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+      /* Com zoom acima de 100%, a página passa da coluna: rola para o lado */
+      <div ref={scrollerRef} className="overflow-x-auto">
         <div
           ref={bodyRef}
           className="mx-auto flex select-none flex-col items-center"
-          style={{ width: `${zoom * 100}%` }}
+          style={{ width: `${zoom * 100}%`, touchAction: "manipulation" }}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
+          onDoubleClick={(e) => zoomAt(e.clientX, e.clientY)}
+          onTouchEnd={(e) => {
+            const p = e.changedTouches[0];
+            if (!p || e.touches.length) return;
+            const now = Date.now();
+            const prev = lastTap.current;
+            if (prev && now - prev.t < 300 && Math.hypot(p.clientX - prev.x, p.clientY - prev.y) < 30) {
+              e.preventDefault();
+              lastTap.current = null;
+              zoomAt(p.clientX, p.clientY);
+            } else {
+              lastTap.current = { t: now, x: p.clientX, y: p.clientY };
+            }
+          }}
         >
           {Array.from({ length: doc.numPages }, (_, i) => (
             <PdfPage key={i} doc={doc} pageNumber={i + 1} filter={t.filter} paper={t.paper} />
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

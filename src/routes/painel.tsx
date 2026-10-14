@@ -21,7 +21,8 @@ import {
   X,
 } from "lucide-react";
 import type { Work } from "@/lib/beyond-data";
-import { PLATFORM_FEE, compact, money, MEDIUM_LABEL } from "@/lib/beyond-data";
+import { PLATFORM_FEE, compact, money, MEDIUM_LABEL, AGE_RATINGS, AGE_RATINGS_ALLOWED, AGE_RATING_LABEL, type AgeRating } from "@/lib/beyond-data";
+import { AgeBadge } from "@/components/age-badge";
 import type { DonationRow, WorkStats, DbWork } from "@/lib/beyond-db";
 import { useAuth } from "@/lib/auth";
 
@@ -163,6 +164,7 @@ function Dashboard() {
   const [editType, setEditType] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editWorkStatus, setEditWorkStatus] = useState<"andamento" | "finalizado" | "paralisado">("andamento");
+  const [editRating, setEditRating] = useState<AgeRating | null>(null);
 
   const DRAFT_KEY = "beyond_dashboard_draft_v1";
 
@@ -178,6 +180,7 @@ function Dashboard() {
     try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { body?: string }).body ?? ""; } catch { return ""; }
   });
   const [showPreview, setShowPreview] = useState(false);
+  const [ageRating, setAgeRating] = useState<AgeRating | null>(null);
   const [tags, setTags] = useState<string[]>(() => {
     try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}") as { tags?: string[] }).tags ?? []; } catch { return []; }
   });
@@ -247,6 +250,10 @@ function Dashboard() {
     }
     if (synopsis.trim().length > 280) {
       toast.error("A sinopse não pode passar de 280 caracteres.");
+      return;
+    }
+    if (kind === "publish" && !ageRating) {
+      toast.error("Escolha a classificação indicativa da obra.");
       return;
     }
     if (tags.length === 0) {
@@ -343,6 +350,7 @@ function Dashboard() {
           artistName: artistNameInput.trim() || displayName,
           excerpt: synopsis.trim(),
           tags: tags.join(", "),
+          ageRating,
           pdfUrl,
           previewUrl,
           pdfPages,
@@ -491,6 +499,7 @@ function Dashboard() {
                               setEditType(WORK_TYPES.find((t) => t.toLowerCase() === w.medium) ?? WORK_TYPES[0] ?? "Livro");
                               setEditTags(w.tags ?? []);
                               setEditWorkStatus(w.workStatus ?? "andamento");
+                              setEditRating(w.ageRating ?? null);
                             }}
                           >
                             <Pencil className="size-3.5" /> Editar
@@ -664,6 +673,35 @@ function Dashboard() {
                 <p className="mt-2 text-xs text-muted-foreground/60">
                   Formato aceito: PDF, até 100 MB. O arquivo é comprimido antes do envio, e os leitores leem a obra
                   dentro do site, sem opção de download.
+                </p>
+              </Field>
+
+              <Field label="Classificação indicativa *" htmlFor="obra-classificacao">
+                <div role="radiogroup" aria-label="Classificação indicativa" className="flex flex-wrap gap-2">
+                  {AGE_RATINGS.map((r) => {
+                    const blocked = !AGE_RATINGS_ALLOWED.includes(r);
+                    const active = ageRating === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        disabled={blocked}
+                        title={blocked ? "Obras para maiores de 18 anos não são aceitas no momento" : AGE_RATING_LABEL[r]}
+                        onClick={() => setAgeRating(r)}
+                        className={`flex items-center gap-2 border px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          active ? "border-gilt bg-gilt/10 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <AgeBadge rating={r} />
+                        {r === "L" ? "Livre" : `${r} anos`}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground/70">
+                  A curadoria confere antes de publicar. Obras para maiores de 18 anos não são aceitas no momento.
                 </p>
               </Field>
 
@@ -1014,6 +1052,35 @@ function Dashboard() {
               </div>
 
               <div className="mt-5">
+                <span className="eyebrow">Classificação indicativa</span>
+                <div className="mt-2">
+                <div role="radiogroup" aria-label="Classificação indicativa" className="flex flex-wrap gap-2">
+                  {AGE_RATINGS.map((r) => {
+                    const blocked = !AGE_RATINGS_ALLOWED.includes(r);
+                    const active = editRating === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        disabled={blocked}
+                        title={blocked ? "Obras para maiores de 18 anos não são aceitas no momento" : AGE_RATING_LABEL[r]}
+                        onClick={() => setEditRating(r)}
+                        className={`flex items-center gap-2 border px-3 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          active ? "border-gilt bg-gilt/10 text-gilt" : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <AgeBadge rating={r} />
+                        {r === "L" ? "Livre" : `${r} anos`}
+                      </button>
+                    );
+                  })}
+                </div>
+                </div>
+              </div>
+
+              <div className="mt-5">
                 <span className="eyebrow">Situação da obra</span>
                 <div role="group" aria-label="Situação da obra" className="mt-2 flex flex-wrap gap-2">
                   {([["andamento", "Em andamento"], ["finalizado", "Finalizada"], ["paralisado", "Pausada"]] as const).map(([v, l]) => (
@@ -1075,6 +1142,7 @@ function Dashboard() {
                           ...((mediumMap[editType] ?? "livro") !== editingWork.medium ? { medium: mediumMap[editType] ?? "livro" } : {}),
                           ...([...editTags].sort().join(",") !== [...(editingWork.tags ?? [])].sort().join(",") ? { tags: editTags.join(", ") } : {}),
                           ...(editWorkStatus !== (editingWork.workStatus ?? "andamento") ? { workStatus: editWorkStatus } : {}),
+                          ...(editRating && editRating !== editingWork.ageRating ? { ageRating: editRating } : {}),
                         }),
                       });
                       if (!res.ok) throw new Error();

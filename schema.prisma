@@ -152,6 +152,7 @@ model Work {
   tags        String?
   status      ReviewStatus @default(pending)
   workStatus  WorkStatus   @default(andamento)
+  ageRating   String?      @db.VarChar(2) // classificação indicativa: L, 10, 12, 14, 16, 18
   curatorNote String?      @db.Text
   publishedAt DateTime?
   createdAt   DateTime     @default(now())
@@ -311,6 +312,7 @@ model WorkComment {
   workSlug  String
   userId    String?
   author    String   @default("Anônimo")
+  chapter   Float?   // número do capítulo comentado (vazio = comentário da obra)
   text      String   @db.Text
   hidden    Boolean  @default(false) // oculto pela moderação (ou por 3+ denúncias)
   createdAt DateTime @default(now())

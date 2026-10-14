@@ -10,17 +10,17 @@ import { faqJsonLd } from "@/lib/seo";
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos Fã e Super Fã: leia sem anúncios | Go Beyondd" },
+      { title: "Plano Super Fã: leia antes e sem anúncios | Go Beyondd" },
       {
         name: "description",
         content:
-          "Planos Fã (R$ 9,90/mês) e Super Fã (R$ 19,90/mês) da Go Beyondd: leitura sem anúncios e sem limite diário, acesso antecipado e clube de fãs.",
+          "Leia grátis na Go Beyondd ou assine o Super Fã por R$ 14,90/mês: capítulos novos 3 dias antes, sem anúncios, sem limite diário e selo no perfil.",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "Planos Fã e Super Fã | Go Beyondd" },
+      { property: "og:title", content: "Plano Super Fã | Go Beyondd" },
       {
         property: "og:description",
-        content: "Leia sem anúncios e sem limite diário. Fã por R$ 9,90 e Super Fã por R$ 19,90 por mês.",
+        content: "Capítulos novos 3 dias antes, sem anúncios e sem limite diário. Super Fã por R$ 14,90 por mês.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/planos` },
@@ -47,33 +47,34 @@ type Plan = {
   buttonStyle: "ghost" | "secondary" | "primary";
 };
 
-// Planos do plano de negócio: níveis escalonados (Fã → Super Fã). Preços a definir.
+// Dois planos até haver mais benefícios: Grátis e Super Fã (o Fã foi encerrado em out/2026;
+// quem já assinava continua com ele até cancelar).
 const PLANS: Plan[] = [
   {
-    id: "fa",
-    name: "Fã",
+    id: "gratis",
+    name: "Grátis",
     price: null,
     featured: false,
     badge: null,
     benefits: [
-      "Leitura sem anúncios",
-      "Leitura ilimitada, sem limite diário",
-      "Selo de Fã no perfil",
+      "Os 2 primeiros capítulos de toda obra, sem cadastro",
+      "Todas as obras com sua conta, com limite diário",
+      "Curtir, comentar, salvar e seguir autores",
     ],
-    buttonStyle: "secondary",
+    buttonStyle: "ghost",
   },
   {
     id: "superfa",
     name: "Super Fã",
     price: null,
     featured: true,
-    badge: "Mais completo",
+    badge: "Para quem acompanha",
     benefits: [
-      "Tudo do plano Fã",
-      "Acesso antecipado a obras em lançamento",
-      "Clube de fãs dos seus autores favoritos",
-      "Selo de Super Fã no perfil",
-      "Seu nome na lista de apoiadores da plataforma",
+      "Capítulos novos 3 dias antes de todo mundo",
+      "Leitura sem anúncios",
+      "Leitura sem limite diário",
+      "Selo de Super Fã no perfil e nos comentários",
+      "Em breve: escolha artistas favoritos para receber parte do incentivo artístico",
     ],
     buttonStyle: "primary",
   },
@@ -81,8 +82,8 @@ const PLANS: Plan[] = [
 
 const FAQ = [
   {
-    q: "Quanto custam os planos?",
-    a: "Fã: R$ 9,90 por mês. Super Fã: R$ 19,90 por mês. A cobrança é mensal e automática pelo Mercado Pago.",
+    q: "Quanto custa o Super Fã?",
+    a: "R$ 14,90 por mês. A cobrança é mensal e automática pelo Mercado Pago, e você cancela quando quiser.",
   },
   {
     q: "Como cancelo?",
@@ -93,8 +94,8 @@ const FAQ = [
     a: "Não. A leitura gratuita continua aberta, com limite diário. Os planos removem o limite e os anúncios.",
   },
   {
-    q: "Os planos removem anúncios?",
-    a: "Sim. A leitura gratuita é mantida por anúncios; nos planos Fã e Super Fã você lê sem anúncios.",
+    q: "O Super Fã remove anúncios?",
+    a: "Sim. A leitura gratuita é mantida por anúncios; no Super Fã você lê sem anúncios.",
   },
   {
     q: "Como funciona a cobrança?",
@@ -121,7 +122,7 @@ function PlansPage() {
     staleTime: 30_000,
   });
   const available = planos?.available === true;
-  const prices = planos?.prices ?? { fa: 990, superfa: 1990 };
+  const prices = planos?.prices ?? { fa: 990, superfa: 1490 };
   const [mode, setMode] = useState<"waitlist" | "subscribe">("waitlist");
   const [cancelling, setCancelling] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -232,7 +233,7 @@ function PlansPage() {
       {planos?.current && (
         <div className="mb-10 flex flex-wrap items-center justify-between gap-3 rounded border border-border bg-surface px-5 py-4 text-sm">
           <span>
-            Seu plano: <strong>{planos.current.plan === "superfa" ? "Super Fã" : "Fã"}</strong>
+            Seu plano: <strong>{planos.current.plan === "superfa" ? "Super Fã" : "Fã (plano encerrado para novas assinaturas)"}</strong>
             <span className="text-muted-foreground">
               . R$ {brl(planos.current.priceCents)} por mês
               {planos.current.nextPaymentAt ? `, próxima cobrança em ${new Date(planos.current.nextPaymentAt).toLocaleDateString("pt-BR")}` : ""}
@@ -255,14 +256,14 @@ function PlansPage() {
         className="text-[0.65rem] font-bold uppercase tracking-[0.22em]"
         style={{ fontFamily: TAHOMA, color: GOLD }}
       >
-        Planos Fã e Super Fã
+        Planos
       </p>
       <h1 className="hero-type mt-5 max-w-2xl text-4xl sm:text-5xl">
         Leia sem anúncios. Apoie quem escreve.
       </h1>
       <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-        Você pode usar a Go Beyondd sem assinar — a leitura gratuita continua aberta. Os planos
-        tiram os anúncios e o limite diário, e o Super Fã ainda dá acesso antecipado e clube de fãs.
+        Você pode usar a Go Beyondd sem assinar: a leitura gratuita continua aberta. O Super Fã
+        tira os anúncios e o limite diário e libera os capítulos novos 3 dias antes.
       </p>
 
       {/* Plans grid */}
@@ -303,11 +304,11 @@ function PlansPage() {
                 className="text-3xl font-bold tracking-tight text-foreground"
                 style={{ fontFamily: TAHOMA }}
               >
-                R$ {brl(plan.id === "superfa" ? prices.superfa : prices.fa)}
+                R$ {plan.id === "gratis" ? "0" : brl(prices.superfa)}
               </span>
               <span className="caption">/mês</span>
             </div>
-            <p className="caption mt-1">cobrança mensal, cancele quando quiser</p>
+            <p className="caption mt-1">{plan.id === "gratis" ? "sem cartão, só criar a conta" : "cobrança mensal, cancele quando quiser"}</p>
 
             {/* Benefits */}
             <ul className="mt-6 flex-1 space-y-3">
@@ -326,6 +327,21 @@ function PlansPage() {
               ))}
             </ul>
 
+            {plan.id === "gratis" ? (
+              planos?.loggedIn ? (
+                <p className="btn-type mt-8 w-full border border-border py-3 text-center text-xs text-muted-foreground" style={{ fontFamily: TAHOMA }}>
+                  {planos?.current ? "Incluso na sua conta" : "Seu plano atual"}
+                </p>
+              ) : (
+                <Link
+                  to="/criar"
+                  className="btn-type mt-8 block w-full border border-border py-3 text-center text-xs text-foreground transition-colors hover:border-gilt"
+                  style={{ fontFamily: TAHOMA }}
+                >
+                  Criar conta grátis
+                </Link>
+              )
+            ) : (
             <button
               onClick={() => {
                 if (available && !planos?.loggedIn) {
@@ -367,6 +383,7 @@ function PlansPage() {
                     : "Entrar para assinar"
                   : "Entrar na lista de espera"}
             </button>
+            )}
           </div>
         ))}
       </div>

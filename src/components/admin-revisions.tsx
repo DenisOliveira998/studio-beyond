@@ -147,6 +147,12 @@ export function AdminRevisions() {
                     </dd>
                   </div>
                 )}
+                {typeof r.data["ageRating"] === "string" && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Classificação indicativa</dt>
+                    <dd>{r.data["ageRating"] === "L" ? "Livre" : `${String(r.data["ageRating"])} anos`}</dd>
+                  </div>
+                )}
                 {typeof r.data["workStatus"] === "string" && (
                   <div>
                     <dt className="text-xs text-muted-foreground">Situação da obra</dt>

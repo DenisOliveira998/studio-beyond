@@ -56,6 +56,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "robots", content: "index, follow" },
       { name: "author", content: "Go Beyondd" },
       { name: "theme-color", content: "#121519" },
+      // Site instalável no iPhone (tela cheia, nome curto no ícone)
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Go Beyondd" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { property: "og:site_name", content: "Go Beyondd" },
       { property: "og:title", content: "Livros, mangás e HQs autorais para ler grátis | Go Beyondd" },
       {
@@ -106,6 +111,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    void import("@/components/install-app").then((m) => m.registerServiceWorker());
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

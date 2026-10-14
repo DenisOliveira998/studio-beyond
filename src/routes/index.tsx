@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
 import { loaderFetch } from "@/lib/loader-fetch";
 import { MEDIUM_COLOR } from "@/lib/medium-color";
+import { AgeBadge } from "@/components/age-badge";
 
 export const Route = createFileRoute("/")({
   // Catálogo carregado no servidor: o HTML já sai com obras e links (Google/IA)
@@ -282,6 +283,7 @@ function CatalogCard({
             </span>
           )}
         </div>
+        <AgeBadge rating={work.ageRating} className="absolute bottom-2 right-1.5" />
         {pagesRead !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
             <div

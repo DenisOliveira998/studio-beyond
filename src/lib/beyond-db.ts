@@ -32,6 +32,7 @@ export type DbWork = {
   pdfUrl: string | null;
   genre: string | null;
   tags: string | null;
+  ageRating: string | null;
   status: ReviewStatusDb;
   workStatus: "andamento" | "finalizado" | "paralisado";
   curatorNote: string | null;
@@ -101,6 +102,7 @@ export async function submitWork(input: {
   excerpt: string;
   body: string;
   tags: string;
+  ageRating?: string | null;
   pdfUrl?: string | null;
   previewUrl?: string | null;
   pdfPages?: number | null;
@@ -131,6 +133,7 @@ export async function submitWork(input: {
       // obras de texto: HTML limpo; webtoon (manhwa/manhua): JSON com URLs de imagem
       body: ["manhwa", "manhua"].includes(input.medium) ? input.body : sanitizeWorkHtml(input.body),
       tags: input.tags,
+      ageRating: input.ageRating ?? null,
       pdfUrl: input.pdfUrl ?? null,
       previewUrl: input.previewUrl ?? null,
       pdfPages: input.pdfPages ?? null,
@@ -150,7 +153,7 @@ export function cleanTags(raw: string | undefined | null): string[] {
 export async function updateAuthorWork(
   id: string,
   authorId: string,
-  data: { title?: string; medium?: string; tags?: string; status?: "pending" | "draft" },
+  data: { title?: string; medium?: string; tags?: string; ageRating?: string; status?: "pending" | "draft" },
 ) {
   const work = await prisma.work.findFirst({ where: { id, authorId } });
   if (!work) throw new Error("Obra não encontrada ou sem permissão");
@@ -159,6 +162,7 @@ export async function updateAuthorWork(
   if (data.medium !== undefined) patch["medium"] = data.medium as import("@prisma/client").WorkMedium;
   if (data.status !== undefined) patch["status"] = toAuthorStatus(data.status);
   if (data.tags !== undefined) patch["tags"] = data.tags;
+  if (data.ageRating !== undefined) patch["ageRating"] = data.ageRating;
   const updated = await prisma.work.update({ where: { id }, data: patch, select: { slug: true, title: true } });
   return updated;
 }
@@ -768,6 +772,8 @@ export type CommentData = {
   avatarUrl?: string;
   /** Página de quem comentou: /autor/<slug> para autor com obra no ar, senão /leitor/<id> */
   profilePath?: string;
+  /** Capítulo comentado (vazio = comentário da obra) */
+  chapter?: number;
 };
 
 const COMMENT_BADGE: Record<string, string> = {
@@ -779,9 +785,9 @@ const COMMENT_BADGE: Record<string, string> = {
   owner: "Equipe",
 };
 
-export async function getWorkComments(workSlug: string): Promise<CommentData[]> {
+export async function getWorkComments(workSlug: string, chapter?: number): Promise<CommentData[]> {
   const rows = await prisma.workComment.findMany({
-    where: { workSlug, hidden: false },
+    where: { workSlug, hidden: false, ...(chapter != null ? { chapter } : {}) },
     orderBy: { createdAt: "desc" },
   });
   const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
@@ -808,6 +814,7 @@ export async function getWorkComments(workSlug: string): Promise<CommentData[]> 
       ...(badge ? { badge } : {}),
       ...(avatar ? { avatarUrl: avatar } : {}),
       ...(profilePath ? { profilePath } : {}),
+      ...(r.chapter != null ? { chapter: r.chapter } : {}),
     };
   });
 }
@@ -817,6 +824,7 @@ export async function addWorkComment(input: {
   userId?: string | null;
   author: string;
   text: string;
+  chapter?: number | null;
 }): Promise<CommentData> {
   const row = await prisma.workComment.create({
     data: {
@@ -824,9 +832,10 @@ export async function addWorkComment(input: {
       userId: input.userId ?? null,
       author: input.author || "Anônimo",
       text: input.text,
+      chapter: input.chapter ?? null,
     },
   });
-  return { id: row.id, author: row.author, text: row.text, createdAt: row.createdAt.toISOString() };
+  return { id: row.id, author: row.author, text: row.text, createdAt: row.createdAt.toISOString(), ...(row.chapter != null ? { chapter: row.chapter } : {}) };
 }
 
 /* ---------- quota de leitura diária ---------- */
@@ -1051,6 +1060,7 @@ export function dbWorkToWork(w: DbWork): Work {
     }),
     updatedAt: w.updatedAt.toISOString(),
     workStatus: w.workStatus,
+    ...(w.ageRating ? { ageRating: w.ageRating as import("./beyond-data").AgeRating } : {}),
   };
 }
 
@@ -1108,6 +1118,7 @@ export function workToDb(w: any): DbWork {
     pdfUrl: w.pdfUrl,
     genre: w.genre,
     tags: w.tags,
+    ageRating: (w as { ageRating?: string | null }).ageRating ?? null,
     status: w.status as ReviewStatusDb,
     workStatus: (w.workStatus ?? "andamento") as "andamento" | "finalizado" | "paralisado",
     curatorNote: w.curatorNote,

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, compact, getArtist, type Work } from "@/lib/beyond-data";
+import { AgeBadge } from "@/components/age-badge";
 import { stripHtml } from "@/lib/utils";
 
 export function WorkCard({ work, priority = false }: { work: Work; priority?: boolean }) {
@@ -14,7 +15,8 @@ export function WorkCard({ work, priority = false }: { work: Work; priority?: bo
     <article className="card-lift group border border-border bg-card p-3">
       <Link to="/obra/$slug" params={{ slug: work.slug }} className="block">
         {work.cover ? (
-          <div className="aspect-[3/2] overflow-hidden rounded-[3px] bg-ink">
+          <div className="relative aspect-[3/2] overflow-hidden rounded-[3px] bg-ink">
+            <AgeBadge rating={work.ageRating} className="absolute bottom-1.5 right-1.5 z-10" />
             <img
               width={600} height={400}
               src={work.cover}
