@@ -985,13 +985,30 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           if (purpose === "cover" && !kind.type.startsWith("image/")) return uploadError("A capa precisa ser uma imagem JPG, PNG ou WebP.");
           if (purpose === "avatar" && kind.type !== "image/jpeg" && kind.type !== "image/png") return uploadError("A foto precisa ser PNG ou JPEG.");
           if (kind.ext === "epub") return uploadError("EPUB não é aceito. Envie a obra em PDF.");
+          // Nada é guardado como veio: imagem é regravada (sem metadados, no tamanho de uso);
+          // PDF é conferido por scripts e anexos
+          let outBytes: Uint8Array = bytes;
+          let outType: string = kind.type;
+          let outExt: string = kind.ext;
+          if (kind.type.startsWith("image/")) {
+            const { sanitizeImage } = await import("./lib/image-sanitize");
+            const clean = await sanitizeImage(bytes, purpose === "avatar" ? "avatar" : purpose === "cover" ? "cover" : "other").catch(() => null);
+            if (!clean) return uploadError("Não conseguimos abrir essa imagem. Envie outra em JPG ou PNG.");
+            outBytes = clean.bytes;
+            outType = clean.type;
+            outExt = clean.ext;
+          } else if (kind.type === "application/pdf") {
+            const { scanPdfActiveContent } = await import("./lib/pdf-storage");
+            const problem = await scanPdfActiveContent(bytes);
+            if (problem) return uploadError(problem);
+          }
           const { put } = await import("@vercel/blob");
           const base = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "arquivo";
-          const pathname = purpose === "avatar" ? `${await avatarFolder(session.user.id)}foto.${kind.ext}` : `${base}.${kind.ext}`;
-          const blob = await put(pathname, new Blob([bytes], { type: kind.type }), {
+          const pathname = purpose === "avatar" ? `${await avatarFolder(session.user.id)}foto.${outExt}` : `${base}.${outExt}`;
+          const blob = await put(pathname, new Blob([outBytes as Uint8Array<ArrayBuffer>], { type: outType }), {
             access: "private",
             addRandomSuffix: true,
-            contentType: kind.type,
+            contentType: outType,
           });
           return new Response(JSON.stringify({ url: blob.url }), {
             headers: { "content-type": "application/json" },

@@ -97,6 +97,23 @@ export function detectFileType(bytes: Uint8Array): { type: string; ext: string }
 /** Tipos que o proxy pode exibir dentro da página; o resto vira download. */
 export const INLINE_SAFE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif", "application/pdf"];
 
+/**
+ * Política de conteúdo do site: scripts só do próprio site (nada de script de outro
+ * domínio, mesmo que alguém consiga injetar uma tag), sem plugins (object/embed),
+ * sem trocar a base dos links e formulários só para o próprio site e para o login/pagamento.
+ * 'unsafe-inline' fica por causa dos scripts de hidratação gerados pelo próprio site;
+ * 'wasm-unsafe-eval' é para os decodificadores de imagem do leitor de PDF.
+ */
+const SITE_CSP = [
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://accounts.google.com https://*.mercadopago.com https://*.mercadopago.com.br",
+  "frame-ancestors 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 /** Cabeçalhos de proteção aplicados a todas as respostas do site. */
 export function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
@@ -106,6 +123,6 @@ export function withSecurityHeaders(response: Response): Response {
   if (!headers.has("permissions-policy")) {
     headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()");
   }
-  if (!headers.has("content-security-policy")) headers.set("content-security-policy", "frame-ancestors 'self'");
+  if (!headers.has("content-security-policy")) headers.set("content-security-policy", SITE_CSP);
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
