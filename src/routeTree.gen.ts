@@ -18,6 +18,7 @@ import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as CriarRouteImport } from './routes/criar'
 import { Route as EntrarRouteImport } from './routes/entrar'
 import { Route as ExplorarRouteImport } from './routes/explorar'
+import { Route as GaleriaRouteImport } from './routes/galeria'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PlanosRouteImport } from './routes/planos'
@@ -29,10 +30,13 @@ import { Route as ApoioRetornoRouteImport } from './routes/apoio.retorno'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AutorSlugRouteImport } from './routes/autor.$slug'
 import { Route as ExplorarCategoriaRouteImport } from './routes/explorar_.$categoria'
+import { Route as GaleriaMinhaRouteImport } from './routes/galeria_.minha'
 import { Route as LeitorIdRouteImport } from './routes/leitor.$id'
 import { Route as LerSlugRouteImport } from './routes/ler.$slug'
 import { Route as ObraSlugRouteImport } from './routes/obra.$slug'
 import { Route as PlanosRetornoRouteImport } from './routes/planos.retorno'
+import { Route as GaleriaArtistaSlugRouteImport } from './routes/galeria_.artista.$slug'
+import { Route as GaleriaObraIdRouteImport } from './routes/galeria_.obra.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -77,6 +81,11 @@ const EntrarRoute = EntrarRouteImport.update({
 const ExplorarRoute = ExplorarRouteImport.update({
   id: '/explorar',
   path: '/explorar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GaleriaRoute = GaleriaRouteImport.update({
+  id: '/galeria',
+  path: '/galeria',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PainelRoute = PainelRouteImport.update({
@@ -134,6 +143,11 @@ const ExplorarCategoriaRoute = ExplorarCategoriaRouteImport.update({
   path: '/explorar/$categoria',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GaleriaMinhaRoute = GaleriaMinhaRouteImport.update({
+  id: '/galeria_/minha',
+  path: '/galeria/minha',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeitorIdRoute = LeitorIdRouteImport.update({
   id: '/leitor/$id',
   path: '/leitor/$id',
@@ -154,6 +168,16 @@ const PlanosRetornoRoute = PlanosRetornoRouteImport.update({
   path: '/retorno',
   getParentRoute: () => PlanosRoute,
 } as any)
+const GaleriaArtistaSlugRoute = GaleriaArtistaSlugRouteImport.update({
+  id: '/galeria_/artista/$slug',
+  path: '/galeria/artista/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GaleriaObraIdRoute = GaleriaObraIdRouteImport.update({
+  id: '/galeria_/obra/$id',
+  path: '/galeria/obra/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -165,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/criar': typeof CriarRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/galeria': typeof GaleriaRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
@@ -176,10 +201,13 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
+  '/galeria/minha': typeof GaleriaMinhaRoute
   '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
+  '/galeria/artista/$slug': typeof GaleriaArtistaSlugRoute
+  '/galeria/obra/$id': typeof GaleriaObraIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -191,6 +219,7 @@ export interface FileRoutesByTo {
   '/criar': typeof CriarRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/galeria': typeof GaleriaRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
@@ -202,10 +231,13 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar/$categoria': typeof ExplorarCategoriaRoute
+  '/galeria/minha': typeof GaleriaMinhaRoute
   '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
+  '/galeria/artista/$slug': typeof GaleriaArtistaSlugRoute
+  '/galeria/obra/$id': typeof GaleriaObraIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -218,6 +250,7 @@ export interface FileRoutesById {
   '/criar': typeof CriarRoute
   '/entrar': typeof EntrarRoute
   '/explorar': typeof ExplorarRoute
+  '/galeria': typeof GaleriaRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/planos': typeof PlanosRouteWithChildren
@@ -229,10 +262,13 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/autor/$slug': typeof AutorSlugRoute
   '/explorar_/$categoria': typeof ExplorarCategoriaRoute
+  '/galeria_/minha': typeof GaleriaMinhaRoute
   '/leitor/$id': typeof LeitorIdRoute
   '/ler/$slug': typeof LerSlugRoute
   '/obra/$slug': typeof ObraSlugRoute
   '/planos/retorno': typeof PlanosRetornoRoute
+  '/galeria_/artista/$slug': typeof GaleriaArtistaSlugRoute
+  '/galeria_/obra/$id': typeof GaleriaObraIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -246,6 +282,7 @@ export interface FileRouteTypes {
     | '/criar'
     | '/entrar'
     | '/explorar'
+    | '/galeria'
     | '/painel'
     | '/perfil'
     | '/planos'
@@ -257,10 +294,13 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar/$categoria'
+    | '/galeria/minha'
     | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
+    | '/galeria/artista/$slug'
+    | '/galeria/obra/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -272,6 +312,7 @@ export interface FileRouteTypes {
     | '/criar'
     | '/entrar'
     | '/explorar'
+    | '/galeria'
     | '/painel'
     | '/perfil'
     | '/planos'
@@ -283,10 +324,13 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar/$categoria'
+    | '/galeria/minha'
     | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
+    | '/galeria/artista/$slug'
+    | '/galeria/obra/$id'
   id:
     | '__root__'
     | '/'
@@ -298,6 +342,7 @@ export interface FileRouteTypes {
     | '/criar'
     | '/entrar'
     | '/explorar'
+    | '/galeria'
     | '/painel'
     | '/perfil'
     | '/planos'
@@ -309,10 +354,13 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/autor/$slug'
     | '/explorar_/$categoria'
+    | '/galeria_/minha'
     | '/leitor/$id'
     | '/ler/$slug'
     | '/obra/$slug'
     | '/planos/retorno'
+    | '/galeria_/artista/$slug'
+    | '/galeria_/obra/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -325,6 +373,7 @@ export interface RootRouteChildren {
   CriarRoute: typeof CriarRoute
   EntrarRoute: typeof EntrarRoute
   ExplorarRoute: typeof ExplorarRoute
+  GaleriaRoute: typeof GaleriaRoute
   PainelRoute: typeof PainelRoute
   PerfilRoute: typeof PerfilRoute
   PlanosRoute: typeof PlanosRouteWithChildren
@@ -335,9 +384,12 @@ export interface RootRouteChildren {
   ApoioRetornoRoute: typeof ApoioRetornoRoute
   AutorSlugRoute: typeof AutorSlugRoute
   ExplorarCategoriaRoute: typeof ExplorarCategoriaRoute
+  GaleriaMinhaRoute: typeof GaleriaMinhaRoute
   LeitorIdRoute: typeof LeitorIdRoute
   LerSlugRoute: typeof LerSlugRoute
   ObraSlugRoute: typeof ObraSlugRoute
+  GaleriaArtistaSlugRoute: typeof GaleriaArtistaSlugRoute
+  GaleriaObraIdRoute: typeof GaleriaObraIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -403,6 +455,13 @@ declare module '@tanstack/react-router' {
       path: '/explorar'
       fullPath: '/explorar'
       preLoaderRoute: typeof ExplorarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/galeria': {
+      id: '/galeria'
+      path: '/galeria'
+      fullPath: '/galeria'
+      preLoaderRoute: typeof GaleriaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/painel': {
@@ -482,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorarCategoriaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/galeria_/minha': {
+      id: '/galeria_/minha'
+      path: '/galeria/minha'
+      fullPath: '/galeria/minha'
+      preLoaderRoute: typeof GaleriaMinhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leitor/$id': {
       id: '/leitor/$id'
       path: '/leitor/$id'
@@ -509,6 +575,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/planos/retorno'
       preLoaderRoute: typeof PlanosRetornoRouteImport
       parentRoute: typeof PlanosRoute
+    }
+    '/galeria_/artista/$slug': {
+      id: '/galeria_/artista/$slug'
+      path: '/galeria/artista/$slug'
+      fullPath: '/galeria/artista/$slug'
+      preLoaderRoute: typeof GaleriaArtistaSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/galeria_/obra/$id': {
+      id: '/galeria_/obra/$id'
+      path: '/galeria/obra/$id'
+      fullPath: '/galeria/obra/$id'
+      preLoaderRoute: typeof GaleriaObraIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -544,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   CriarRoute: CriarRoute,
   EntrarRoute: EntrarRoute,
   ExplorarRoute: ExplorarRoute,
+  GaleriaRoute: GaleriaRoute,
   PainelRoute: PainelRoute,
   PerfilRoute: PerfilRoute,
   PlanosRoute: PlanosRouteWithChildren,
@@ -554,9 +635,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApoioRetornoRoute: ApoioRetornoRoute,
   AutorSlugRoute: AutorSlugRoute,
   ExplorarCategoriaRoute: ExplorarCategoriaRoute,
+  GaleriaMinhaRoute: GaleriaMinhaRoute,
   LeitorIdRoute: LeitorIdRoute,
   LerSlugRoute: LerSlugRoute,
   ObraSlugRoute: ObraSlugRoute,
+  GaleriaArtistaSlugRoute: GaleriaArtistaSlugRoute,
+  GaleriaObraIdRoute: GaleriaObraIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

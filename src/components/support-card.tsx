@@ -21,11 +21,17 @@ export function SupportCard({
   artistSlug,
   workSlug,
   workTitle,
+  subtitle,
+  profileHref,
 }: {
   artistName: string;
   artistSlug: string;
   workSlug: string;
   workTitle: string;
+  /** Texto embaixo do nome (padrão: "Autor de <obra>") */
+  subtitle?: string;
+  /** Página do perfil (padrão: /autor/<slug>) */
+  profileHref?: string;
   cover?: string | undefined;
 }) {
   const { data: author } = useQuery<AuthorSupport>({
@@ -70,7 +76,7 @@ export function SupportCard({
       const res = await fetch("/api/pagamentos/doacao", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ artistSlug, workSlug, valor: value }),
+        body: JSON.stringify({ artistSlug, ...(workSlug ? { workSlug } : {}), valor: value }),
       });
       const data = (await res.json().catch(() => ({}))) as { checkoutUrl?: string; error?: string };
       if (!res.ok || !data.checkoutUrl) throw new Error(data.error ?? "Não foi possível abrir o pagamento.");
@@ -90,7 +96,7 @@ export function SupportCard({
     <section aria-label={`Apoie ${name}`} className="overflow-hidden rounded-xl bg-transparent">
       <div className="p-[18px]">
         <div className="flex items-center gap-3">
-          <a href={`/autor/${artistSlug}`} title={`Ver o perfil de ${name}`} className="shrink-0 rounded-full transition-opacity hover:opacity-85">
+          <a href={profileHref ?? `/autor/${artistSlug}`} title={`Ver o perfil de ${name}`} className="shrink-0 rounded-full transition-opacity hover:opacity-85">
             {author?.avatarUrl ? (
               <img
                 src={author.avatarUrl}
@@ -106,7 +112,7 @@ export function SupportCard({
             )}
           </a>
           <p className="flex min-w-0 items-baseline gap-2 text-[15px] font-bold text-foreground">
-            <a href={`/autor/${artistSlug}`} className="truncate hover:text-gilt hover:underline hover:underline-offset-4">
+            <a href={profileHref ?? `/autor/${artistSlug}`} className="truncate hover:text-gilt hover:underline hover:underline-offset-4">
               Apoie {name}
             </a>
             {author?.rank != null && (
@@ -120,7 +126,7 @@ export function SupportCard({
             )}
           </p>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Autor de {workTitle}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{subtitle ?? `Autor de ${workTitle}`}</p>
 
         <div role="group" aria-label="Valor do apoio" className="mt-[18px] flex gap-2">
           {PRESETS.map((p) => (

@@ -316,7 +316,7 @@ function PerfilPage() {
             {stats.following.map((a) => (
               <li key={a.slug}>
                 <a
-                  href={`/autor/${a.slug}`}
+                  href={a.href}
                   className="flex items-center gap-3 border border-border px-4 py-3 transition-colors hover:bg-surface/60"
                 >
                   {a.avatarUrl ? (

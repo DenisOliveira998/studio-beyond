@@ -117,7 +117,7 @@ export async function fetchReports(status: string | null): Promise<ReportRow[]> 
       const c = commentById.get(r.targetId);
       const owner = c?.userId ? ownerById.get(c.userId) : undefined;
       target = c
-        ? { label: `Comentário de ${c.author}`, link: `/obra/${c.workSlug}`, excerpt: c.text.slice(0, 300), hidden: c.hidden, ownerId: c.userId, ownerName: c.author, ownerSuspended: owner?.suspended }
+        ? { label: `Comentário de ${c.author}`, link: c.workSlug.startsWith("galeria-") ? `/galeria/obra/${c.workSlug.slice(8)}` : `/obra/${c.workSlug}`, excerpt: c.text.slice(0, 300), hidden: c.hidden, ownerId: c.userId, ownerName: c.author, ownerSuspended: owner?.suspended }
         : { label: "Comentário removido", link: null, excerpt: "", ownerId: null, ownerName: "" };
     } else if (r.targetType === "work") {
       const w = workBySlug.get(r.targetId);

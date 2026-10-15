@@ -273,6 +273,14 @@ export async function decideApplication(
     },
   });
 
+  // Candidatura de artista visual (field = "galeria"): cria o perfil na Galeria, sem virar autor
+  if (status === "approved" && app.userId && app.field === "galeria") {
+    const prof = await prisma.profile.findUnique({ where: { id: app.userId }, select: { name: true } });
+    const { ensureGalleryArtist } = await import("./gallery");
+    await ensureGalleryArtist(app.userId, prof?.name || app.artistName);
+    return { email: app.email, artistName: app.artistName };
+  }
+
   // Se aprovado e tem userId, promove para author — exceto roles superiores
   if (status === "approved" && app.userId) {
     const current = await prisma.profile.findUnique({ where: { id: app.userId }, select: { role: true } });
@@ -656,7 +664,7 @@ export async function upsertReadingProgress(
 
 /* ---------- perfil do leitor (stats consolidadas) ---------- */
 
-export type FollowedAuthor = { slug: string; name: string; avatarUrl: string; since: string };
+export type FollowedAuthor = { slug: string; name: string; avatarUrl: string; since: string; href: string };
 
 export type ReaderProfileStats = {
   following: FollowedAuthor[];
@@ -689,8 +697,14 @@ export async function getReaderProfileStats(userId: string): Promise<ReaderProfi
     const w = authorWorks.find((x) => x.artistSlug === f.artistSlug);
     if (!w) return [];
     const avatar = bios.find((b) => b.userId === w.authorId)?.avatarUrl;
-    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(avatar) ?? "", since: f.createdAt.toISOString() }];
+    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(avatar) ?? "", since: f.createdAt.toISOString(), href: `/autor/${f.artistSlug}` }];
   });
+  // Artistas da Galeria seguidos
+  const { followedGalleryArtists } = await import("./gallery");
+  for (const g of await followedGalleryArtists(follows.map((f) => f.artistSlug)).catch(() => [])) {
+    const f = follows.find((x) => x.artistSlug === g.key);
+    following.push({ slug: g.slug, name: g.name, avatarUrl: g.avatarUrl, since: (f?.createdAt ?? new Date()).toISOString(), href: `/galeria/artista/${g.slug}` });
+  }
   return {
     following,
     favoritedCount: favorites.length,
@@ -962,8 +976,12 @@ export async function getPublicProfile(userId: string) {
   const following = follows.flatMap((f) => {
     const w = works.find((x) => x.artistSlug === f.artistSlug);
     if (!w) return [];
-    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(bios.find((b) => b.userId === w.authorId)?.avatarUrl) ?? "" }];
+    return [{ slug: f.artistSlug, name: w.artistName, avatarUrl: blobProxy(bios.find((b) => b.userId === w.authorId)?.avatarUrl) ?? "", href: `/autor/${f.artistSlug}` }];
   });
+  const { followedGalleryArtists } = await import("./gallery");
+  for (const g of await followedGalleryArtists(follows.map((f) => f.artistSlug)).catch(() => [])) {
+    following.push({ slug: g.slug, name: g.name, avatarUrl: g.avatarUrl, href: `/galeria/artista/${g.slug}` });
+  }
   return {
     name: p.name || "Leitor",
     avatarUrl,

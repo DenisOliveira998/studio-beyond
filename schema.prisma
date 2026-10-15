@@ -588,3 +588,35 @@ model WorkViewSeen {
   @@index([seenAt])
   @@map("work_view_seen")
 }
+
+// ------------------------------------------------------------- Galeria (artistas visuais)
+
+// Artista aprovado na candidatura de artista (field = "galeria"). Não muda o papel da conta.
+model GalleryArtist {
+  userId    String   @id @db.VarChar(191)
+  slug      String   @unique @db.VarChar(191)
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now())
+
+  @@map("gallery_artists")
+}
+
+// Publicação da Galeria: uma imagem ou um álbum. Passa pela curadoria antes de aparecer.
+model Artwork {
+  id              String    @id @default(cuid())
+  artistId        String    @db.VarChar(191)
+  title           String    @db.VarChar(160)
+  description     String    @db.Text
+  kind            String    @db.VarChar(20)
+  images          String    @db.Text // JSON com os endereços das imagens, na ordem
+  ageRating       String    @db.VarChar(2)
+  relatedWorkSlug String?   @db.VarChar(191) // fan art: obra da plataforma
+  status          String    @default("pending") @db.VarChar(12) // pending | approved | rejected
+  curatorNote     String?   @db.Text
+  createdAt       DateTime  @default(now())
+  publishedAt     DateTime?
+
+  @@index([status])
+  @@index([artistId])
+  @@map("artworks")
+}

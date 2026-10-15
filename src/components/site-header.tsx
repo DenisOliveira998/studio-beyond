@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { NotificationBell } from "@/components/notification-bell";
-import { ExternalLink, Instagram, LayoutDashboard, LogOut, Menu, Shield, User, X, Youtube } from "lucide-react";
+import { ExternalLink, Image as ImageIcon, Instagram, LayoutDashboard, LogOut, Menu, Shield, User, X, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -27,6 +27,7 @@ const DEFAULT_CONFIG: SiteConfigData = {
 const nav = [
   { to: "/explorar", label: "Explorar" },
   { to: "/ranking", label: "Ranking" },
+  { to: "/galeria", label: "Galeria" },
   { to: "/planos", label: "Planos" },
   { to: "/candidatura-autor", label: "Publique aqui" },
 ];
@@ -106,6 +107,16 @@ function UserMenu() {
               <User className="size-3.5" strokeWidth={1.5} />
               Meu perfil
             </Link>
+            {profile?.gallerySlug && (
+              <Link
+                to="/galeria/minha"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-gilt"
+              >
+                <ImageIcon className="size-3.5" strokeWidth={1.5} />
+                Minha galeria
+              </Link>
+            )}
             {(isStaff || profile?.role === "author") && profile?.artistSlug && (
               <Link
                 to="/autor/$slug"
@@ -298,6 +309,7 @@ const navLinks = [
   { to: "/", label: "Início" },
   { to: "/explorar", label: "Explorar categorias" },
   { to: "/ranking", label: "Ranking da semana" },
+  { to: "/galeria", label: "Galeria de artistas" },
   { to: "/planos", label: "Planos de leitura" },
   { to: "/sobre", label: "Quem somos" },
   { to: "/contato", label: "Contato" },

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminRevisions } from "@/components/admin-revisions";
 import { AdminPayments } from "@/components/admin-payments";
 import { AdminAuthors } from "@/components/admin-authors";
+import { AdminGallery } from "@/components/admin-gallery";
 import { AgeBadge } from "@/components/age-badge";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -100,6 +101,7 @@ const NAV = [
   { id: "por-autor", label: "Por autor", icon: Users },
   { id: "pagamentos", label: "Pagamentos", icon: CircleDollarSign },
   { id: "revisoes", label: "Alterações", icon: FileClock },
+  { id: "galeria", label: "Galeria", icon: Image },
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "lista-espera", label: "Lista de espera", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
@@ -815,6 +817,9 @@ function AdminPage() {
                         enviada em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{a.artistName}</h3>
+                      <p className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[11px] ${a.field === "galeria" ? "bg-purple-500/15 text-purple-300" : "bg-gilt/15 text-gilt"}`}>
+                        {a.field === "galeria" ? "Artista da Galeria" : "Autor"}
+                      </p>
                       <p className="caption mt-0.5">{a.email}{a.phone ? ` · ${a.phone}` : ""}</p>
                     </div>
                     <ReviewBadge status={a.status} />
@@ -1120,6 +1125,12 @@ function AdminPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Galeria: publicações de artistas esperando a curadoria */}
+        <section id="galeria" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Image}>Galeria (curadoria)</SectionTitle>
+          <AdminGallery />
         </section>
 
         {/* Quanto cada autor gerou (cliques e doações de todas as obras) */}

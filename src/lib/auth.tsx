@@ -35,6 +35,8 @@ export type Profile = {
   avatarUrl?: string;
   /** Página pública do autor (/autor/<slug>), quando ele tem obra publicada */
   artistSlug?: string | null;
+  /** Página na Galeria (/galeria/artista/<slug>), quando é artista aprovado */
+  gallerySlug?: string | null;
 };
 
 type AuthValue = {

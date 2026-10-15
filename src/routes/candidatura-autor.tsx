@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { CANDIDATURAS_ABERTAS } from "@/lib/features";
 
 export const Route = createFileRoute("/candidatura-autor")({
+  validateSearch: (s: Record<string, unknown>): { tipo?: "artista" } => (s["tipo"] === "artista" ? { tipo: "artista" } : {}),
   head: () => ({
     meta: [
       { title: "Publique sua obra: candidatura de autor | Go Beyondd" },
@@ -28,6 +29,8 @@ export const Route = createFileRoute("/candidatura-autor")({
 
 function ApplicationPage() {
   const { user, loading, isStaff } = useAuth();
+  // ?tipo=artista: candidatura para a Galeria (ilustradores e desenhistas)
+  const isArtist = Route.useSearch().tipo === "artista";
   const applicationsOpen = CANDIDATURAS_ABERTAS || isStaff;
 
   const [sent, setSent] = useState(false);
@@ -86,6 +89,7 @@ function ApplicationPage() {
           portfolio: portfolioLink.trim(),
           portfolioFiles: JSON.stringify(fileUrls.map((f) => f.url)),
           portfolioCitations: portfolioCitations.trim(),
+          field: isArtist ? "galeria" : "",
         }),
       });
       if (!res.ok) {
@@ -114,8 +118,8 @@ function ApplicationPage() {
             <span className="text-foreground">{email}</span>.
           </p>
           <p className="caption mt-6">
-            Prazo: até <strong className="text-foreground">15 dias úteis</strong>. Autores
-            aprovados recebem acesso imediato ao Painel do Autor.
+            Prazo: até <strong className="text-foreground">15 dias úteis</strong>.{" "}
+            {isArtist ? "Artistas aprovados já podem publicar na Galeria." : "Autores aprovados recebem acesso imediato ao Painel do Autor."}
           </p>
           <Link
             to="/"
@@ -137,15 +141,22 @@ function ApplicationPage() {
             <span>
               <strong className="uppercase tracking-[0.18em] text-gilt">Em construção</strong>
               <span className="text-muted-foreground">
-                {" "}— as candidaturas de autor abrem em breve, por etapas. Entre na lista de espera e avisamos você.
+                {" "}— as candidaturas {isArtist ? "de artista" : "de autor"} abrem em breve, por etapas. Entre na lista de espera e avisamos você.
               </span>
             </span>
           </div>
         )}
-        <p className="eyebrow">Autor · candidatura com aprovação</p>
+        <p className="eyebrow">{isArtist ? "Artista visual · candidatura com aprovação" : "Autor · candidatura com aprovação"}</p>
         <h1 className="hero-type mt-5 text-5xl tracking-tight">
-          A entrada é por curadoria, não por cadastro.
+          {isArtist ? "Mostre sua arte na Galeria." : "A entrada é por curadoria, não por cadastro."}
         </h1>
+        <p className="mt-3 text-sm">
+          {isArtist ? (
+            <Link to="/candidatura-autor" className="text-gilt underline-offset-4 hover:underline">Você escreve? Candidate-se como autor</Link>
+          ) : (
+            <Link to="/candidatura-autor" search={{ tipo: "artista" }} className="text-gilt underline-offset-4 hover:underline">Você desenha? Candidate-se como artista da Galeria</Link>
+          )}
+        </p>
         <p className="mt-6 max-w-md leading-relaxed text-muted-foreground">
           Envie seu portfólio e a curadoria avalia à mão. Toda candidatura recebe resposta —
           aprovação ou recusa comentada.
@@ -153,8 +164,8 @@ function ApplicationPage() {
         <ol className="mt-10 space-y-4 border-t border-border pt-8 text-sm text-muted-foreground">
           <li>1 — Você envia a candidatura e ela entra na fila da curadoria.</li>
           <li>2 — O status fica "Em análise" até a decisão.</li>
-          <li>3 — Aprovado, seu perfil é promovido e você acessa o Painel do Autor.</li>
-          <li>4 — Cada obra publicada passa por revisão antes de aparecer no feed.</li>
+          <li>3 — {isArtist ? "Aprovado, você ganha sua página de artista e publica na Galeria." : "Aprovado, seu perfil é promovido e você acessa o Painel do Autor."}</li>
+          <li>4 — {isArtist ? "Cada ilustração passa pela curadoria antes de aparecer." : "Cada obra publicada passa por revisão antes de aparecer no feed."}</li>
         </ol>
         <p className="mt-6 text-xs text-muted-foreground/70">
           Prazo: <strong className="text-muted-foreground">até 15 dias úteis</strong>. Nenhuma cobrança.
@@ -167,7 +178,7 @@ function ApplicationPage() {
           <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
         </div>
       ) : !applicationsOpen ? (
-        <AuthorWaitlist defaultEmail={user?.email ?? ""} />
+        <AuthorWaitlist defaultEmail={user?.email ?? ""} artist={isArtist} />
       ) : !user ? (
         <div className="self-start border border-border bg-surface p-7 sm:p-9">
           <p className="eyebrow">Antes de enviar</p>
@@ -324,7 +335,7 @@ function ApplicationPage() {
 
 // ── Lista de espera de autores (enquanto as candidaturas estão fechadas) ───
 
-function AuthorWaitlist({ defaultEmail }: { defaultEmail: string }) {
+function AuthorWaitlist({ defaultEmail, artist = false }: { defaultEmail: string; artist?: boolean }) {
   const [email, setEmail] = useState(defaultEmail);
   const [sending, setSending] = useState(false);
   const [joined, setJoined] = useState(false);
@@ -338,7 +349,7 @@ function AuthorWaitlist({ defaultEmail }: { defaultEmail: string }) {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), plan: "author" }),
+        body: JSON.stringify({ email: email.trim(), plan: artist ? "artist" : "author" }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -354,7 +365,7 @@ function AuthorWaitlist({ defaultEmail }: { defaultEmail: string }) {
 
   return (
     <div className="self-start border border-border bg-surface p-7 sm:p-9">
-      <p className="eyebrow">Lista de espera · Autores</p>
+      <p className="eyebrow">Lista de espera · {artist ? "Artistas" : "Autores"}</p>
       {joined ? (
         <>
           <h2 className="mt-4 font-display text-3xl tracking-tight">Você está na lista.</h2>

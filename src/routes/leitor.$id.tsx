@@ -11,7 +11,7 @@ export type PublicProfile = {
   since: string;
   artistSlug: string | null;
   comments: number;
-  following: { slug: string; name: string; avatarUrl: string }[];
+  following: { slug: string; name: string; avatarUrl: string; href: string }[];
   favorites: { slug: string; title: string; artistName: string; cover: string; medium: string }[];
 };
 
@@ -128,10 +128,9 @@ function PublicProfilePage() {
         ) : (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {p.following.map((a) => (
-              <li key={a.slug}>
-                <Link
-                  to="/autor/$slug"
-                  params={{ slug: a.slug }}
+              <li key={a.href}>
+                <a
+                  href={a.href}
                   className="flex items-center gap-3 border border-border px-4 py-3 transition-colors hover:bg-surface/60"
                 >
                   {a.avatarUrl ? (
@@ -142,7 +141,7 @@ function PublicProfilePage() {
                     </span>
                   )}
                   <span className="min-w-0 truncate font-display text-lg">{a.name}</span>
-                </Link>
+                </a>
               </li>
             ))}
           </ul>

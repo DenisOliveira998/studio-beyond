@@ -229,6 +229,8 @@ async function blobAccess(request: Request, blobUrl: string): Promise<"public" |
   if (webtoonPage) return "public";
   const avatar = await prisma.authorBio.findFirst({ where: { avatarUrl: blobUrl }, select: { userId: true } }).catch(() => null);
   if (avatar) return "public";
+  const artworkPublic = await prisma.artwork.findFirst({ where: { status: "approved", images: { contains: blobUrl } }, select: { id: true } });
+  if (artworkPublic) return "public";
 
   // Daqui em diante, só com login
   const { auth } = await import("./lib/auth-server");
@@ -251,6 +253,10 @@ async function blobAccess(request: Request, blobUrl: string): Promise<"public" |
     select: { authorId: true },
   });
   if (draftWork) return draftWork.authorId === session.user.id ? "private" : "denied";
+
+  // 3b) Imagem de publicação da Galeria ainda não aprovada: só o artista
+  const draftArt = await prisma.artwork.findFirst({ where: { images: { contains: blobUrl } }, select: { artistId: true } });
+  if (draftArt) return draftArt.artistId === session.user.id ? "private" : "denied";
 
   // 4) Upload recém-feito, ainda sem dono registrado: qualquer pessoa logada
   return "private";
@@ -283,6 +289,20 @@ function isCanonicalBlobUrl(url: string): boolean {
 async function avatarFolder(userId: string): Promise<string> {
   const { createHash } = await import("node:crypto");
   return `fotos/${createHash("sha256").update(`foto:${userId}`).digest("hex").slice(0, 20)}/`;
+}
+
+/** Pasta das imagens da Galeria de cada conta. */
+async function galleryFolder(userId: string): Promise<string> {
+  const { createHash } = await import("node:crypto");
+  return `galeria/${createHash("sha256").update(`galeria:${userId}`).digest("hex").slice(0, 20)}/`;
+}
+
+/** Imagem enviada pela própria pessoa para a Galeria, ainda sem uso. */
+async function isOwnGalleryImage(url: string, userId: string): Promise<boolean> {
+  if (!isCanonicalBlobUrl(url) || !/\.private\.blob\./.test(url)) return false;
+  if (!new URL(url).pathname.startsWith(`/${await galleryFolder(userId)}`)) return false;
+  const { blobUrlInUse } = await import("./lib/chapters");
+  return !(await blobUrlInUse(url));
 }
 
 /** Foto enviada pela própria pessoa, ainda sem uso e do tipo imagem. */
@@ -367,11 +387,13 @@ async function handleMe(request: Request): Promise<Response> {
 
   const birthOk = BIRTH_EXEMPT_ROLES.includes(profile.role) || (await hasBirthDate(session.user.id));
   const { getUserAvatar, getOwnArtistSlug } = await import("./lib/beyond-db");
-  const [avatarUrl, artistSlug] = await Promise.all([
+  const { getGalleryArtist } = await import("./lib/gallery");
+  const [avatarUrl, artistSlug, galleryArtist] = await Promise.all([
     getUserAvatar(session.user.id).catch(() => ""),
     getOwnArtistSlug(session.user.id).catch(() => null),
+    getGalleryArtist(session.user.id).catch(() => null),
   ]);
-  return new Response(JSON.stringify({ ...profile, hasBirthDate: birthOk, avatarUrl, artistSlug }), {
+  return new Response(JSON.stringify({ ...profile, hasBirthDate: birthOk, avatarUrl, artistSlug, gallerySlug: galleryArtist?.slug ?? null }), {
     headers: { "content-type": "application/json" },
   });
 }
@@ -610,7 +632,15 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           where: { status: "approved", artistSlug, ...(workSlug ? { slug: workSlug } : {}) },
           select: { slug: true, title: true, artistName: true },
         });
-        if (!work) return json({ error: "Autor ou obra não encontrados." }, 404);
+        // Artista da Galeria (sem obra escrita): precisa ter publicação aprovada
+        let recipientName = work?.artistName ?? "";
+        if (!work) {
+          const gSlug = artistSlug.startsWith("galeria-") ? artistSlug.slice("galeria-".length) : "";
+          const ga = gSlug ? await prismaD.galleryArtist.findUnique({ where: { slug: gSlug } }) : null;
+          const hasArt = ga ? await prismaD.artwork.count({ where: { artistId: ga.userId, status: "approved" } }) : 0;
+          if (!ga || !hasArt || workSlug) return json({ error: "Autor ou obra não encontrados." }, 404);
+          recipientName = ga.name;
+        }
         const { auth } = await import("./lib/auth-server");
         const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
         const donorRole = s?.user
@@ -623,9 +653,9 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           const { checkoutUrl } = await createDonationCheckout({
             amountCents,
             artistSlug,
-            artistName: work.artistName,
+            artistName: recipientName,
             workSlug,
-            workTitle: workSlug ? stripHtml(work.title) : null,
+            workTitle: workSlug && work ? stripHtml(work.title) : null,
             userId: s?.user?.id ?? null,
             payerName: s?.user?.name ?? "Anônimo",
           });
@@ -1006,7 +1036,12 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           }
           const { put } = await import("@vercel/blob");
           const base = file.name.replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "arquivo";
-          const pathname = purpose === "avatar" ? `${await avatarFolder(session.user.id)}foto.${outExt}` : `${base}.${outExt}`;
+          const pathname =
+            purpose === "avatar"
+              ? `${await avatarFolder(session.user.id)}foto.${outExt}`
+              : purpose === "gallery"
+                ? `${await galleryFolder(session.user.id)}${base}.${outExt}`
+                : `${base}.${outExt}`;
           const blob = await put(pathname, new Blob([outBytes as Uint8Array<ArrayBuffer>], { type: outType }), {
             access: "private",
             addRandomSuffix: true,
@@ -1419,6 +1454,12 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           if ((artistMod.get(w.artistSlug) ?? "") < iso) artistMod.set(w.artistSlug, iso);
         }
         const latest = works.reduce((m, w) => (w.updatedAt.toISOString() > m ? w.updatedAt.toISOString() : m), "");
+        const { listArtworks } = await import("./lib/gallery");
+        const gallery = await listArtworks({ take: 500 }).catch(() => []);
+        const galleryUrls = [
+          ...gallery.map((a) => url(`/galeria/obra/${a.id}`)),
+          ...[...new Set(gallery.map((a) => a.artist.slug))].map((s) => url(`/galeria/artista/${s}`)),
+        ];
         const mediums = ["livro", "manga", "hq", "conto", "lightnovel", "manhwa", "manhua"];
         const usedMediums = new Set(works.map((w) => w.medium));
         const lines = [
@@ -1426,6 +1467,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           url("/explorar", latest || undefined),
           ...mediums.filter((m) => usedMediums.has(m as never)).map((m) => url(`/explorar/${m === "lightnovel" ? "novel" : m}`)),
           url("/ranking"),
+          url("/galeria"),
+          ...galleryUrls,
           url("/biblioteca"),
           url("/planos"),
           url("/sobre"),
@@ -1611,7 +1654,7 @@ ${catalog}
       if (pathname === "/api/waitlist" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
         const email = (body.email ?? "").trim().toLowerCase();
-        const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author"].includes(body.plan ?? "") ? body.plan! : "";
+        const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author", "artist"].includes(body.plan ?? "") ? body.plan! : "";
         if (!(await rateLimit(`waitlist:ip:${clientIp(request)}`, 10, 60 * 60))) {
           return tooManyRequests();
         }
@@ -1746,7 +1789,7 @@ ${catalog}
           artistName: body.artistName,
           email: body.email,
           phone: body.phone ?? "",
-          field: body.field ?? "",
+          field: body.field === "galeria" ? "galeria" : "",
           bio: body.bio ?? "",
           portfolio: body.portfolio ?? "",
           portfolioFiles: body.portfolioFiles ?? "[]",
@@ -2427,6 +2470,106 @@ ${catalog}
           const { pushEvent: pushComment } = await import("./lib/pusher");
           void pushComment({ event: "new-comment", data: { workSlug: slug, author: comment.author } });
           return new Response(JSON.stringify(comment), { headers: { "content-type": "application/json" } });
+        }
+      }
+
+      // ── Galeria ────────────────────────────────────────────────────────────
+      if (pathname === "/api/galeria" && request.method === "GET") {
+        const { listArtworks } = await import("./lib/gallery");
+        const tipo = new URL(request.url).searchParams.get("tipo") ?? undefined;
+        return new Response(JSON.stringify(await listArtworks(tipo ? { kind: tipo } : {})), {
+          headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE },
+        });
+      }
+      const galeriaObraMatch = pathname.match(/^\/api\/galeria\/obra\/([A-Za-z0-9_-]{1,40})$/);
+      if (galeriaObraMatch && request.method === "GET") {
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        let staff = false;
+        if (s?.user) {
+          const { prisma: prismaG } = await import("./lib/prisma");
+          const prof = await prismaG.profile.findUnique({ where: { id: s.user.id }, select: { role: true } });
+          staff = !!prof && ["owner", "admin", "gerente"].includes(prof.role);
+        }
+        const { getArtwork } = await import("./lib/gallery");
+        const art = await getArtwork(galeriaObraMatch[1]!, { userId: s?.user?.id ?? null, staff });
+        if (!art) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify(art), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+      const galeriaArtistaMatch = pathname.match(/^\/api\/galeria\/artista\/([a-z0-9-]{1,191})$/);
+      if (galeriaArtistaMatch && request.method === "GET") {
+        const { getArtistPage } = await import("./lib/gallery");
+        const page = await getArtistPage(galeriaArtistaMatch[1]!);
+        if (!page) return new Response(JSON.stringify({ error: "not_found" }), { status: 404, headers: { "content-type": "application/json" } });
+        const { userId: _u, ...pub } = page;
+        return new Response(JSON.stringify(pub), { headers: { "content-type": "application/json", "cache-control": PUBLIC_API_CACHE } });
+      }
+      if (pathname === "/api/galeria/minha" && (request.method === "GET" || request.method === "POST")) {
+        const json = (h: unknown, status = 200) => new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!s?.user) return json({ error: "Não autorizado" }, 401);
+        const g = await import("./lib/gallery");
+        const artist = await g.getGalleryArtist(s.user.id);
+        if (!artist) return json({ error: "Só artistas aprovados publicam na Galeria." }, 403);
+        if (request.method === "GET") return json({ artist: { name: artist.name, slug: artist.slug }, artworks: await g.listMyArtworks(s.user.id) });
+        if (!(await rateLimit(`galeria:user:${s.user.id}`, 20, 60 * 60))) return tooManyRequests("Muitas publicações em pouco tempo.");
+        const body = (await request.json().catch(() => ({}))) as {
+          title?: string; description?: string; kind?: string; images?: unknown; ageRating?: string; relatedWorkSlug?: string;
+        };
+        const title = String(body.title ?? "").replace(/<[^>]*>/g, "").trim().slice(0, 160);
+        const description = String(body.description ?? "").replace(/<[^>]*>/g, "").trim().slice(0, 2000);
+        if (!title) return json({ error: "Dê um título à publicação." }, 400);
+        if (!g.isArtworkKind(body.kind)) return json({ error: "Escolha o tipo da publicação." }, 400);
+        if (body.ageRating === "18") return json({ error: "Conteúdo para maiores de 18 anos não é aceito no momento." }, 400);
+        if (!["L", "10", "12", "14", "16"].includes(String(body.ageRating))) return json({ error: "Escolha a classificação indicativa." }, 400);
+        const images = Array.isArray(body.images) ? body.images.filter((x): x is string => typeof x === "string") : [];
+        if (images.length < 1 || images.length > 20) return json({ error: "Envie de 1 a 20 imagens." }, 400);
+        if (new Set(images).size !== images.length) return json({ error: "Há imagens repetidas." }, 400);
+        for (const img of images) {
+          if (!(await isOwnGalleryImage(img, s.user.id))) return json({ error: "Envie as imagens de novo." }, 400);
+        }
+        let related: string | null = null;
+        if (body.relatedWorkSlug) {
+          const { prisma: prismaG } = await import("./lib/prisma");
+          const w = await prismaG.work.findFirst({ where: { slug: String(body.relatedWorkSlug), status: "approved" }, select: { slug: true } });
+          if (!w) return json({ error: "A obra da fan art não foi encontrada." }, 400);
+          related = w.slug;
+        }
+        const created = await g.createArtwork({
+          artistId: s.user.id, title, description, kind: body.kind, images, ageRating: String(body.ageRating), relatedWorkSlug: related,
+        });
+        const { pushEvent } = await import("./lib/pusher");
+        void pushEvent({ event: "work-submitted", data: { title: `Galeria: ${title}`, artistName: artist.name } });
+        return json({ ok: true, id: created.id });
+      }
+      const galeriaMinhaDel = pathname.match(/^\/api\/galeria\/minha\/([A-Za-z0-9_-]{1,40})$/);
+      if (galeriaMinhaDel && request.method === "DELETE") {
+        const { auth } = await import("./lib/auth-server");
+        const s = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!s?.user) return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { "content-type": "application/json" } });
+        const { deleteMyArtwork } = await import("./lib/gallery");
+        const ok = await deleteMyArtwork(s.user.id, galeriaMinhaDel[1]!);
+        return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 404, headers: { "content-type": "application/json" } });
+      }
+      if (pathname === "/api/admin/galeria" && request.method === "GET") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const { listPendingArtworks } = await import("./lib/gallery");
+        return new Response(JSON.stringify(await listPendingArtworks()), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+      }
+      const adminGaleriaMatch = pathname.match(/^\/api\/admin\/galeria\/([A-Za-z0-9_-]{1,40})$/);
+      if (adminGaleriaMatch && request.method === "POST") {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const body = (await request.json().catch(() => ({}))) as { aprovar?: boolean; nota?: string; ageRating?: string };
+        const rating = body.ageRating && ["L", "10", "12", "14", "16"].includes(body.ageRating) ? body.ageRating : undefined;
+        const { decideArtwork } = await import("./lib/gallery");
+        try {
+          await decideArtwork(adminGaleriaMatch[1]!, body.aprovar === true, body.nota?.slice(0, 500) || null, rating);
+          return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), { status: 400, headers: { "content-type": "application/json" } });
         }
       }
 

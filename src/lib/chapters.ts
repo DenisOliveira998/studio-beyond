@@ -73,14 +73,15 @@ export function chapterAccess(
 
 /** O arquivo já é usado por alguma obra, capítulo, candidatura ou foto? (impede apontar para arquivo alheio) */
 export async function blobUrlInUse(url: string): Promise<boolean> {
-  const [w, c, a, b, r] = await Promise.all([
+  const [w, c, a, b, r, g] = await Promise.all([
     prisma.work.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }, { coverUrl: url }, { body: { contains: url } }] }, select: { id: true } }),
     prisma.chapter.findFirst({ where: { OR: [{ pdfUrl: url }, { previewUrl: url }] }, select: { id: true } }),
     prisma.authorApplication.findFirst({ where: { portfolioFiles: { contains: url } }, select: { id: true } }),
     prisma.authorBio.findFirst({ where: { avatarUrl: url }, select: { userId: true } }).catch(() => null),
     prisma.workRevision.findFirst({ where: { status: "pending", data: { contains: url } }, select: { id: true } }),
+    prisma.artwork.findFirst({ where: { images: { contains: url } }, select: { id: true } }),
   ]);
-  return !!(w || c || a || b || r);
+  return !!(w || c || a || b || r || g);
 }
 
 /** Avisa quem segue o autor e quem favoritou a obra (sem duplicar e sem avisar o próprio autor). */
