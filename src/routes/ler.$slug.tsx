@@ -10,6 +10,7 @@ import { stripHtml } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
+import { ChapterEnd } from "@/components/chapter-end";
 
 type Quota = { consumed: number; limit: number | null; remaining: number | null };
 
@@ -417,17 +418,8 @@ function ReaderPage() {
                       </div>
                     </div>
                   )}
-                  {content?.access === "full" && nextChapter && (
-                    <div className="mt-8 flex justify-center">
-                      <Link
-                        to="/ler/$slug"
-                        params={{ slug: work.slug }}
-                        search={{ cap: nextChapter.number }}
-                        className="rounded-full bg-gilt px-8 py-3 text-sm font-bold text-ink"
-                      >
-                        Próximo capítulo
-                      </Link>
-                    </div>
+                  {content?.access === "full" && chapter && (
+                    <ChapterEnd work={work} chapterNumber={chapter.number} nextChapter={nextChapter} />
                   )}
                 </>
               )}
@@ -483,7 +475,8 @@ function ReaderPage() {
         )}
 
         {/* Rodapé do leitor (não aparece para quem ainda não pode ler o PDF inteiro) */}
-        {!quotaExhausted && !(isPdf && (content?.access !== "full" || !!nextChapter)) && (
+        {/* Obras em PDF têm o fim de capítulo próprio (acima); as demais, este rodapé */}
+        {!quotaExhausted && !isPdf && (
           <EndOfWork work={work} title={cleanTitle} />
         )}
       </div>
