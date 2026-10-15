@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Check, X, CreditCard, Smartphone, ChevronDown, Hammer } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { faqJsonLd } from "@/lib/seo";
+import { PLANOS_ATIVOS } from "@/lib/features";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/planos")({
         content:
           "Leia grátis na Go Beyondd ou assine o Super Fã por R$ 14,90/mês: capítulos novos 3 dias antes, sem anúncios, sem limite diário e selo no perfil.",
       },
-      { name: "robots", content: "index, follow" },
+      { name: "robots", content: PLANOS_ATIVOS ? "index, follow" : "noindex, follow" },
       { property: "og:title", content: "Plano Super Fã | Go Beyondd" },
       {
         property: "og:description",
@@ -57,7 +58,7 @@ const PLANS: Plan[] = [
     featured: false,
     badge: null,
     benefits: [
-      "Os 2 primeiros capítulos de toda obra, sem cadastro",
+      "A prévia de todo capítulo, sem cadastro",
       "Todas as obras com sua conta, com limite diário",
       "Curtir, comentar, salvar e seguir autores",
     ],
@@ -114,6 +115,32 @@ type PlanosData = {
 const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function PlansPage() {
+  if (!PLANOS_ATIVOS) return <PlansPaused />;
+  return <PlansContent />;
+}
+
+/** Planos pausados: a leitura segue grátis com a conta. */
+function PlansPaused() {
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-24 text-center sm:px-8">
+      <h1 className="hero-type text-4xl sm:text-5xl">Os planos voltam em breve.</h1>
+      <p className="mx-auto mt-5 max-w-md leading-relaxed text-muted-foreground">
+        Por enquanto, a leitura na Go Beyondd é grátis: crie sua conta e leia todas as obras. Avisaremos quando os planos
+        de assinatura abrirem.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Link to="/explorar" className="rounded-full bg-gilt px-6 py-2.5 text-sm font-bold text-ink">
+          Explorar obras
+        </Link>
+        <Link to="/criar" className="rounded-full border border-border px-6 py-2.5 text-sm">
+          Criar conta grátis
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function PlansContent() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: planos } = useQuery<PlanosData>({

@@ -570,9 +570,6 @@ function WorkPage() {
                         >
                           <span className="flex items-center gap-3">
                             <span>{ch.title}</span>
-                            {ch.free && (
-                              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-400">Grátis</span>
-                            )}
                             {ch.earlyUntil && (
                               <span className="rounded bg-gilt/15 px-1.5 py-0.5 text-[11px] text-gilt">
                                 Super Fã até {new Date(ch.earlyUntil).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}

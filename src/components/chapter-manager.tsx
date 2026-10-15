@@ -156,7 +156,6 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
                     <strong>{label(c.number, c.title)}</strong>
                     <span className="text-muted-foreground">
                       {c.pdfPages ? `. ${c.pdfPages} páginas` : ""}
-                      {c.free ? ". Grátis" : ""}
                       {c.earlyUntil ? `. Super Fã até ${new Date(c.earlyUntil).toLocaleDateString("pt-BR")}` : ""}
                     </span>
                   </span>
@@ -204,8 +203,7 @@ export function ChapterManager({ workId, title, medium, onClose }: { workId: str
               <p className="text-sm font-bold">Próximo capítulo</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Sugerimos o {label(nextNumber)}. Pode trocar o número para encaixar um capítulo esquecido: 0 para prólogo, 1,5
-                para um extra. A lista é ordenada pelo número. O capítulo passa pela curadoria; quando aprovado, entra no ar e fica 3
-                dias só para Super Fãs.
+                para um extra. A lista é ordenada pelo número. O capítulo passa pela curadoria e, quando aprovado, entra no ar.
               </p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="min-w-[180px] flex-1 text-sm">

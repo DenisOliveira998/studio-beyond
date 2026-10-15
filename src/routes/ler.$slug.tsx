@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DonateDialog } from "@/components/donate-dialog";
 import { ChapterEnd } from "@/components/chapter-end";
+import { PLANOS_ATIVOS } from "@/lib/features";
 
 type Quota = { consumed: number; limit: number | null; remaining: number | null };
 
@@ -19,6 +20,8 @@ type Quota = { consumed: number; limit: number | null; remaining: number | null 
 const ANON_QUOTA_KEY = "beyond_anon_quota";
 
 function readAnonQuota(): Quota {
+  // Planos pausados: sem limite diário
+  if (!PLANOS_ATIVOS) return { consumed: 0, limit: null, remaining: null };
   const today = new Date().toISOString().slice(0, 10);
   let consumed = 0;
   try {
@@ -454,15 +457,17 @@ function ReaderPage() {
               Você chegou ao limite de leitura de hoje
             </p>
             <p className="caption mt-3">
-              Volte amanhã para continuar, ou assine o Super Fã para ler sem limite e sem anúncios.
+              {PLANOS_ATIVOS ? "Volte amanhã para continuar, ou assine o Super Fã para ler sem limite e sem anúncios." : "Volte amanhã para continuar a leitura."}
             </p>
             <div className="mt-6 flex justify-center gap-3">
+              {PLANOS_ATIVOS && (
               <Link
                 to="/planos"
                 className="btn-type border border-gilt bg-gilt/10 px-5 py-2.5 text-xs text-gilt transition-colors hover:bg-gilt hover:text-ink"
               >
                 Conhecer o Super Fã
               </Link>
+              )}
               <Link
                 to="/obra/$slug"
                 params={{ slug: work.slug }}

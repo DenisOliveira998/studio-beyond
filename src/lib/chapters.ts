@@ -1,9 +1,10 @@
 // Capítulos (cada um é um PDF), revisões pela curadoria e notificações de leitores.
 import { prisma } from "@/lib/prisma";
+import { PLANOS_ATIVOS } from "@/lib/features";
 
 export const EARLY_ACCESS_DAYS = 3;
-/** Quantos capítulos (os de menor número) qualquer pessoa lê inteiros, sem login. */
-export const FREE_CHAPTERS = 2;
+/** Quantos capítulos (os de menor número) qualquer pessoa lê inteiros, sem login. Desligado: todo capítulo pede login. */
+export const FREE_CHAPTERS = 0;
 
 const STAFF = ["gerente", "admin", "owner"];
 
@@ -42,7 +43,8 @@ function toInfo(c: ChapterRow, index: number): ChapterInfo {
     title: c.title,
     pdfPages: c.pdfPages,
     publishedAt: c.publishedAt.toISOString(),
-    earlyUntil: c.earlyUntil && c.earlyUntil > new Date() ? c.earlyUntil.toISOString() : null,
+    // Acesso antecipado só vale com os planos ativos
+    earlyUntil: PLANOS_ATIVOS && c.earlyUntil && c.earlyUntil > new Date() ? c.earlyUntil.toISOString() : null,
     hasPreview: !!c.previewUrl,
     free: index < FREE_CHAPTERS,
   };
@@ -57,8 +59,7 @@ export async function listChapters(workId: string): Promise<{ rows: ChapterRow[]
 /**
  * Quem pode ler o quê:
  * - capítulo em acesso antecipado (3 dias): só Super Fã, o autor da obra e a equipe;
- * - os 2 capítulos de menor número: inteiros para qualquer pessoa, sem login;
- * - os demais: inteiros com login (vale o limite diário); sem login, só a prévia de 2 páginas.
+ * - todo capítulo: inteiro com login (vale o limite diário); sem login, só a prévia de 2 páginas.
  */
 export function chapterAccess(
   info: ChapterInfo,
@@ -168,7 +169,7 @@ async function publishApprovedChapter(workId: string, d: NewChapterData) {
   }
   const count = await prisma.chapter.count({ where: { workId } });
   const now = new Date();
-  const early = count > 0;
+  const early = count > 0 && PLANOS_ATIVOS;
   const chapterTitle = cleanChapterTitle(d.title);
   await prisma.chapter.create({
     data: {

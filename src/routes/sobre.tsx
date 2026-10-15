@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PLANOS_ATIVOS } from "@/lib/features";
 import { SITE_URL } from "@/lib/site-url";
 
 export const Route = createFileRoute("/sobre")({
@@ -71,12 +72,14 @@ function AboutPage() {
         >
           Entrar na lista de autores
         </Link>
-        <Link
-          to="/planos"
-          className="rule-hover text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Ver planos de leitor
-        </Link>
+        {PLANOS_ATIVOS && (
+          <Link
+            to="/planos"
+            className="rule-hover text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Ver planos de leitor
+          </Link>
+        )}
       </div>
     </div>
   );

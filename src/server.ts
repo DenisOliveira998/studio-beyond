@@ -736,6 +736,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         if (!(await paymentsOpenFor(prof?.role))) return json({ error: "Os planos abrem em breve." }, 503);
         if (prof?.suspended) return json({ error: "Conta suspensa." }, 403);
         const body = (await request.json().catch(() => ({}))) as { plano?: string; email?: string };
+        const { PLANOS_ATIVOS } = await import("./lib/features");
+        if (!PLANOS_ATIVOS) return json({ error: "Os planos estão pausados por enquanto." }, 503);
         // Só o Super Fã aceita assinatura nova (o Fã foi encerrado; quem já tinha continua)
         if (body.plano === "fa") return json({ error: "O plano Fã foi encerrado. Assine o Super Fã." }, 400);
         const plan = body.plano === "superfa" ? "superfa" : null;
@@ -1470,7 +1472,6 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           url("/galeria"),
           ...galleryUrls,
           url("/biblioteca"),
-          url("/planos"),
           url("/sobre"),
           url("/candidatura-autor"),
           url("/contato"),
@@ -1522,9 +1523,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 > Plataforma digital de leitura e publicação autoral de livros, mangás, HQs, contos e novels, com foco em novos talentos brasileiros. Leitura gratuita e apoio direto a quem escreve.
 
 ## Para leitores
-- Leitura gratuita, com limite diário e anúncios; o plano Super Fã (R$ 14,90/mês) remove o limite e os anúncios.
+- Leitura gratuita com conta (limite diário); sem conta, a prévia de cada capítulo.
 - Apoio direto: o leitor pode doar para o autor que gostar; o apoio vai para quem escreveu.
-- Plano Super Fã (R$ 14,90/mês): capítulos novos 3 dias antes, sem anúncios, sem limite diário e selo no perfil.
 
 ## Para autores
 - Entrada por curadoria humana. As candidaturas de autor abrem em breve, por etapas (lista de espera aberta). Candidatar-se não custa nada.
@@ -1538,7 +1538,6 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 - [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
 - [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
 - [Ranking](${SITE_URL}/ranking): Top 50 da semana, com as obras e os autores mais lidos
-- [Planos](${SITE_URL}/planos): leitura grátis e plano Super Fã
 - [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
 - [Sitemap](${SITE_URL}/sitemap.xml)
@@ -2236,7 +2235,8 @@ ${catalog}
         }
         const { prisma } = await import("./lib/prisma");
         const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
-        if (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+        const { PLANOS_ATIVOS: planosQ } = await import("./lib/features");
+        if (!planosQ || (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role))) {
           return new Response(JSON.stringify({ consumed: 0, limit: null, remaining: null }), {
             headers: { "content-type": "application/json" },
           });
@@ -2256,7 +2256,8 @@ ${catalog}
         }
         const { prisma } = await import("./lib/prisma");
         const profile = await prisma.profile.findUnique({ where: { id: session.user.id }, select: { role: true } });
-        if (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role)) {
+        const { PLANOS_ATIVOS: planosC } = await import("./lib/features");
+        if (!planosC || (profile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(profile.role))) {
           return new Response(JSON.stringify({ allowed: true, remaining: null }), {
             headers: { "content-type": "application/json" },
           });
@@ -2630,7 +2631,7 @@ ${catalog}
         const viewerRole = sessionPdf?.user
           ? ((await prismaPdf.profile.findUnique({ where: { id: sessionPdf.user.id }, select: { role: true } }))?.role ?? null)
           : null;
-        // Regras: antecipado só Super Fã/autor/equipe; 2 primeiros capítulos para todos; resto com login (prévia sem login)
+        // Regras: antecipado só Super Fã/autor/equipe (com planos ativos); com login, o capítulo inteiro; sem login, a prévia
         const access = chapterAccess(chInfo[capIdx]!, {
           loggedIn: !!sessionPdf?.user,
           role: viewerRole,
@@ -2640,8 +2641,9 @@ ${catalog}
         if (!wantPreview && access !== "full") return denied(401);
         const fileUrl = wantPreview ? chRows[capIdx]!.previewUrl : chRows[capIdx]!.pdfUrl;
         if (!fileUrl) return denied();
-        // Limite diário de contas gratuitas (não vale para os capítulos grátis)
-        if (!wantPreview && sessionPdf?.user && !chInfo[capIdx]!.free) {
+        // Limite diário de contas gratuitas (só com os planos ativos; não vale para capítulos grátis)
+        const { PLANOS_ATIVOS: planosPdf } = await import("./lib/features");
+        if (planosPdf && !wantPreview && sessionPdf?.user && !chInfo[capIdx]!.free) {
           const unlimited = !!viewerRole && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(viewerRole);
           if (!unlimited) {
             const { getReadingQuota } = await import("./lib/beyond-db");
@@ -2707,7 +2709,8 @@ ${catalog}
         let locked = false;
         const { auth } = await import("./lib/auth-server");
         const readerSession = await auth.api.getSession({ headers: request.headers }).catch(() => null);
-        if (readerSession?.user) {
+        const { PLANOS_ATIVOS: planosR } = await import("./lib/features");
+        if (readerSession?.user && planosR) {
           const { prisma: prismaR } = await import("./lib/prisma");
           const readerProfile = await prismaR.profile.findUnique({ where: { id: readerSession.user.id }, select: { role: true } });
           const unlimited = readerProfile && ["vip", "superfa", "author", "gerente", "admin", "owner"].includes(readerProfile.role);

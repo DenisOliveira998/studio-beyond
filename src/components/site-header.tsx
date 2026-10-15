@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteSearch } from "@/components/site-search";
 import { InstallAppButton } from "@/components/install-app";
+import { PLANOS_ATIVOS } from "@/lib/features";
 import { useAuth } from "@/lib/auth";
 import type { SiteConfigData } from "@/lib/beyond-db";
 
@@ -28,7 +29,7 @@ const nav = [
   { to: "/explorar", label: "Explorar" },
   { to: "/ranking", label: "Ranking" },
   { to: "/galeria", label: "Galeria" },
-  { to: "/planos", label: "Planos" },
+  ...(PLANOS_ATIVOS ? [{ to: "/planos", label: "Planos" } as const] : []),
   { to: "/candidatura-autor", label: "Publique aqui" },
 ];
 
@@ -310,7 +311,7 @@ const navLinks = [
   { to: "/explorar", label: "Explorar categorias" },
   { to: "/ranking", label: "Ranking da semana" },
   { to: "/galeria", label: "Galeria de artistas" },
-  { to: "/planos", label: "Planos de leitura" },
+  ...(PLANOS_ATIVOS ? [{ to: "/planos", label: "Planos de leitura" } as const] : []),
   { to: "/sobre", label: "Quem somos" },
   { to: "/contato", label: "Contato" },
 ] as const;

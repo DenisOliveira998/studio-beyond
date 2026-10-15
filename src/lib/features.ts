@@ -5,3 +5,10 @@
  * para `true` — vale para a página e para a API (/api/candidatura).
  */
 export const CANDIDATURAS_ABERTAS = false;
+
+/**
+ * Planos de assinatura (Super Fã). Pausados por enquanto: a página mostra "em breve",
+ * ninguém assina, o link sai do menu e capítulos novos não têm acesso antecipado.
+ * Para reativar, troque para `true`.
+ */
+export const PLANOS_ATIVOS = false;
