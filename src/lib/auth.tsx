@@ -69,9 +69,11 @@ function readCachedProfile(): Profile | null {
 }
 function writeCachedProfile(p: Profile) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(p)); } catch {}
+  try { document.documentElement.dataset["sessao"] = "1"; } catch {}
 }
 function clearCachedProfile() {
   try { localStorage.removeItem(CACHE_KEY); } catch {}
+  try { delete document.documentElement.dataset["sessao"]; } catch {}
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

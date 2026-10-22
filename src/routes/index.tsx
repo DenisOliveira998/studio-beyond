@@ -16,6 +16,8 @@ import { useAuth } from "@/lib/auth";
 import { stripHtml } from "@/lib/utils";
 import { loaderFetch } from "@/lib/loader-fetch";
 import { MEDIUM_COLOR } from "@/lib/medium-color";
+import { WelcomeCover, WelcomeMore, WELCOME_FAQ } from "@/components/welcome-cover";
+import { faqJsonLd } from "@/lib/seo";
 import { AgeBadge } from "@/components/age-badge";
 
 export const Route = createFileRoute("/")({
@@ -45,6 +47,7 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       { property: "og:url", content: `${SITE_URL}/` },
       { name: "twitter:card", content: "summary_large_image" },
+      { "script:ld+json": faqJsonLd(WELCOME_FAQ) },
     ],
     links: [{ rel: "canonical", href: `${SITE_URL}/` }],
   }),
@@ -536,22 +539,40 @@ function Home() {
     return out;
   }
 
+  // Quem não está logado vê a página de boas-vindas; quem está, a página inicial de sempre.
+  // Enquanto o login ainda não respondeu, o HTML traz as duas e o CSS escolhe pela marca
+  // salva no navegador (html[data-sessao]), para não piscar a página errada.
+  const { user, profile, loading } = useAuth();
+  const decided = !loading || !!profile;
+  const logged = !!(user || profile);
+  const showWelcome = decided ? !logged : null;
+
   return (
     <div>
-      {/* H1 só para leitores de tela e buscadores — o topo visível é o Destaque */}
-      <h1 className="sr-only">Go Beyondd — livros, mangás, HQs, contos e novels autorais para ler de graça</h1>
+      {/* H1 só para leitores de tela e buscadores */}
+      <h1 className="sr-only">Go Beyondd, livros, mangás, HQs, contos e novels autorais para ler de graça</h1>
 
-      {/* Destaque Beyond — hero carousel */}
-      <DestaqueHero works={works} initialDestaque={initial.destaque} />
+      {showWelcome !== false && (
+        <div className={showWelcome === null ? "gb-welcome" : undefined}>
+          <WelcomeCover works={works} />
+          <WelcomeMore />
+        </div>
+      )}
 
-      {/* Continue lendo */}
-      <FavoritesRow />
+      {showWelcome !== true && (
+        <div className={showWelcome === null ? "gb-home" : undefined}>
+          {/* Destaque Beyond — hero carousel */}
+          <DestaqueHero works={works} initialDestaque={initial.destaque} />
 
-      <ContinueReading works={works} />
+          {/* Continue lendo */}
+          <FavoritesRow />
 
-      {/* Catálogo: um bloco só, filtrado por categoria */}
-      <CatalogGrid works={works} badges={badges(works)} />
+          <ContinueReading works={works} />
 
+          {/* Catálogo: um bloco só, filtrado por categoria */}
+          <CatalogGrid works={works} badges={badges(works)} />
+        </div>
+      )}
     </div>
   );
 }

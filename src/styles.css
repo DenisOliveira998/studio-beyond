@@ -355,3 +355,37 @@
 @utility veil {
   background-image: var(--gradient-veil);
 }
+
+/* Página de boas-vindas (visitante) x página inicial (logado), antes do login responder */
+.gb-home { display: none; }
+html[data-sessao="1"] .gb-home { display: block; }
+html[data-sessao="1"] .gb-welcome { display: none; }
+
+/* Chuva de capas da página de boas-vindas */
+.welcome-drop {
+  position: absolute;
+  top: 0;
+  display: block;
+  aspect-ratio: 3 / 4.1;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 18px 30px -18px rgb(20 16 60 / .65);
+  animation-name: welcome-fall;
+  animation-duration: var(--dur, 18s);
+  animation-delay: calc(var(--df, 0) * var(--dur, 18s) * -1);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+@keyframes welcome-fall {
+  from { transform: translateY(-120%) rotate(var(--rot)); }
+  to { transform: translateY(var(--rain-h, 900px)) rotate(calc(var(--rot) * -1)); }
+}
+.welcome-rain { --rain-h: 460px; }
+@media (min-width: 1024px) {
+  .welcome-rain { --rain-h: calc(100svh - 4rem); }
+}
+/* Com "reduzir animações" ligado no aparelho, as capas continuam caindo, mas bem mais devagar */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-drop { --dur: 60s !important; }
+}

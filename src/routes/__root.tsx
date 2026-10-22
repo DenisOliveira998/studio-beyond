@@ -81,6 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { "script:ld+json": organizationJsonLd() },
       { "script:ld+json": websiteJsonLd() },
     ],
+    scripts: [
+      {
+        children:
+          "try{if(localStorage.getItem('beyond_auth_v1'))document.documentElement.dataset.sessao='1'}catch(e){}",
+      },
+    ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
