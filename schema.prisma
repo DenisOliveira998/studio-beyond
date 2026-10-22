@@ -521,6 +521,7 @@ model Chapter {
   pdfUrl      String    @db.Text
   previewUrl  String?   @db.Text
   pdfPages    Int?
+  text        String?   @db.LongText // texto do capítulo para o modo Texto (JSON de blocos), extraído do PDF uma vez
   publishedAt DateTime  @default(now())
   earlyUntil  DateTime?
   createdAt   DateTime  @default(now())

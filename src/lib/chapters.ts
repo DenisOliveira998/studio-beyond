@@ -59,7 +59,7 @@ export async function listChapters(workId: string): Promise<{ rows: ChapterRow[]
 /**
  * Quem pode ler o quê:
  * - capítulo em acesso antecipado (3 dias): só Super Fã, o autor da obra e a equipe;
- * - todo capítulo: inteiro com login (vale o limite diário); sem login, só a prévia de 2 páginas.
+ * - todo capítulo: inteiro com login (vale o limite diário); sem login, nada (pede para entrar).
  */
 export function chapterAccess(
   info: ChapterInfo,
@@ -68,8 +68,8 @@ export function chapterAccess(
   const privileged = viewer.isOwner || (!!viewer.role && (STAFF.includes(viewer.role) || viewer.role === "superfa"));
   if (info.earlyUntil && !privileged) return "early";
   if (info.free) return "full";
-  if (viewer.loggedIn) return "full";
-  return info.hasPreview ? "preview" : "login";
+  // Sem conta não se lê nada (nem prévia): quem não está logado vê a página de boas-vindas
+  return viewer.loggedIn ? "full" : "login";
 }
 
 /** O arquivo já é usado por alguma obra, capítulo, candidatura ou foto? (impede apontar para arquivo alheio) */
@@ -273,6 +273,7 @@ export async function decideRevision(id: string, approve: boolean, reviewerId: s
         patch["pdfUrl"] = data["pdfUrl"];
         patch["previewUrl"] = typeof data["previewUrl"] === "string" ? data["previewUrl"] : null;
         patch["pdfPages"] = typeof data["pdfPages"] === "number" ? data["pdfPages"] : null;
+        patch["text"] = null; // será extraído de novo do PDF novo
       }
       if ("title" in data) patch["title"] = cleanChapterTitle(data["title"]);
       if (Object.keys(patch).length) await prisma.chapter.update({ where: { id: rev.chapterId }, data: patch });

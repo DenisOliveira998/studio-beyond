@@ -81,32 +81,27 @@ export function PdfViewer({
     try { localStorage.setItem(MODE_KEY, m); } catch {}
   }
 
-  // Extrai o texto do PDF quando o modo Texto é usado
+  // Modo Texto: o texto do capítulo vem pronto do servidor (extraído do PDF uma vez e guardado)
   useEffect(() => {
-    if (!textMode || mode !== "texto" || !doc || blocks || noText) return;
+    if (!textMode || mode !== "texto" || blocks || noText) return;
     let cancelled = false;
-    (async () => {
-      const { pageBlocks, mergePages } = await import("@/lib/pdf-text");
-      const pages: TextBlock[][] = [];
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i).catch(() => null);
-        if (!page) continue;
-        const tc = await page.getTextContent().catch(() => null);
-        if (!tc) continue;
-        pages.push(pageBlocks(tc.items as Parameters<typeof pageBlocks>[0], page.getViewport({ scale: 1 }).width));
+    const qs = new URLSearchParams({ ...(cap != null ? { cap: String(cap) } : {}) }).toString();
+    fetch(`/api/reader/${encodeURIComponent(slug)}/texto${qs ? `?${qs}` : ""}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ blocks: TextBlock[] }>) : { blocks: [] as TextBlock[] }))
+      .then(({ blocks: got }) => {
         if (cancelled) return;
-      }
-      const merged = mergePages(pages);
-      const chars = merged.reduce((n, b) => n + b.text.length, 0);
-      if (cancelled) return;
-      // PDF escaneado (só imagem): não há texto para mostrar
-      if (chars < 40 * Math.min(doc.numPages, 3)) setNoText(true);
-      else setBlocks(merged);
-    })();
+        const chars = got.reduce((n, b) => n + b.text.length, 0);
+        // PDF escaneado (só imagem): não há texto para mostrar
+        if (chars < 40) setNoText(true);
+        else setBlocks(got);
+      })
+      .catch(() => {
+        if (!cancelled) setNoText(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, [textMode, mode, doc, blocks, noText]);
+  }, [textMode, mode, blocks, noText, slug, cap]);
 
   /** Dois toques (ou duplo clique) na página: aproxima naquele ponto; de novo, volta ao tamanho normal. */
   function zoomAt(clientX: number, clientY: number) {

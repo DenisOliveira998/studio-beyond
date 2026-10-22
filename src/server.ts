@@ -2604,6 +2604,41 @@ ${catalog}
 
       // Arquivo PDF da obra: entregue só para o visor do leitor (fetch do próprio site),
       // nunca como página ou download. Obras licenciadas não têm link de download.
+      // Texto do capítulo (modo Texto): mesmas regras do PDF; sem login, só o começo
+      const textoMatch = pathname.match(/^\/api\/reader\/([^/]+)\/texto$/);
+      if (textoMatch && request.method === "GET") {
+        const json = (h: unknown, status = 200) =>
+          new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+        const site = request.headers.get("sec-fetch-site");
+        if (site && site !== "same-origin") return json({ error: "Não disponível" }, 403);
+        const { prisma: prismaTx } = await import("./lib/prisma");
+        const dbWork = await prismaTx.work.findUnique({
+          where: { slug: decodeURIComponent(textoMatch[1]!) },
+          select: { id: true, status: true, authorId: true },
+        });
+        if (!dbWork || dbWork.status !== "approved") return json({ error: "Não disponível" }, 404);
+        const { listChapters, chapterAccess } = await import("./lib/chapters");
+        const { rows: txRows, info: txInfo } = await listChapters(dbWork.id);
+        const capParam = new URL(request.url).searchParams.get("cap");
+        const idx = capParam != null ? txInfo.findIndex((c) => c.number === Number(capParam)) : 0;
+        if (idx < 0 || !txRows[idx]) return json({ error: "Não disponível" }, 404);
+        const { auth } = await import("./lib/auth-server");
+        const sessionTx = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        const roleTx = sessionTx?.user
+          ? ((await prismaTx.profile.findUnique({ where: { id: sessionTx.user.id }, select: { role: true } }))?.role ?? null)
+          : null;
+        const access = chapterAccess(txInfo[idx]!, {
+          loggedIn: !!sessionTx?.user,
+          role: roleTx,
+          isOwner: !!sessionTx?.user && dbWork.authorId === sessionTx.user.id,
+        });
+        if (access === "early" || access === "login") return json({ error: "Não disponível" }, 403);
+        const { getChapterBlocks, previewBlocks } = await import("./lib/chapter-text");
+        const blocks = await getChapterBlocks(txRows[idx]!.id);
+        const partial = access === "preview";
+        return json({ blocks: partial ? previewBlocks(blocks) : blocks, partial });
+      }
+
       const pdfMatch = pathname.match(/^\/api\/reader\/([^/]+)\/arquivo$/);
       if (pdfMatch && request.method === "GET") {
         const denied = (status = 404) =>
@@ -2638,7 +2673,8 @@ ${catalog}
           isOwner: !!sessionPdf?.user && dbWork.authorId === sessionPdf.user.id,
         });
         if (access === "early") return denied(403);
-        if (!wantPreview && access !== "full") return denied(401);
+        // Prévia só para quem a regra permite; sem conta, nem a prévia sai
+        if (access !== "full" && !(wantPreview && access === "preview")) return denied(401);
         const fileUrl = wantPreview ? chRows[capIdx]!.previewUrl : chRows[capIdx]!.pdfUrl;
         if (!fileUrl) return denied();
         // Limite diário de contas gratuitas (só com os planos ativos; não vale para capítulos grátis)

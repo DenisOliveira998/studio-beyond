@@ -95,7 +95,7 @@ export function WelcomeCover({ works }: { works: Work[] }) {
 export const WELCOME_FAQ = [
   {
     q: "É de graça?",
-    a: "É. Você cria a conta sem cartão e lê as histórias inteiras. Sem conta, dá pra ver uma prévia de cada capítulo.",
+    a: "É. Você cria a conta e lê as histórias inteiras.",
   },
   {
     q: "Preciso baixar algum app?",
