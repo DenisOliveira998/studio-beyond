@@ -33,6 +33,8 @@ export type DbWork = {
   genre: string | null;
   tags: string | null;
   ageRating: string | null;
+  publicDomain: boolean;
+  source: string | null;
   status: ReviewStatusDb;
   workStatus: "andamento" | "finalizado" | "paralisado";
   curatorNote: string | null;
@@ -109,18 +111,7 @@ export async function submitWork(input: {
   coverUrl?: string | null;
   status: "pending" | "draft";
 }) {
-  // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
-  const base = slugify(stripHtml(input.title)) || `obra-${Date.now()}`;
-  // Endereço limpo, só o título; se já existir (obra ou endereço antigo), vira -2, -3…
-  let slug = base;
-  for (let n = 2; ; n++) {
-    const [taken, alias] = await Promise.all([
-      prisma.work.findUnique({ where: { slug }, select: { id: true } }),
-      prisma.workSlugAlias.findUnique({ where: { oldSlug: slug }, select: { oldSlug: true } }),
-    ]);
-    if (!taken && !alias) break;
-    slug = `${base}-${n}`;
-  }
+  const slug = await uniqueWorkSlug(input.title);
   const created = await prisma.work.create({
     data: {
       slug,
@@ -142,6 +133,21 @@ export async function submitWork(input: {
     },
   });
   return { slug, id: created.id };
+}
+
+/** Endereço limpo da obra, só o título; se já existir (obra ou endereço antigo), vira -2, -3… */
+export async function uniqueWorkSlug(title: string): Promise<string> {
+  // Lição Galinha GSB: sempre stripHtml no título antes de gerar slug
+  const base = slugify(stripHtml(title)) || `obra-${Date.now()}`;
+  let slug = base;
+  for (let n = 2; ; n++) {
+    const [taken, alias] = await Promise.all([
+      prisma.work.findUnique({ where: { slug }, select: { id: true } }),
+      prisma.workSlugAlias.findUnique({ where: { oldSlug: slug }, select: { oldSlug: true } }),
+    ]);
+    if (!taken && !alias) return slug;
+    slug = `${base}-${n}`;
+  }
 }
 
 /** Gêneros da obra: "a, b, c" vira lista limpa, sem repetição, até 8 de até 30 letras. */
@@ -1079,6 +1085,7 @@ export function dbWorkToWork(w: DbWork): Work {
     updatedAt: w.updatedAt.toISOString(),
     workStatus: w.workStatus,
     ...(w.ageRating ? { ageRating: w.ageRating as import("./beyond-data").AgeRating } : {}),
+    ...(w.publicDomain ? { publicDomain: true, ...(w.source ? { source: w.source } : {}) } : {}),
   };
 }
 
@@ -1137,6 +1144,8 @@ export function workToDb(w: any): DbWork {
     genre: w.genre,
     tags: w.tags,
     ageRating: (w as { ageRating?: string | null }).ageRating ?? null,
+    publicDomain: !!(w as { publicDomain?: boolean }).publicDomain,
+    source: (w as { source?: string | null }).source ?? null,
     status: w.status as ReviewStatusDb,
     workStatus: (w.workStatus ?? "andamento") as "andamento" | "finalizado" | "paralisado",
     curatorNote: w.curatorNote,
@@ -1302,7 +1311,8 @@ export async function fetchRanking(limit = 50): Promise<RankingData> {
   // Autores: soma das obras; foto do perfil público quando houver
   const authorMap = new Map<string, RankedAuthor & { authorId: string | null }>();
   for (const w of works) {
-    if (!w.artistSlug) continue;
+    // Clássicos em domínio público ficam no ranking de obras, mas não disputam com autores novos
+    if (!w.artistSlug || w.publicDomain) continue;
     const cur = authorMap.get(w.artistSlug) ?? {
       name: w.artistName,
       slug: w.artistSlug,

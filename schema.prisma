@@ -154,6 +154,8 @@ model Work {
   workStatus  WorkStatus   @default(andamento)
   ageRating   String?      @db.VarChar(2) // classificação indicativa: L, 10, 12, 14, 16, 18
   curatorNote String?      @db.Text
+  publicDomain Boolean     @default(false) // obra em domínio público (importada do Wikisource): sem apoio/doação
+  source       String?     @db.Text // endereço de onde o texto veio (crédito à fonte)
   publishedAt DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

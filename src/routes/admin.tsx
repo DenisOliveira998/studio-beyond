@@ -3,6 +3,7 @@ import { AdminRevisions } from "@/components/admin-revisions";
 import { AdminPayments } from "@/components/admin-payments";
 import { AdminAuthors } from "@/components/admin-authors";
 import { AdminGallery } from "@/components/admin-gallery";
+import { AdminWikisource } from "@/components/admin-wikisource";
 import { AgeBadge } from "@/components/age-badge";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +32,7 @@ import {
   Flag,
   FileClock,
   Image,
+  Landmark,
   LayoutDashboard,
   Mail,
   Plus,
@@ -102,6 +104,7 @@ const NAV = [
   { id: "pagamentos", label: "Pagamentos", icon: CircleDollarSign },
   { id: "revisoes", label: "Alterações", icon: FileClock },
   { id: "galeria", label: "Galeria", icon: Image },
+  { id: "dominio-publico", label: "Domínio público", icon: Landmark },
   { id: "emails", label: "E-mails", icon: Mail },
   { id: "lista-espera", label: "Lista de espera", icon: Mail },
   { id: "carrossel", label: "Carrossel", icon: Image },
@@ -1131,6 +1134,12 @@ function AdminPage() {
         <section id="galeria" className="mt-16 scroll-mt-24">
           <SectionTitle icon={Image}>Galeria (curadoria)</SectionTitle>
           <AdminGallery />
+        </section>
+
+        {/* Obras em domínio público importadas do Wikisource */}
+        <section id="dominio-publico" className="mt-16 scroll-mt-24">
+          <SectionTitle icon={Landmark}>Domínio público (Wikisource)</SectionTitle>
+          <AdminWikisource />
         </section>
 
         {/* Quanto cada autor gerou (cliques e doações de todas as obras) */}

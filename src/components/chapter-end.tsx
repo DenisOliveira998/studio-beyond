@@ -116,7 +116,7 @@ export function ChapterEnd({
               <UserPlus className="size-4" /> Seguir {first}
             </a>
           ))}
-        {artistName && (
+        {artistName && !work.publicDomain && (
           <DonateDialog
             artistName={artistName}
             artistSlug={work.artistSlug}

@@ -175,6 +175,7 @@ function ArtistPage() {
             >
               {followed ? "✓ Seguindo" : `Seguir ${firstName}`}
             </button>
+            {!works.every((w) => w.publicDomain) && (
             <DonateDialog
               artistName={artistName}
               artistSlug={artistSlug}
@@ -184,6 +185,7 @@ function ArtistPage() {
                 </button>
               }
             />
+            )}
           </div>
         </div>
       </header>

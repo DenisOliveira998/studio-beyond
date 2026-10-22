@@ -173,25 +173,3 @@ export function workListJsonLd(name: string, path: string, works: Pick<Work, "sl
   };
 }
 
-/** Lista de livros da Biblioteca clássica (domínio público, links externos). */
-export function bookListJsonLd(books: { title: string; author: string; url: string; cover?: string }[]) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: "Biblioteca clássica",
-    url: siteUrl("/biblioteca"),
-    numberOfItems: books.length,
-    itemListElement: books.map((b, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      item: {
-        "@type": "Book",
-        name: b.title,
-        url: b.url,
-        author: { "@type": "Person", name: b.author },
-        isAccessibleForFree: true,
-        ...(b.cover ? { image: b.cover } : {}),
-      },
-    })),
-  };
-}

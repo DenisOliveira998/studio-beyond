@@ -53,128 +53,6 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-// ── Standard Ebooks catalog ──────────────────────────────────────────────────
-
-type SEBook = {
-  id: string;
-  title: string;
-  url: string;
-  author: string;
-  language: string;
-  description: string;
-  subjects: string[];
-  cover: string;
-  epubUrl: string;
-};
-
-let _seCache: SEBook[] | null = null;
-let _seCacheTs = 0;
-
-function extractXmlField(xml: string, tag: string): string {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
-  return m ? m[1]!.trim().replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#[0-9]+;/g, (e) => String.fromCharCode(parseInt(e.slice(2, -1), 10))) : "";
-}
-
-function extractXmlAttr(xml: string, tag: string, attr: string): string {
-  const m = xml.match(new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"[^>]*>`));
-  return m ? m[1]! : "";
-}
-
-function extractAllXmlAttr(xml: string, tag: string, attr: string): string[] {
-  const re = new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"[^>]*>`, "g");
-  const results: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml)) !== null) results.push(m[1]!);
-  return results;
-}
-
-async function fetchStandardEbooksCatalog(): Promise<SEBook[]> {
-  const now = Date.now();
-  if (_seCache && now - _seCacheTs < 4 * 60 * 60 * 1000) return _seCache;
-
-  const entries: SEBook[] = [];
-  // O catálogo OPDS completo exige conta Patrons Circle (401 sem login); o feed Atom
-  // de lançamentos (≈15 obras) é público e serve de alternativa.
-  const FEEDS = [
-    "https://standardebooks.org/feeds/opds/all",
-    "https://standardebooks.org/feeds/atom/new-releases",
-  ];
-  let feedIndex = 0;
-  let nextUrl: string | null = FEEDS[0]!;
-
-  while (nextUrl && entries.length < 1000) {
-    const res = await fetch(nextUrl, {
-      headers: { "User-Agent": "GoBeyondd/1.0 (https://www.gobeyondd.com.br)", Accept: "application/atom+xml" },
-    });
-    if (!res.ok) {
-      // Feed bloqueado/indisponível: tenta o próximo, se ainda não achou obras
-      feedIndex += 1;
-      nextUrl = entries.length === 0 && feedIndex < FEEDS.length ? FEEDS[feedIndex]! : null;
-      continue;
-    }
-    const xml = await res.text();
-
-    // Encontra cada <entry>
-    const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
-    let em: RegExpExecArray | null;
-    while ((em = entryRe.exec(xml)) !== null) {
-      const entry = em[1]!;
-      const title = extractXmlField(entry, "title");
-      const id = extractXmlField(entry, "id");
-      if (!title || !id) continue;
-
-      const url = id.startsWith("http") ? id : `https://standardebooks.org${id}`;
-
-      // Links: epub e cover
-      const linkTags = entry.match(/<link[^>]*\/>/g) ?? entry.match(/<link[^>]*>/g) ?? [];
-      let epubUrl = "";
-      let cover = "";
-      for (const link of linkTags) {
-        const type = link.match(/type="([^"]*)"/)?.[1] ?? "";
-        const href = link.match(/href="([^"]*)"/)?.[1] ?? "";
-        const rel = link.match(/rel="([^"]*)"/)?.[1] ?? "";
-        if (type === "application/epub+zip" && !epubUrl) {
-          epubUrl = href.startsWith("http") ? href : `https://standardebooks.org${href}`;
-        }
-        if (rel.includes("opds-spec.org/image") && !rel.includes("thumbnail") && !cover) {
-          cover = href.startsWith("http") ? href : `https://standardebooks.org${href}`;
-        }
-      }
-      // Feed Atom: capa em <media:thumbnail url="…">
-      if (!cover) cover = entry.match(/<media:thumbnail[^>]*url="([^"]*)"/)?.[1] ?? "";
-
-      // Author
-      const authorBlock = entry.match(/<author>([\s\S]*?)<\/author>/)?.[1] ?? "";
-      const author = extractXmlField(authorBlock, "name");
-
-      // Language
-      const language = extractXmlField(entry, "dc:language") || extractXmlField(entry, "language");
-
-      // Description
-      const description = extractXmlField(entry, "summary") || extractXmlField(entry, "content");
-
-      // Subjects
-      const subjects = extractAllXmlAttr(entry, "category", "term");
-
-      if (epubUrl) {
-        entries.push({ id, title, url, author, language, description, subjects, cover, epubUrl });
-      }
-    }
-
-    // Paginação: rel="next"
-    const nextMatch = xml.match(/<link[^>]*rel="next"[^>]*href="([^"]*)"[^>]*>/);
-    nextUrl = nextMatch ? nextMatch[1]! : null;
-  }
-
-  // Não guarda resultado vazio por 4h (tenta de novo na próxima requisição)
-  if (entries.length > 0) {
-    _seCache = entries;
-    _seCacheTs = now;
-  }
-  return entries;
-}
-
-
 // ── Cache e ajustes de HTML ───────────────────────────────────────────────────
 
 /** Dados públicos (iguais para todos): 60s na CDN, servindo o antigo por até 10 min enquanto atualiza. */
@@ -183,7 +61,7 @@ const PUBLIC_API_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate
 // Páginas cujo HTML não depende de quem está logado (o login é resolvido no navegador)
 const CACHEABLE_HTML = [
   /^\/$/, /^\/explorar(\/[^/]+)?$/, /^\/ranking$/, /^\/autor\/[^/]+$/, /^\/obra\/[^/]+$/,
-  /^\/biblioteca$/, /^\/planos$/, /^\/sobre$/, /^\/contato$/, /^\/termos$/, /^\/privacidade$/,
+  /^\/planos$/, /^\/sobre$/, /^\/contato$/, /^\/termos$/, /^\/privacidade$/,
   /^\/candidatura-autor$/,
 ];
 
@@ -407,9 +285,9 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
     const host = (request.headers.get("x-forwarded-host") ?? url.host).split(",")[0]!.trim().toLowerCase();
-    // Endereços em português: /dashboard → /painel, /artist/<autor> → /autor/<autor>
+    // Endereços em português: /dashboard → /painel, /artist/<autor> → /autor/<autor>; /biblioteca (saiu) → /explorar
     if (request.method === "GET" && !OLD_HOSTS.has(host)) {
-      const ptPath = url.pathname === "/dashboard" ? "/painel" : url.pathname.replace(/^\/artist\/([^/]+)\/?$/, "/autor/$1");
+      const ptPath = url.pathname === "/dashboard" ? "/painel" : url.pathname === "/biblioteca" ? "/explorar" : url.pathname.replace(/^\/artist\/([^/]+)\/?$/, "/autor/$1");
       if (ptPath !== url.pathname) {
         return new Response(null, { status: 308, headers: { location: `${ptPath}${url.search}`, "cache-control": "public, max-age=3600" } });
       }
@@ -629,7 +507,8 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
         const { prisma: prismaD } = await import("./lib/prisma");
         // O autor precisa ter obra publicada; a obra (se vier) precisa ser dele
         const work = await prismaD.work.findFirst({
-          where: { status: "approved", artistSlug, ...(workSlug ? { slug: workSlug } : {}) },
+          // Obra em domínio público não recebe apoio
+          where: { status: "approved", publicDomain: false, artistSlug, ...(workSlug ? { slug: workSlug } : {}) },
           select: { slug: true, title: true, artistName: true },
         });
         // Artista da Galeria (sem obra escrita): precisa ter publicação aprovada
@@ -1471,7 +1350,6 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
           url("/ranking"),
           url("/galeria"),
           ...galleryUrls,
-          url("/biblioteca"),
           url("/sobre"),
           url("/candidatura-autor"),
           url("/contato"),
@@ -1536,7 +1414,6 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
 ## Páginas principais
 - [Início](${SITE_URL}/): destaques e catálogo por categoria
 - [Explorar](${SITE_URL}/explorar): livros, mangás, HQs e contos por categoria
-- [Biblioteca clássica](${SITE_URL}/biblioteca): obras em domínio público
 - [Ranking](${SITE_URL}/ranking): Top 50 da semana, com as obras e os autores mais lidos
 - [Publique aqui](${SITE_URL}/candidatura-autor): candidatura de autor (em construção, lista de espera)
 - [Quem somos](${SITE_URL}/sobre)
@@ -2553,6 +2430,53 @@ ${catalog}
         const ok = await deleteMyArtwork(s.user.id, galeriaMinhaDel[1]!);
         return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 404, headers: { "content-type": "application/json" } });
       }
+      // ── Importar do Wikisource (domínio público, só admin) ──────────────────
+      if (pathname.startsWith("/api/admin/wikisource")) {
+        const { error } = await requireAdmin(request);
+        if (error) return error;
+        const json = (h: unknown, status = 200) =>
+          new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
+        const ws = await import("./lib/wikisource-import");
+        try {
+          if (pathname === "/api/admin/wikisource" && request.method === "GET") return json(await ws.listWikiWorks());
+          const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          const str = (k: string, max = 2000) => String(body[k] ?? "").slice(0, max);
+          if (pathname === "/api/admin/wikisource/previa" && request.method === "POST") return json(await ws.previewWikiWork(str("pagina", 500)));
+          if (pathname === "/api/admin/wikisource/obra" && request.method === "POST") {
+            const cover = str("coverUrl", 1000) || null;
+            if (cover) {
+              // Só imagem recém-enviada pelo /api/upload (já regravada lá) e que ninguém usa
+              const { blobUrlInUse } = await import("./lib/chapters");
+              if (!isCanonicalBlobUrl(cover) || !/.private.blob./.test(cover) || (await blobUrlInUse(cover))) {
+                return json({ error: "Capa inválida. Envie a imagem de novo." }, 400);
+              }
+            }
+            return json(
+              await ws.createWikiWork({
+                source: str("pagina", 500),
+                title: str("titulo", 200),
+                artistName: str("autor", 120),
+                medium: str("categoria", 20),
+                excerpt: str("sinopse", 1000),
+                tags: str("generos", 400),
+                ageRating: str("classificacao", 2),
+                coverUrl: cover,
+              }),
+            );
+          }
+          if (pathname === "/api/admin/wikisource/capitulo" && request.method === "POST") {
+            return json(await ws.importWikiChapter({ workId: str("obraId", 40), page: str("pagina", 500), number: Number(body["numero"]), title: str("titulo", 120) }));
+          }
+          if (pathname === "/api/admin/wikisource/publicar" && request.method === "POST") {
+            return json(await ws.publishWikiWork(str("obraId", 40), body["publicar"] !== false));
+          }
+          return json({ error: "Não encontrado" }, 404);
+        } catch (e) {
+          console.error("wikisource:", e);
+          return json({ error: e instanceof Error ? e.message : "Erro ao importar" }, 400);
+        }
+      }
+
       if (pathname === "/api/admin/galeria" && request.method === "GET") {
         const { error } = await requireAdmin(request);
         if (error) return error;
@@ -2833,61 +2757,6 @@ ${catalog}
                   ? "public, max-age=31536000, s-maxage=31536000, immutable"
                   : "public, max-age=3600, s-maxage=3600"
                 : "private, no-store",
-          },
-        });
-      }
-
-      // ── Biblioteca Standard Ebooks ───────────────────────────────────────────
-
-      if (pathname === "/api/biblioteca" && request.method === "GET") {
-        const books = await fetchStandardEbooksCatalog();
-        return new Response(JSON.stringify(books), {
-          headers: {
-            "content-type": "application/json",
-            "cache-control": "public, max-age=14400", // 4h no CDN
-          },
-        });
-      }
-
-      // Proxy de download de EPUB (apenas domínio standardebooks.org)
-      if (pathname === "/api/biblioteca/epub" && request.method === "GET") {
-        const epubUrl = new URL(request.url).searchParams.get("url");
-        if (!epubUrl) {
-          return new Response(JSON.stringify({ error: "Parâmetro url obrigatório" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        let parsed: URL;
-        try {
-          parsed = new URL(epubUrl);
-        } catch {
-          return new Response(JSON.stringify({ error: "URL inválida" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        if (parsed.hostname !== "standardebooks.org") {
-          return new Response(JSON.stringify({ error: "Fonte não permitida" }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const upstream = await fetch(parsed.toString(), {
-          headers: { "User-Agent": "GoBeyondd/1.0 (https://www.gobeyondd.com.br)" },
-        });
-        if (!upstream.ok) {
-          return new Response(JSON.stringify({ error: "EPUB não encontrado" }), {
-            status: upstream.status,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const filename = parsed.pathname.split("/").pop() ?? "book.epub";
-        return new Response(upstream.body, {
-          headers: {
-            "content-type": "application/epub+zip",
-            "content-disposition": `attachment; filename="${filename}"`,
-            "cache-control": "public, max-age=86400",
           },
         });
       }

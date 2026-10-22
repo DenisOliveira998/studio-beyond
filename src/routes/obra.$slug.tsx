@@ -5,6 +5,7 @@ import { ArrowUp, BookOpen, Bookmark, Check, FileDown, Heart, Link2, Play } from
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupportCard } from "@/components/support-card";
+import { PublicDomainCard } from "@/components/public-domain-card";
 import { WorkCard } from "@/components/work-card";
 import { MEDIUM_LABEL, VIEWS_DISPLAY_MIN, WEBTOON_MEDIUMS, compact, mediumSlug, AGE_RATING_LABEL } from "@/lib/beyond-data";
 import { AgeBadge } from "@/components/age-badge";
@@ -590,19 +591,29 @@ function WorkPage() {
                 {likeCount > 0 && <span>{compact(likeCount)} {likeCount === 1 ? "curtida" : "curtidas"}</span>}
                 {work.pages && <span>{work.pages} páginas</span>}
               </div>
-              {artistName && (
+              {work.publicDomain ? (
                 <div className="w-full">
-                  <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+                  <PublicDomainCard source={work.source} />
                 </div>
+              ) : (
+                artistName && (
+                  <div className="w-full">
+                    <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+                  </div>
+                )
               )}
             </div>
           </div>
         </main>
 
         {/* ── Lateral direita: Apoie o autor (desktop) ── */}
-        {artistName && (
+        {(artistName || work.publicDomain) && (
           <aside className="hidden lg:ml-auto lg:block lg:w-80 lg:flex-shrink-0 lg:sticky lg:top-8 lg:self-start">
-            <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+            {work.publicDomain ? (
+              <PublicDomainCard source={work.source} />
+            ) : (
+              <SupportCard artistName={artistName} artistSlug={work.artistSlug} workSlug={work.slug} workTitle={cleanTitle} cover={work.cover} />
+            )}
           </aside>
         )}
       </div>

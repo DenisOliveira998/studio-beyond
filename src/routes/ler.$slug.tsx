@@ -547,20 +547,24 @@ function EndOfWork({ work, title }: { work: Work; title: string }) {
           <p className="mx-auto mt-3 max-w-md font-display text-2xl leading-snug tracking-tight">
             Gostou de <span className="title-italic">{title}</span>?
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Apoie {artistName} diretamente — o apoio vai para quem escreveu.
-          </p>
+          {!work.publicDomain && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Apoie {artistName} diretamente — o apoio vai para quem escreveu.
+            </p>
+          )}
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-            <DonateDialog
-              artistName={artistName}
-              artistSlug={work.artistSlug}
-              workSlug={work.slug}
-              trigger={
-                <button className="btn-type bg-gilt px-5 py-2.5 text-xs font-bold text-ink transition-opacity hover:opacity-90">
-                  Apoiar {artistName.split(" ")[0]}
-                </button>
-              }
-            />
+            {!work.publicDomain && (
+              <DonateDialog
+                artistName={artistName}
+                artistSlug={work.artistSlug}
+                workSlug={work.slug}
+                trigger={
+                  <button className="btn-type bg-gilt px-5 py-2.5 text-xs font-bold text-ink transition-opacity hover:opacity-90">
+                    Apoiar {artistName.split(" ")[0]}
+                  </button>
+                }
+              />
+            )}
             {user ? (
               <button onClick={() => follow.mutate()} disabled={follow.isPending} className={btn}>
                 {followed ? "Seguindo" : `Seguir ${artistName.split(" ")[0]}`}

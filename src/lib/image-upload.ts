@@ -3,7 +3,7 @@
  * aceita até 4,5 MB por arquivo. PNG continua PNG (mantém transparência); o resto vira JPEG.
  * O servidor regrava a imagem de novo (sem metadados), então isto é só para caber no envio.
  */
-export async function uploadImage(file: File, purpose: "gallery", maxSide = 2400): Promise<string> {
+export async function uploadImage(file: File, purpose: "gallery" | "cover", maxSide = 2400): Promise<string> {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     throw new Error(`"${file.name}": envie JPG, PNG ou WebP.`);
   }

@@ -290,11 +290,11 @@ export function PdfViewer({
                     {b.text}
                   </p>
                 ) : b.kind === "center" ? (
-                  <p key={i} className="my-2 text-center">
+                  <p key={i} className="my-2 whitespace-pre-line text-center">
                     {b.text}
                   </p>
                 ) : (
-                  <p key={i} className="mb-[0.9em] text-pretty">
+                  <p key={i} className="mb-[0.9em] whitespace-pre-line text-pretty">
                     {b.text}
                   </p>
                 ),

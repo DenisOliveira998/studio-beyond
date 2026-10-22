@@ -69,6 +69,10 @@ export type Work = {
   workStatus?: "andamento" | "finalizado" | "paralisado";
   /** Classificação indicativa (padrão brasileiro) */
   ageRating?: AgeRating;
+  /** Obra em domínio público (importada do Wikisource): sem apoio/doação */
+  publicDomain?: boolean;
+  /** Endereço de onde o texto veio (crédito à fonte) */
+  source?: string;
 };
 
 export type Artist = {
