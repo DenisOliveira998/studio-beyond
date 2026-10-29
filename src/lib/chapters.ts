@@ -92,11 +92,13 @@ async function notifyNewChapter(
   early: boolean,
   chapterTitle: string | null,
 ) {
-  const [followers, favs] = await Promise.all([
+  // Avisa quem segue o autor, favoritou ou curtiu a obra (cada pessoa recebe um aviso só)
+  const [followers, favs, likes] = await Promise.all([
     prisma.artistFollow.findMany({ where: { artistSlug: work.artistSlug }, select: { userId: true } }),
     prisma.userFavorite.findMany({ where: { workSlug: work.slug }, select: { userId: true } }),
+    prisma.workLike.findMany({ where: { workSlug: work.slug }, select: { userId: true } }),
   ]);
-  const ids = [...new Set([...followers, ...favs].map((r) => r.userId))].filter((id) => id !== work.authorId);
+  const ids = [...new Set([...followers, ...favs, ...likes].map((r) => r.userId))].filter((id) => id !== work.authorId);
   if (ids.length === 0) return;
   const { stripHtml } = await import("@/lib/utils");
   const title = `${chapterLabel(number, chapterTitle)} (${stripHtml(work.title)})`;

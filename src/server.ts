@@ -2303,11 +2303,14 @@ ${catalog}
           const { getWorkComments } = await import("./lib/beyond-db");
           const capParam = new URL(request.url).searchParams.get("cap");
           const capNum = capParam != null && capParam !== "" ? Number(capParam) : undefined;
-          const comments = await getWorkComments(slug, capNum != null && Number.isFinite(capNum) ? capNum : undefined);
-          return new Response(JSON.stringify(comments), { headers: { "content-type": "application/json" } });
+          // Quem está vendo (para marcar as curtidas dele); sem login, só as contagens
+          const { auth: authC } = await import("./lib/auth-server");
+          const viewer = await authC.api.getSession({ headers: request.headers }).catch(() => null);
+          const comments = await getWorkComments(slug, capNum != null && Number.isFinite(capNum) ? capNum : undefined, viewer?.user?.id ?? null);
+          return new Response(JSON.stringify(comments), { headers: { "content-type": "application/json", "cache-control": "private, no-store" } });
         }
         if (request.method === "POST") {
-          const { text, cap: commentCap } = (await request.json()) as { author?: string; text: string; cap?: number };
+          const { text, cap: commentCap, parentId: rawParent } = (await request.json()) as { author?: string; text: string; cap?: number; parentId?: string };
           if (!text?.trim()) {
             return new Response(JSON.stringify({ error: "Texto obrigatório" }), { status: 400, headers: { "content-type": "application/json" } });
           }
@@ -2328,9 +2331,27 @@ ${catalog}
             return tooManyRequests("Você comentou muitas vezes seguidas. Aguarde alguns minutos.");
           }
           const { addWorkComment } = await import("./lib/beyond-db");
+          const { prisma: prismaR } = await import("./lib/prisma");
+          // Resposta: o comentário respondido precisa ser desta obra e estar visível.
+          // Resposta de resposta vira resposta do comentário principal (um nível só).
+          let parent: { id: string; userId: string | null; chapter: number | null } | null = null;
+          if (rawParent != null) {
+            const p = await prismaR.workComment.findUnique({
+              where: { id: String(rawParent).slice(0, 40) },
+              select: { id: true, workSlug: true, hidden: true, parentId: true, userId: true, chapter: true },
+            });
+            if (!p || p.workSlug !== slug || p.hidden) {
+              return new Response(JSON.stringify({ error: "Comentário não encontrado." }), { status: 400, headers: { "content-type": "application/json" } });
+            }
+            const root = p.parentId ? await prismaR.workComment.findUnique({ where: { id: p.parentId }, select: { id: true, hidden: true, chapter: true } }) : null;
+            if (p.parentId && (!root || root.hidden)) {
+              return new Response(JSON.stringify({ error: "Comentário não encontrado." }), { status: 400, headers: { "content-type": "application/json" } });
+            }
+            parent = { id: root?.id ?? p.id, userId: p.userId, chapter: root ? root.chapter : p.chapter };
+          }
           // Comentário de capítulo: o capítulo precisa existir nesta obra
-          let chapterNum: number | null = null;
-          if (commentCap != null) {
+          let chapterNum: number | null = parent ? parent.chapter : null;
+          if (!parent && commentCap != null) {
             const n = Number(commentCap);
             const { prisma: prismaC } = await import("./lib/prisma");
             const w = await prismaC.work.findUnique({ where: { slug }, select: { id: true } });
@@ -2344,11 +2365,44 @@ ${catalog}
             author: session.user.name || "Leitor",
             text: text.trim(),
             chapter: chapterNum,
+            parentId: parent?.id ?? null,
           });
+          // Aviso no sininho para quem teve o comentário respondido
+          if (parent?.userId && parent.userId !== session.user.id) {
+            const link = slug.startsWith("galeria-")
+              ? `/galeria/obra/${slug.slice("galeria-".length)}`
+              : chapterNum != null
+                ? `/ler/${slug}?cap=${chapterNum}`
+                : `/obra/${slug}#comentarios`;
+            await prismaR.notification
+              .create({
+                data: {
+                  userId: parent.userId,
+                  type: "comment_reply",
+                  title: `${comment.author} respondeu seu comentário`.slice(0, 190),
+                  body: comment.text.slice(0, 200),
+                  link,
+                },
+              })
+              .catch(() => {});
+          }
           const { pushEvent: pushComment } = await import("./lib/pusher");
           void pushComment({ event: "new-comment", data: { workSlug: slug, author: comment.author } });
           return new Response(JSON.stringify(comment), { headers: { "content-type": "application/json" } });
         }
+      }
+
+      // Curtir/descurtir um comentário
+      const commentLikeMatch = pathname.match(/^\/api\/comentarios\/([A-Za-z0-9_-]{1,40})\/curtir$/);
+      if (commentLikeMatch && request.method === "POST") {
+        const json = (h: unknown, status = 200) => new Response(JSON.stringify(h), { status, headers: { "content-type": "application/json" } });
+        const { auth } = await import("./lib/auth-server");
+        const session = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+        if (!session?.user) return json({ error: "Faça login para curtir." }, 401);
+        if (!(await rateLimit(`comment-like:user:${session.user.id}`, 60, 5 * 60))) return tooManyRequests("Muitas curtidas seguidas. Aguarde um pouco.");
+        const { toggleCommentLike } = await import("./lib/beyond-db");
+        const out = await toggleCommentLike(commentLikeMatch[1]!, session.user.id);
+        return out ? json(out) : json({ error: "Comentário não encontrado." }, 404);
       }
 
       // ── Galeria ────────────────────────────────────────────────────────────

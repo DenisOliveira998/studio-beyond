@@ -315,12 +315,26 @@ model WorkComment {
   userId    String?
   author    String   @default("Anônimo")
   chapter   Float?   // número do capítulo comentado (vazio = comentário da obra)
+  parentId  String?  // resposta a outro comentário (um nível só)
   text      String   @db.Text
   hidden    Boolean  @default(false) // oculto pela moderação (ou por 3+ denúncias)
   createdAt DateTime @default(now())
 
   @@index([workSlug])
+  @@index([parentId])
   @@map("work_comments")
+}
+
+// Curtidas em comentários (uma por pessoa)
+model WorkCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@map("work_comment_likes")
 }
 
 // Quota de leitura diária (leitores free: 10 páginas/dia)

@@ -794,6 +794,12 @@ export type CommentData = {
   profilePath?: string;
   /** Capítulo comentado (vazio = comentário da obra) */
   chapter?: number;
+  /** Resposta a este comentário (vazio = comentário principal) */
+  parentId?: string;
+  /** Quantas curtidas o comentário tem */
+  likes: number;
+  /** Quem está vendo já curtiu */
+  liked?: boolean;
 };
 
 const COMMENT_BADGE: Record<string, string> = {
@@ -805,11 +811,23 @@ const COMMENT_BADGE: Record<string, string> = {
   owner: "Equipe",
 };
 
-export async function getWorkComments(workSlug: string, chapter?: number): Promise<CommentData[]> {
-  const rows = await prisma.workComment.findMany({
+export async function getWorkComments(workSlug: string, chapter?: number, viewerId?: string | null): Promise<CommentData[]> {
+  const all = await prisma.workComment.findMany({
     where: { workSlug, hidden: false, ...(chapter != null ? { chapter } : {}) },
     orderBy: { createdAt: "desc" },
   });
+  // Resposta de um comentário que saiu (oculto pela moderação) sai junto
+  const visible = new Set(all.map((r) => r.id));
+  const rows = all.filter((r) => !r.parentId || visible.has(r.parentId));
+  const ids = rows.map((r) => r.id);
+  const [likeCounts, mine] = ids.length
+    ? await Promise.all([
+        prisma.workCommentLike.groupBy({ by: ["commentId"], where: { commentId: { in: ids } }, _count: { _all: true } }),
+        viewerId ? prisma.workCommentLike.findMany({ where: { commentId: { in: ids }, userId: viewerId }, select: { commentId: true } }) : [],
+      ])
+    : [[], []];
+  const likesById = new Map(likeCounts.map((l) => [l.commentId, l._count._all]));
+  const likedIds = new Set(mine.map((l) => l.commentId));
   const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
   const profiles = userIds.length
     ? await prisma.profile.findMany({ where: { id: { in: userIds } }, select: { id: true, role: true } })
@@ -835,8 +853,22 @@ export async function getWorkComments(workSlug: string, chapter?: number): Promi
       ...(avatar ? { avatarUrl: avatar } : {}),
       ...(profilePath ? { profilePath } : {}),
       ...(r.chapter != null ? { chapter: r.chapter } : {}),
+      ...(r.parentId ? { parentId: r.parentId } : {}),
+      likes: likesById.get(r.id) ?? 0,
+      ...(likedIds.has(r.id) ? { liked: true } : {}),
     };
   });
+}
+
+/** Curtir/descurtir um comentário. */
+export async function toggleCommentLike(commentId: string, userId: string): Promise<{ liked: boolean; likes: number } | null> {
+  const comment = await prisma.workComment.findUnique({ where: { id: commentId }, select: { id: true, hidden: true } });
+  if (!comment || comment.hidden) return null;
+  const existing = await prisma.workCommentLike.findUnique({ where: { commentId_userId: { commentId, userId } } });
+  if (existing) await prisma.workCommentLike.delete({ where: { id: existing.id } });
+  else await prisma.workCommentLike.create({ data: { commentId, userId } }).catch(() => {});
+  const likes = await prisma.workCommentLike.count({ where: { commentId } });
+  return { liked: !existing, likes };
 }
 
 export async function addWorkComment(input: {
@@ -845,6 +877,7 @@ export async function addWorkComment(input: {
   author: string;
   text: string;
   chapter?: number | null;
+  parentId?: string | null;
 }): Promise<CommentData> {
   const row = await prisma.workComment.create({
     data: {
@@ -853,9 +886,18 @@ export async function addWorkComment(input: {
       author: input.author || "Anônimo",
       text: input.text,
       chapter: input.chapter ?? null,
+      parentId: input.parentId ?? null,
     },
   });
-  return { id: row.id, author: row.author, text: row.text, createdAt: row.createdAt.toISOString(), ...(row.chapter != null ? { chapter: row.chapter } : {}) };
+  return {
+    id: row.id,
+    author: row.author,
+    text: row.text,
+    createdAt: row.createdAt.toISOString(),
+    likes: 0,
+    ...(row.chapter != null ? { chapter: row.chapter } : {}),
+    ...(row.parentId ? { parentId: row.parentId } : {}),
+  };
 }
 
 /* ---------- quota de leitura diária ---------- */
