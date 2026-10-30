@@ -27,10 +27,20 @@ export const Route = createFileRoute("/candidatura-autor")({
   component: ApplicationPage,
 });
 
+type Tipo = "escritor" | "desenhista" | "ambos";
+type Papeis = { escritor: boolean; desenhista: boolean };
+const tipoDe = (p: Papeis): Tipo | null =>
+  p.escritor && p.desenhista ? "ambos" : p.desenhista ? "desenhista" : p.escritor ? "escritor" : null;
+
 function ApplicationPage() {
   const { user, loading, isStaff } = useAuth();
-  // ?tipo=artista: candidatura para a Galeria (ilustradores e desenhistas)
-  const isArtist = Route.useSearch().tipo === "artista";
+  // Quem se candidata marca escritor (Painel do Autor), desenhista (Galeria) ou os dois.
+  // ?tipo=artista já abre com "Desenhista" marcado.
+  const fromArtistLink = Route.useSearch().tipo === "artista";
+  const [papeis, setPapeis] = useState<Papeis>({ escritor: !fromArtistLink, desenhista: fromArtistLink });
+  const tipo = tipoDe(papeis);
+  const isArtist = tipo === "desenhista";
+  const isBoth = tipo === "ambos";
   const applicationsOpen = CANDIDATURAS_ABERTAS || isStaff;
 
   const [sent, setSent] = useState(false);
@@ -73,6 +83,10 @@ function ApplicationPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!tipo) {
+      toast.error("Marque se você é escritor, desenhista ou os dois.");
+      return;
+    }
     if (!realName.trim() || !email.trim() || !phone.trim()) {
       toast.error("Preencha nome, e-mail e número.");
       return;
@@ -89,7 +103,7 @@ function ApplicationPage() {
           portfolio: portfolioLink.trim(),
           portfolioFiles: JSON.stringify(fileUrls.map((f) => f.url)),
           portfolioCitations: portfolioCitations.trim(),
-          field: isArtist ? "galeria" : "",
+          field: isArtist ? "galeria" : isBoth ? "ambos" : "",
         }),
       });
       if (!res.ok) {
@@ -119,7 +133,11 @@ function ApplicationPage() {
           </p>
           <p className="caption mt-6">
             Prazo: até <strong className="text-foreground">15 dias úteis</strong>.{" "}
-            {isArtist ? "Artistas aprovados já podem publicar na Galeria." : "Autores aprovados recebem acesso imediato ao Painel do Autor."}
+            {isBoth
+              ? "Aprovado, você acessa o Painel do Autor e já pode publicar na Galeria."
+              : isArtist
+                ? "Artistas aprovados já podem publicar na Galeria."
+                : "Autores aprovados recebem acesso imediato ao Painel do Autor."}
           </p>
           <Link
             to="/"
@@ -141,22 +159,17 @@ function ApplicationPage() {
             <span>
               <strong className="uppercase tracking-[0.18em] text-gilt">Em construção</strong>
               <span className="text-muted-foreground">
-                {" "}— as candidaturas {isArtist ? "de artista" : "de autor"} abrem em breve, por etapas. Entre na lista de espera e avisamos você.
+                {" "}— as candidaturas {isBoth ? "de escritor e desenhista" : isArtist ? "de artista" : "de autor"} abrem em breve, por etapas. Entre na lista de espera e avisamos você.
               </span>
             </span>
           </div>
         )}
-        <p className="eyebrow">{isArtist ? "Artista visual · candidatura com aprovação" : "Autor · candidatura com aprovação"}</p>
-        <h1 className="hero-type mt-5 text-5xl tracking-tight">
-          {isArtist ? "Mostre sua arte na Galeria." : "A entrada é por curadoria, não por cadastro."}
-        </h1>
-        <p className="mt-3 text-sm">
-          {isArtist ? (
-            <Link to="/candidatura-autor" className="text-gilt underline-offset-4 hover:underline">Você escreve? Candidate-se como autor</Link>
-          ) : (
-            <Link to="/candidatura-autor" search={{ tipo: "artista" }} className="text-gilt underline-offset-4 hover:underline">Você desenha? Candidate-se como artista da Galeria</Link>
-          )}
+        <p className="eyebrow">
+          {isBoth ? "Escritor e desenhista" : isArtist ? "Artista visual" : "Autor"} · candidatura com aprovação
         </p>
+        <h1 className="hero-type mt-5 text-5xl tracking-tight">
+          {isBoth ? "Escreva, desenhe e publique." : isArtist ? "Mostre sua arte na Galeria." : "A entrada é por curadoria, não por cadastro."}
+        </h1>
         <p className="mt-6 max-w-md leading-relaxed text-muted-foreground">
           Envie seu portfólio e a curadoria avalia à mão. Toda candidatura recebe resposta —
           aprovação ou recusa comentada.
@@ -164,8 +177,22 @@ function ApplicationPage() {
         <ol className="mt-10 space-y-4 border-t border-border pt-8 text-sm text-muted-foreground">
           <li>1 — Você envia a candidatura e ela entra na fila da curadoria.</li>
           <li>2 — O status fica "Em análise" até a decisão.</li>
-          <li>3 — {isArtist ? "Aprovado, você ganha sua página de artista e publica na Galeria." : "Aprovado, seu perfil é promovido e você acessa o Painel do Autor."}</li>
-          <li>4 — {isArtist ? "Cada ilustração passa pela curadoria antes de aparecer." : "Cada obra publicada passa por revisão antes de aparecer no feed."}</li>
+          <li>
+            3 —{" "}
+            {isBoth
+              ? "Aprovado, você acessa o Painel do Autor e ganha sua página de artista na Galeria."
+              : isArtist
+                ? "Aprovado, você ganha sua página de artista e publica na Galeria."
+                : "Aprovado, seu perfil é promovido e você acessa o Painel do Autor."}
+          </li>
+          <li>
+            4 —{" "}
+            {isBoth
+              ? "Cada obra e cada ilustração passam pela curadoria antes de aparecer."
+              : isArtist
+                ? "Cada ilustração passa pela curadoria antes de aparecer."
+                : "Cada obra publicada passa por revisão antes de aparecer no feed."}
+          </li>
         </ol>
         <p className="mt-6 text-xs text-muted-foreground/70">
           Prazo: <strong className="text-muted-foreground">até 15 dias úteis</strong>. Nenhuma cobrança.
@@ -178,7 +205,7 @@ function ApplicationPage() {
           <span className="size-6 animate-spin rounded-full border-2 border-border border-t-gilt" />
         </div>
       ) : !applicationsOpen ? (
-        <AuthorWaitlist defaultEmail={user?.email ?? ""} artist={isArtist} />
+        <AuthorWaitlist defaultEmail={user?.email ?? ""} papeis={papeis} onPapeis={setPapeis} />
       ) : !user ? (
         <div className="self-start border border-border bg-surface p-7 sm:p-9">
           <p className="eyebrow">Antes de enviar</p>
@@ -211,6 +238,8 @@ function ApplicationPage() {
         onSubmit={(e) => void handleSubmit(e)}
       >
         <div className="space-y-5">
+          <PapeisPicker value={papeis} onChange={setPapeis} />
+
           {/* Nome real */}
           <label className="block">
             <span className="eyebrow">Nome real *</span>
@@ -335,7 +364,47 @@ function ApplicationPage() {
 
 // ── Lista de espera de autores (enquanto as candidaturas estão fechadas) ───
 
-function AuthorWaitlist({ defaultEmail, artist = false }: { defaultEmail: string; artist?: boolean }) {
+// ── Escritor, desenhista ou os dois (dá para marcar um ou os dois) ─────────
+
+function PapeisPicker({ value, onChange }: { value: Papeis; onChange: (p: Papeis) => void }) {
+  const opcoes: { id: keyof Papeis; label: string; hint: string }[] = [
+    { id: "escritor", label: "Escritor", hint: "Livros, contos, roteiros" },
+    { id: "desenhista", label: "Desenhista", hint: "Ilustração, quadrinho" },
+  ];
+  const nenhum = !value.escritor && !value.desenhista;
+  return (
+    <fieldset>
+      <legend className="eyebrow">Você é *</legend>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {opcoes.map((o) => (
+          <label
+            key={o.id}
+            className={`flex cursor-pointer items-start gap-2.5 border px-3 py-3 transition-colors focus-within:border-gilt ${
+              value[o.id] ? "border-gilt bg-gilt/10" : "border-input bg-background hover:border-gilt/50"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={value[o.id]}
+              onChange={(e) => onChange({ ...value, [o.id]: e.target.checked })}
+              className="mt-0.5 size-4 accent-gilt"
+            />
+            <span>
+              <span className={`block text-sm ${value[o.id] ? "text-gilt" : ""}`}>{o.label}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{o.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <span className={`caption mt-1.5 block ${nenhum ? "text-red-400" : ""}`}>
+        {nenhum ? "Marque pelo menos uma opção." : "Faz os dois? Marque as duas opções."}
+      </span>
+    </fieldset>
+  );
+}
+
+function AuthorWaitlist({ defaultEmail, papeis, onPapeis }: { defaultEmail: string; papeis: Papeis; onPapeis: (p: Papeis) => void }) {
+  const tipo = tipoDe(papeis);
   const [email, setEmail] = useState(defaultEmail);
   const [sending, setSending] = useState(false);
   const [joined, setJoined] = useState(false);
@@ -343,13 +412,17 @@ function AuthorWaitlist({ defaultEmail, artist = false }: { defaultEmail: string
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
+    if (!tipo) {
+      setError("Marque se você é escritor, desenhista ou os dois.");
+      return;
+    }
     setSending(true);
     setError("");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), plan: artist ? "artist" : "author" }),
+        body: JSON.stringify({ email: email.trim(), plan: tipo === "ambos" ? "both" : tipo === "desenhista" ? "artist" : "author" }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -365,7 +438,7 @@ function AuthorWaitlist({ defaultEmail, artist = false }: { defaultEmail: string
 
   return (
     <div className="self-start border border-border bg-surface p-7 sm:p-9">
-      <p className="eyebrow">Lista de espera · {artist ? "Artistas" : "Autores"}</p>
+      <p className="eyebrow">Lista de espera · {tipo === "ambos" ? "Escritores e desenhistas" : tipo === "desenhista" ? "Artistas" : "Autores"}</p>
       {joined ? (
         <>
           <h2 className="mt-4 font-display text-3xl tracking-tight">Você está na lista.</h2>
@@ -387,7 +460,10 @@ function AuthorWaitlist({ defaultEmail, artist = false }: { defaultEmail: string
             A entrada vai acontecer por etapas. Deixe seu e-mail e avisamos quando for a sua vez de
             enviar o portfólio.
           </p>
-          <label className="mt-8 block">
+          <div className="mt-8">
+            <PapeisPicker value={papeis} onChange={onPapeis} />
+          </div>
+          <label className="mt-5 block">
             <span className="eyebrow">E-mail</span>
             <input
               type="email"

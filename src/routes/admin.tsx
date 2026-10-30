@@ -820,8 +820,8 @@ function AdminPage() {
                         enviada em {new Date(a.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{a.artistName}</h3>
-                      <p className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[11px] ${a.field === "galeria" ? "bg-purple-500/15 text-purple-300" : "bg-gilt/15 text-gilt"}`}>
-                        {a.field === "galeria" ? "Artista da Galeria" : "Autor"}
+                      <p className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[11px] ${a.field === "galeria" ? "bg-purple-500/15 text-purple-300" : a.field === "ambos" ? "bg-sky-500/15 text-sky-300" : "bg-gilt/15 text-gilt"}`}>
+                        {a.field === "galeria" ? "Artista da Galeria" : a.field === "ambos" ? "Escritor e desenhista" : "Autor"}
                       </p>
                       <p className="caption mt-0.5">{a.email}{a.phone ? ` · ${a.phone}` : ""}</p>
                     </div>
@@ -1332,7 +1332,7 @@ function AdminPage() {
                     <tr key={row.id} className="border-b border-border/50 hover:bg-surface/50">
                       <td className="py-3 pr-4 text-xs">{row.email}</td>
                       <td className="py-3 pr-4 text-xs text-muted-foreground">
-                        {row.plan === "fa" ? "Plano Fã" : row.plan === "superfa" ? "Plano Super Fã" : row.plan === "author" ? "Candidatura de autor" : ["monthly", "quarterly", "yearly"].includes(row.plan) ? "Plano (antigo Leitor Assíduo)" : "—"}
+                        {row.plan === "fa" ? "Plano Fã" : row.plan === "superfa" ? "Plano Super Fã" : row.plan === "author" ? "Candidatura de autor" : row.plan === "artist" ? "Candidatura de artista" : row.plan === "both" ? "Candidatura de escritor e desenhista" :["monthly", "quarterly", "yearly"].includes(row.plan) ? "Plano (antigo Leitor Assíduo)" : "—"}
                       </td>
                       <td className="py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(row.createdAt).toLocaleString("pt-BR")}

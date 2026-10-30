@@ -279,12 +279,13 @@ export async function decideApplication(
     },
   });
 
-  // Candidatura de artista visual (field = "galeria"): cria o perfil na Galeria, sem virar autor
-  if (status === "approved" && app.userId && app.field === "galeria") {
+  // Desenhista (field = "galeria") ou escritor e desenhista (field = "ambos"): cria o perfil na Galeria.
+  // Só desenhista para aqui, sem virar autor.
+  if (status === "approved" && app.userId && (app.field === "galeria" || app.field === "ambos")) {
     const prof = await prisma.profile.findUnique({ where: { id: app.userId }, select: { name: true } });
     const { ensureGalleryArtist } = await import("./gallery");
     await ensureGalleryArtist(app.userId, prof?.name || app.artistName);
-    return { email: app.email, artistName: app.artistName };
+    if (app.field === "galeria") return { email: app.email, artistName: app.artistName };
   }
 
   // Se aprovado e tem userId, promove para author — exceto roles superiores

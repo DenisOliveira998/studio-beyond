@@ -1530,7 +1530,7 @@ ${catalog}
       if (pathname === "/api/waitlist" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { email?: string; plan?: string };
         const email = (body.email ?? "").trim().toLowerCase();
-        const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author", "artist"].includes(body.plan ?? "") ? body.plan! : "";
+        const plan = ["fa", "superfa", "monthly", "quarterly", "yearly", "author", "artist", "both"].includes(body.plan ?? "") ? body.plan! : "";
         if (!(await rateLimit(`waitlist:ip:${clientIp(request)}`, 10, 60 * 60))) {
           return tooManyRequests();
         }
@@ -1665,7 +1665,7 @@ ${catalog}
           artistName: body.artistName,
           email: body.email,
           phone: body.phone ?? "",
-          field: body.field === "galeria" ? "galeria" : "",
+          field: body.field === "galeria" || body.field === "ambos" ? body.field : "",
           bio: body.bio ?? "",
           portfolio: body.portfolio ?? "",
           portfolioFiles: body.portfolioFiles ?? "[]",
