@@ -13,21 +13,13 @@ export function renderErrorPage(): string {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <style>
       :root {
-        --bg: #f6f6f6;
-        --fg: #121519;
-        --muted: #4b4f58;
-        --border: rgba(75,79,88,.28);
-        --gilt: #fdc600;
-        --gilt-dark: #a08d24;
-        --ink: #121519;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #121519;
-          --fg: #f6f6f6;
-          --muted: #9ba1ab;
-          --border: rgba(75,79,88,.6);
-        }
+        --bg: #1C47C3;
+        --fg: #FFFFFF;
+        --muted: #D3DEFF;
+        --border: rgba(255,255,255,.28);
+        --gilt: #02F3FF;
+        --gilt-dark: #02F3FF;
+        --ink: #1C47C3;
       }
       * { box-sizing: border-box; }
       body { font: 15px/1.6 Verdana, Geneva, "DejaVu Sans", sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }

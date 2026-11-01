@@ -1279,12 +1279,12 @@ async function route(request: Request, env: unknown, ctx: unknown): Promise<Resp
               from: "Go Beyondd <noreply@gobeyondd.com.br>",
               to: body.email,
               subject: "Mensagem recebida — Go Beyondd",
-              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">Go Beyondd</p>
-                <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#f6f6f6">Mensagem recebida</h1>
-                <p style="color:#9ba1ab;font-size:15px">Ol&#225;. Recebemos sua mensagem pelo formul&#225;rio do site e responderemos em breve.</p>
-                <p style="color:#9ba1ab;font-size:13px;margin-top:12px">Se n&#227;o foi voc&#234; quem enviou, ignore este e-mail.</p>
-                <p style="color:#9ba1ab;font-size:13px;margin-top:16px">&#8212; Equipe Go Beyondd</p>
+              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#1C47C3">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#02F3FF">Go Beyondd</p>
+                <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#FFFFFF">Mensagem recebida</h1>
+                <p style="color:#D3DEFF;font-size:15px">Ol&#225;. Recebemos sua mensagem pelo formul&#225;rio do site e responderemos em breve.</p>
+                <p style="color:#D3DEFF;font-size:13px;margin-top:12px">Se n&#227;o foi voc&#234; quem enviou, ignore este e-mail.</p>
+                <p style="color:#D3DEFF;font-size:13px;margin-top:16px">&#8212; Equipe Go Beyondd</p>
               </div>`,
             }),
           });
@@ -1702,11 +1702,11 @@ ${catalog}
               from: "Go Beyondd <noreply@gobeyondd.com.br>",
               to: body.email,
               subject: "Candidatura recebida — Go Beyondd",
-              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#121519">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#a08d24">Go Beyondd</p>
-                <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#f6f6f6">Candidatura recebida</h1>
-                <p style="color:#9ba1ab;font-size:15px">Recebemos a sua candidatura. A curadoria avalia por ordem de chegada.</p>
-                <p style="color:#9ba1ab;font-size:15px;margin-top:12px">Prazo: <strong style="color:#f6f6f6">até 15 dias úteis</strong>. Você receberá uma resposta neste e-mail com aprovação ou recusa comentada.</p>
+              html: `<div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#1C47C3">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#02F3FF">Go Beyondd</p>
+                <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#FFFFFF">Candidatura recebida</h1>
+                <p style="color:#D3DEFF;font-size:15px">Recebemos a sua candidatura. A curadoria avalia por ordem de chegada.</p>
+                <p style="color:#D3DEFF;font-size:15px;margin-top:12px">Prazo: <strong style="color:#FFFFFF">até 15 dias úteis</strong>. Você receberá uma resposta neste e-mail com aprovação ou recusa comentada.</p>
               </div>`,
             }),
           });

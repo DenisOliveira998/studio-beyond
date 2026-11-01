@@ -7,7 +7,7 @@
 
 /*
  * Go Beyondd — editorial gallery design system.
- * Deep ink canvas, warm gilt accent, serif display + quiet sans body.
+ * Azul royal, destaque ciano e Creato Display em todo o site.
  * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
@@ -47,94 +47,94 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --font-display: Verdana, Geneva, "DejaVu Sans", sans-serif;
-  --font-sans: Verdana, Geneva, "DejaVu Sans", sans-serif;
-  --font-body: Verdana, Geneva, "DejaVu Sans", sans-serif;
-  --font-ui: Verdana, Geneva, "DejaVu Sans", sans-serif;
-  --font-label: Tahoma, Verdana, Geneva, sans-serif;
+  --font-display: "Creato Display", Verdana, Geneva, sans-serif;
+  --font-sans: "Creato Display", Verdana, Geneva, sans-serif;
+  --font-body: "Creato Display", Verdana, Geneva, sans-serif;
+  --font-ui: "Creato Display", Verdana, Geneva, sans-serif;
+  --font-label: "Creato Display", Tahoma, Verdana, sans-serif;
   --tracking-widest: 0.2em;
   --color-gold: var(--gilt);
   --color-gold-dark: var(--gold-dark);
-  --color-ink: #121519;
-  --color-ink-soft: #212529;
-  --color-stone: #4b4f58;
-  --color-chalk: #f6f6f6;
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-stone: var(--stone);
+  --color-chalk: #ffffff;
 }
 
-:root {
+/* Identidade azul e ciano. Modo claro (padrão): fundo #1C47C3, destaque #02F3FF, texto #FFFFFF.
+ * Superfícies um tom abaixo do fundo (#1739A6) para separar cartões e janelas. */
+:root,
+.dark {
   --radius: 2px;
-  /* Identidade angular — Modo claro
-   * Fundo #F6F6F6 (chalk), superfícies #FFFFFF, ação #FDC600 (gold),
-   * labels #A08D24 (gold-dark), texto #121519 (ink), auxiliar #4B4F58 (stone) */
-  --background: #f6f6f6;
-  --foreground: #121519;
-  --surface: #ffffff;
-  --card: #ffffff;
-  --card-foreground: #121519;
-  --popover: #ffffff;
-  --popover-foreground: #121519;
-  --primary: #fdc600;
-  --primary-foreground: #121519;
-  --secondary: #121519;
+  --ink: #1c47c3;
+  --ink-soft: #1739a6;
+  --stone: #8fa9f0;
+  --background: #1c47c3;
+  --foreground: #ffffff;
+  --surface: #1739a6;
+  --card: #1739a6;
+  --card-foreground: #ffffff;
+  --popover: #1739a6;
+  --popover-foreground: #ffffff;
+  --primary: #02f3ff;
+  --primary-foreground: #1c47c3;
+  --secondary: #1739a6;
   --secondary-foreground: #ffffff;
-  --muted: color-mix(in oklab, #4b4f58 10%, transparent);
-  --muted-foreground: #4b4f58;
-  --accent: color-mix(in oklab, #fdc600 16%, transparent);
-  --accent-foreground: #121519;
-  --destructive: oklch(0.55 0.19 25);
-  --destructive-foreground: #ffffff;
-  --border: color-mix(in oklab, #4b4f58 28%, transparent);
-  --input: color-mix(in oklab, #4b4f58 28%, transparent);
-  --ring: #a08d24;
-  --gilt: #fdc600;
-  --gilt-soft: #a08d24;
-  --gold-dark: #a08d24;
-  --chart-1: #fdc600;
-  --chart-2: #a08d24;
-  --chart-3: #4b4f58;
-  --chart-4: #121519;
-  --chart-5: #212529;
+  --muted: #1739a6;
+  --muted-foreground: #d3deff;
+  --accent: #1739a6;
+  --accent-foreground: #02f3ff;
+  --destructive: #ff9a9a;
+  --destructive-foreground: #0f2a80;
+  --border: color-mix(in oklab, #ffffff 28%, transparent);
+  --input: color-mix(in oklab, #ffffff 28%, transparent);
+  --ring: #02f3ff;
+  --gilt: #02f3ff;
+  --gilt-soft: #8ff8ff;
+  --gold-dark: #02f3ff;
+  --chart-1: #02f3ff;
+  --chart-2: #ffffff;
+  --chart-3: #8fa9f0;
+  --chart-4: #1739a6;
+  --chart-5: #d3deff;
   --gradient-veil: linear-gradient(
     180deg,
     color-mix(in oklab, var(--background) 0%, transparent),
     color-mix(in oklab, var(--background) 92%, transparent)
   );
-  --shadow-gallery: 0 10px 24px -14px oklch(0 0 0 / 0.25);
+  --shadow-gallery: 0 12px 28px -16px oklch(0.2 0.1 265 / 0.7);
 }
 
-.dark {
-  /* Identidade angular — Modo escuro
-   * Fundo #121519 (ink), superfícies #212529 (ink-soft), ação #FDC600 (gold),
-   * labels #A08D24 (gold-dark), texto #F6F6F6 (chalk), auxiliar #4B4F58 (stone) */
-  --background: #121519;
-  --foreground: #f6f6f6;
-  --surface: #212529;
-  --card: #212529;
-  --card-foreground: #f6f6f6;
-  --popover: #212529;
-  --popover-foreground: #f6f6f6;
-  --primary: #fdc600;
-  --primary-foreground: #121519;
-  --secondary: #212529;
-  --secondary-foreground: #f6f6f6;
-  --muted: #212529;
-  --muted-foreground: #9ba1ab;
-  --accent: #212529;
-  --accent-foreground: #fdc600;
-  --destructive: oklch(0.6 0.19 25);
-  --destructive-foreground: #f6f6f6;
-  --border: color-mix(in oklab, #4b4f58 60%, transparent);
-  --input: color-mix(in oklab, #4b4f58 60%, transparent);
-  --ring: #fdc600;
-  --gilt: #fdc600;
-  --gilt-soft: #a08d24;
-  --gold-dark: #a08d24;
-  --chart-1: #fdc600;
-  --chart-2: #a08d24;
-  --chart-3: #9ba1ab;
-  --chart-4: #4b4f58;
-  --chart-5: #f6f6f6;
-  --shadow-gallery: 0 12px 28px -16px oklch(0 0 0 / 0.7);
+
+/* Modo escuro: azul-marinho, com o mesmo ciano da logo. Fica depois do bloco acima
+ * para sobrepor; a classe .dark continua sempre ligada por causa do texto claro. */
+.marinho {
+  --ink: #0a1633;
+  --ink-soft: #122350;
+  --stone: #5f75ad;
+  --background: #0a1633;
+  --foreground: #eef3ff;
+  --surface: #122350;
+  --card: #122350;
+  --card-foreground: #eef3ff;
+  --popover: #122350;
+  --popover-foreground: #eef3ff;
+  --primary-foreground: #0a1633;
+  --secondary: #122350;
+  --secondary-foreground: #eef3ff;
+  --muted: #122350;
+  --muted-foreground: #a9b8dc;
+  --accent: #1b3069;
+  --destructive: #ff8f8f;
+  --destructive-foreground: #0a1633;
+  --border: color-mix(in oklab, #a9b8dc 26%, transparent);
+  --input: color-mix(in oklab, #a9b8dc 26%, transparent);
+  --gilt-soft: #7debff;
+  --chart-2: #eef3ff;
+  --chart-3: #5f75ad;
+  --chart-4: #1b3069;
+  --chart-5: #a9b8dc;
+  --shadow-gallery: 0 12px 28px -16px oklch(0 0 0 / 0.75);
 }
 
 
@@ -155,6 +155,11 @@
        e palavras/links longos quebram linha em vez de vazar */
     overflow-x: clip;
     overflow-wrap: break-word;
+  }
+
+  /* Títulos de seção em ciano, como na identidade nova */
+  h2 {
+    color: var(--gilt);
   }
 
   img,
@@ -202,7 +207,7 @@
   color: var(--gold-dark);
 }
 
-/* Hero / logotipo — Verdana Bold Italic */
+/* Hero / logotipo — Creato Display Bold Italic */
 @utility hero-type {
   font-family: var(--font-display);
   font-weight: 700;
@@ -211,14 +216,14 @@
   letter-spacing: -0.02em;
 }
 
-/* Subtítulos de destaque — Verdana Bold Italic */
+/* Subtítulos de destaque — Creato Display Bold Italic */
 @utility title-italic {
   font-family: var(--font-display);
   font-weight: 700;
   font-style: italic;
 }
 
-/* Legendas e metadados — Tahoma 0.65rem */
+/* Legendas e metadados — Creato Display 0.65rem */
 @utility caption {
   font-family: var(--font-label);
   font-weight: 400;

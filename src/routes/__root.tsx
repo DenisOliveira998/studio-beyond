@@ -55,7 +55,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "robots", content: "index, follow" },
       { name: "author", content: "Go Beyondd" },
-      { name: "theme-color", content: "#121519" },
+      { name: "theme-color", content: "#1C47C3" },
       // Site instalável no iPhone (tela cheia, nome curto no ícone)
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
@@ -89,6 +89,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.cdnfonts.com" },
+      { rel: "stylesheet", href: "https://fonts.cdnfonts.com/css/creato-display" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
@@ -103,8 +105,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
+        {/* Liga o modo escuro antes de pintar, para não piscar em azul claro */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("beyond-theme")==="dark")document.documentElement.classList.add("marinho")}catch(e){}` }} />
         <HeadContent />
       </head>
       <body>

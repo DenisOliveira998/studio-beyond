@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLink, Image as ImageIcon, Instagram, LayoutDashboard, LogOut, Menu, Shield, User, X, Youtube } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteSearch } from "@/components/site-search";
 import { InstallAppButton } from "@/components/install-app";
 import { PLANOS_ATIVOS } from "@/lib/features";
@@ -175,15 +175,12 @@ export function SiteHeader() {
       <div className="flex h-16 items-center gap-2 px-3 sm:gap-6 sm:px-10 lg:px-14">
 
         {/* ── Esquerda: logo ── */}
-        <Link to="/" className="flex shrink-0 items-baseline gap-2">
-          <span className="hero-type text-xl leading-none text-white sm:text-2xl">
-            Go <span className="text-gilt">Beyondd</span>
-          </span>
-          <span className="hidden eyebrow sm:inline">desde 2026</span>
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Go Beyondd, página inicial">
+          <img src="/logo.svg" alt="Go Beyondd" width="228" height="20" className="h-4 w-auto sm:h-5" />
         </Link>
 
         {/* ── Direita: busca + links de nav + controles ── */}
-        <div className="ml-auto flex min-w-0 items-center gap-1.5 text-sm text-white/85 sm:gap-5">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 text-sm text-gilt sm:gap-5">
           {/* Busca exposta no desktop — antes do primeiro link de nav */}
           <div className="hidden xl:block xl:w-56 2xl:w-64">
             <SiteSearch inline />
@@ -193,8 +190,8 @@ export function SiteHeader() {
             <Link
               key={item.to}
               to={item.to}
-              className="rule-hover hidden whitespace-nowrap transition-colors hover:text-gilt lg:inline"
-              activeProps={{ className: "text-gilt" }}
+              className="rule-hover hidden whitespace-nowrap transition-colors hover:text-white lg:inline"
+              activeProps={{ className: "text-white" }}
               activeOptions={{ exact: item.to === "/" }}
             >
               {item.label}
@@ -253,7 +250,7 @@ export function SiteHeader() {
           />
           <div className="fixed left-0 top-0 bottom-0 z-50 w-72 bg-ink border-r border-border flex flex-col">
             <div className="flex items-center justify-between px-5 h-16 border-b border-border/60">
-              <span className="hero-type text-xl text-white">Go <span className="text-gilt">Beyondd</span></span>
+              <img src="/logo.svg" alt="Go Beyondd" width="228" height="20" className="h-5 w-auto" />
               <button
                 onClick={() => setMobileOpen(false)}
                 className="text-white/60 hover:text-gilt transition-colors"
@@ -343,7 +340,7 @@ export function SiteFooter() {
       <div className="grid gap-12 px-5 py-16 sm:py-20 sm:px-10 lg:px-14 md:grid-cols-2 lg:grid-cols-4">
         {/* Identidade */}
         <div>
-          <p className="hero-type text-2xl text-foreground">Go <span className="text-gilt">Beyondd</span></p>
+          <img src="/logo.svg" alt="Go Beyondd" width="273" height="24" className="h-6 w-auto" />
           <p className="title-italic mt-4 max-w-xs text-lg leading-snug text-muted-foreground">
             Novos talentos, lidos e apoiados.
           </p>

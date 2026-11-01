@@ -3,21 +3,29 @@ import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
 
+// Claro é o azul royal (padrão). Escuro é o azul-marinho, ligado pela classe "marinho".
+const BAR_COLOR: Record<Theme, string> = { light: "#1C47C3", dark: "#0A1633" };
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("marinho", theme === "dark");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", BAR_COLOR[theme]);
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("beyond-theme") as Theme | null;
-    const initial: Theme = stored ?? "dark";
+    const initial: Theme = stored ?? "light";
     setTheme(initial);
-    document.documentElement.classList.toggle("dark", initial === "dark");
+    applyTheme(initial);
   }, []);
 
   function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
+    const next: Theme = document.documentElement.classList.contains("marinho") ? "light" : "dark";
     setTheme(next);
     window.localStorage.setItem("beyond-theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    applyTheme(next);
   }
 
   return (

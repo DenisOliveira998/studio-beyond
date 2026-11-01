@@ -33,9 +33,9 @@ export const Route = createFileRoute("/planos")({
   component: PlansPage,
 });
 
-const GOLD = "#FDC600";
-const MODAL_BG = "#212529";
-const TAHOMA = "Tahoma, Verdana, Geneva, sans-serif";
+const GOLD = "#02F3FF";
+const MODAL_BG = "var(--surface)";
+const TAHOMA = '"Creato Display", Tahoma, Verdana, sans-serif';
 
 type Plan = {
   id: string;
@@ -383,7 +383,7 @@ function PlansContent() {
                 plan.buttonStyle === "primary"
                   ? {
                       background: GOLD,
-                      color: "#121519",
+                      color: "var(--primary-foreground)",
                       fontFamily: TAHOMA,
                       fontWeight: "bold",
                     }
@@ -531,7 +531,7 @@ function PlansContent() {
                   type="submit"
                   disabled={sending}
                   className="btn-type mt-6 w-full py-3 text-xs transition-opacity hover:opacity-85 disabled:opacity-60"
-                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                  style={{ background: GOLD, color: "var(--primary-foreground)", fontFamily: TAHOMA, fontWeight: "bold" }}
                 >
                   {sending ? "Abrindo o Mercado Pago…" : "Continuar para o Mercado Pago"}
                 </button>
@@ -549,7 +549,7 @@ function PlansContent() {
                   to="/explorar"
                   onClick={closeWaitlist}
                   className="btn-type mt-6 block w-full py-3 text-center text-xs transition-opacity hover:opacity-85"
-                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                  style={{ background: GOLD, color: "var(--primary-foreground)", fontFamily: TAHOMA, fontWeight: "bold" }}
                 >
                   Continuar lendo
                 </Link>
@@ -579,7 +579,7 @@ function PlansContent() {
                   type="submit"
                   disabled={sending}
                   className="btn-type mt-6 w-full py-3 text-xs transition-opacity hover:opacity-85 disabled:opacity-60"
-                  style={{ background: GOLD, color: "#121519", fontFamily: TAHOMA, fontWeight: "bold" }}
+                  style={{ background: GOLD, color: "var(--primary-foreground)", fontFamily: TAHOMA, fontWeight: "bold" }}
                 >
                   {sending ? "Enviando…" : "Quero ser avisado"}
                 </button>
