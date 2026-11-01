@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { safeRedirect } from "@/lib/redirect";
 import { MIN_AGE, ageFromBirthDate } from "@/lib/age";
 import { savePendingBirth } from "@/lib/auth";
+import { BirthDateInput } from "@/components/birth-date-input";
 
 export const Route = createFileRoute("/criar")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
@@ -156,16 +157,11 @@ function CriarPage() {
         <div className="border border-border bg-surface p-7 sm:p-9">
           <label className="block">
             <span className="eyebrow">Data de nascimento *</span>
-            <input
-              type="date"
-              required
-              value={birthDate}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => {
-                setBirthDate(e.target.value);
+            <BirthDateInput
+              onChange={(value) => {
+                setBirthDate(value);
                 setGuardianConsent(false);
               }}
-              className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-gilt"
             />
           </label>
           {age !== null && age < MIN_AGE && (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { MIN_AGE, ageFromBirthDate } from "@/lib/age";
+import { BirthDateInput } from "@/components/birth-date-input";
 
 /**
  * Para contas de leitor que ainda não informaram a data de nascimento (ex.: criadas
@@ -63,17 +64,12 @@ export function BirthdatePrompt() {
         </p>
         <label className="mt-6 block">
           <span className="eyebrow">Data de nascimento</span>
-          <input
+          <BirthDateInput
             id="birthdate-prompt-date"
-            type="date"
-            required
-            value={birthDate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => {
-              setBirthDate(e.target.value);
+            onChange={(value) => {
+              setBirthDate(value);
               setGuardianConsent(false);
             }}
-            className="mt-2 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-gilt"
           />
         </label>
         {tooYoung && (
